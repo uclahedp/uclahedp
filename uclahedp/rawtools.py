@@ -14,7 +14,9 @@ import datetime
 
 def sraw2hraw(fname_sav):
     """ Convert an IDL-Sav Raw file into an HDF5 Raw file
-
+    Accepts data_forms of both "t" (diode reading) and "pos" (position scan)
+    For "pos" types, requires the items "XAXES", "YAXES", and "ZAXES" in the IDL struct
+    
     Parameters
     ----------
         fname_sav : str
@@ -108,20 +110,10 @@ def sraw2hraw(fname_sav):
     return fname_h5
 
 if __name__ == "__main__":
-    # Quick and dirty test of the array manipulations
-    idl_data = np.array([[0,2,3],[5,1,2]])
-    xgv = np.array(['19', '20'])
-    ygv = np.array(['30', '40', '50'])
-    (nx, ny) = idl_data.shape
-    data =  np.reshape(idl_data, [nx*ny])
-    X, Y = np.meshgrid(xgv, ygv, indexing='ij')
-    pos = np.zeros([2, nx*ny])
-    pos[0,:] = X.flatten()
-    pos[1,:] = Y.flatten()
-
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
-    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
+
+    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     fname_h5 = sraw2hraw(fname_sav)
 

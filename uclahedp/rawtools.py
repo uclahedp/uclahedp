@@ -38,9 +38,9 @@ def regrid(f):
     [nti, npos, nreps, nchan] = f['data'].shape
     gridded = np.reshape(f['data'], [nti, nx, ny, nz, nreps, nchan])
     
-    xgv = f.attrs['grid_xgv']
-    ygv = f.attrs['grid_ygv']
-    zgv = f.attrs['grid_zgv']
+    xgv = f['grid_xgv']
+    ygv = f['grid_ygv']
+    zgv = f['grid_zgv']
 
     return gridded, xgv, ygv, zgv
 
@@ -141,18 +141,18 @@ def sraw2hraw(fname_sav):
             pos[0,:] = X.flatten()
             pos[1,:] = Y.flatten()
             pos[2,:] = Z.flatten()
-            f.attrs['grid_xgv'] = xgv
-            f.attrs['grid_ygv'] = ygv
-            f.attrs['grid_zgv'] = zgv
+            f['grid_xgv'] = xgv
+            f['grid_ygv'] = ygv
+            f['grid_zgv'] = zgv
             f['pos'] = pos
 
     return fname_h5
 
 if __name__ == "__main__":
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_LAPD1_pos_raw.sav"
-    #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
+    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
-    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
+    #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     fname_h5 = sraw2hraw(fname_sav)
     
     with h5py.File(fname_h5, 'r') as f:

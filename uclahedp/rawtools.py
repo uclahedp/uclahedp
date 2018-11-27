@@ -26,6 +26,7 @@ def sraw2hraw(fname_sav):
             Name of the HDF5 Raw file
     """
     
+    # Read the IDL raw save file into a python dictionary, d
     idl_dict = readsav(fname_sav, python_dict=True)
     mynames = idl_dict['struct'].dtype.names
     myitems = idl_dict['struct'][0]
@@ -36,59 +37,67 @@ def sraw2hraw(fname_sav):
             item = item.decode('UTF-8')
         d[name] = item
     
+    # Homogenize instances of "None" for case consistency
+    for k in d.keys():
+        if isinstance(d[k], str) and (d[k] == 'None' or d[k] == 'none'):
+            d[k] = str(None)
     
-    
+    # Create the HDF5 raw save filename
     fname_h5 = os.path.splitext(fname_sav)[0] + ".h5"
     
-    print(d)
+    # Open the HDF5 raw save file and write IDL elements per the new syntax
     with h5py.File(fname_h5, 'w') as f:
         # Specify the HDF5 file creation time
-        f.attrs["HDF5CreationTime"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # Extract info needed to create "data" array
-        nti = d['NTI']
-        nx = d['NXPOS']
-        ny = d['NYPOS']
-        nz = d['NZPOS']
-        nreps = d['NREPS']
-        nchan = d['NCHAN']
+        f.attrs['H5_creation_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.attrs['IDL_raw_filename'] = str(fname_sav)
         
-        # Allocate the "data" array as zeros
-        f['data'] = np.zeros((nti, nx, ny, nz, nreps, nchan), 'f')
-        
-        # Specify axes grid vectors (except reps and chans)
-        f["tgv"] = d['TIME']
-        f["xgv"] = d['XAXES']
-        f["ygv"] = d['YAXES']
-        f["zgv"] = d['ZAXES']
-        
-        # Specify axes labels
-#        f.attrs["tlabel"] = "Time"
-#        f.attrs["xlabel"] = "X position"
-#        f.attrs["ylabel"] = "Y position"
-#        f.attrs["zlabel"] = "Z position"       
+        # Specify the probe parameters
+        f.attrs['gridded'] = True
+        f.attrs['probe_name'] = d['PROBE']
+        f.attrs['probe_type'] = str(None)
 
-        f.attrs["tlabel"] = d['TIME_TITLE']
-        f.attrs["xlabel"] = d['AXES_TITLE'][0].decode('UTF-8')
-        f.attrs["ylabel"] = d['AXES_TITLE'][1].decode('UTF-8')
-        f.attrs["zlabel"] = d['AXES_TITLE'][2].decode('UTF-8')
-        f.attrs["repslabel"] = "Repetition number"
-        f.attrs["chanlabel"] = "Channel"
+        goodkeys = ('DAQ', 'DRIVE', 'PLANE', 'DATA_TYPE', 'DATA_FORM', 'RUN', 'NOTES')
+        for k in goodkeys: # Add everything else into the HDF5 file as an attribute
+            f.attrs[k.lower()] = d[k]
 
-        usedkeys = ('DATA', 'TIME', 'XAXES', 'YAXES', 'ZAXES', 'CHAN_TITLE', 'TIME_TITLE', 'AXES_TITLE')
-        for k in (d.keys() - usedkeys): # Add everything else into the HDF5 file as an attribute
-            f.attrs[k] = d[k]
-
+        f.attrs['dt_secs'] = d['DT']
+        f.attrs['time_unit'] = 'us' # TODO
+        f.attrs['space_unit'] = 'cm' # TODO
+        f.attrs['chan_labels'] = str(None) # TODO
+        f.attrs['pos_labels'] = [a.encode('utf-8') for a in ['X', 'Y', 'Z']] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
-    #    for k, v in newdict.items():
-    #        print(k)
-    #        f[k] = v
-    #for item in myitems:
-    #    print(type(item))
-    
+        # Extract info needed to create "data" and "pos" arrays
+        idl_data = d['DATA'].T # Transpose puts it back into correct index order
+        
+        [nti, nx, ny, nz, nreps, nchan] = idl_data.shape
+        npos = nx * ny * nz # Total number of positions recorded
+        f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
+        ndim = 3
+        pos = np.zeros([ndim, npos])
+        xgv = d['XAXES']
+        ygv = d['YAXES']
+        zgv = d['ZAXES']
+        X, Y, Z = np.meshgrid(xgv, ygv, zgv, indexing='ij')
+        pos[0,:] = X.flatten()
+        pos[1,:] = Y.flatten()
+        pos[2,:] = Z.flatten()
+        f['pos'] = pos
+
     return d
 
 if __name__ == "__main__":
+    # Quick and dirty test of the array manipulations
+    idl_data = np.array([[0,2,3],[5,1,2]])
+    xgv = np.array(['19', '20'])
+    ygv = np.array(['30', '40', '50'])
+    (nx, ny) = idl_data.shape
+    data =  np.reshape(idl_data, [nx*ny])
+    X, Y = np.meshgrid(xgv, ygv, indexing='ij')
+    pos = np.zeros([2, nx*ny])
+    pos[0,:] = X.flatten()
+    pos[1,:] = Y.flatten()
+
     fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
     newdict = sraw2hraw(fname_sav)
+

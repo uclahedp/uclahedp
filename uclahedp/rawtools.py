@@ -12,6 +12,38 @@ import h5py
 import numpy as np
 import datetime
 
+def regrid(f):
+    """ Put the data in the open HDF5 file "f" back onto a grid
+    
+    Parameters
+    ----------
+        f : str
+            Open file handle for the an HDF5 Raw file
+            
+    Returns
+    -------
+        gridded : numpy.ndarray
+            Gridded data of shape [nti, nx, ny, nz, npos, nreps, nchan]
+        xgv, ygv, zgv : np.ndarray
+            1D axis vectors for x, y, and z
+    """
+    
+    if not f.attrs['gridded']:
+        raise Exception("Data not gridded!")
+    
+    nx = f.attrs['grid_nx']
+    ny = f.attrs['grid_ny']
+    nz = f.attrs['grid_nz']
+
+    [nti, npos, nreps, nchan] = f['data'].shape
+    gridded = np.reshape(f['data'], [nti, nx, ny, nz, nreps, nchan])
+    
+    xgv = f.attrs['grid_xgv']
+    ygv = f.attrs['grid_ygv']
+    zgv = f.attrs['grid_zgv']
+
+    return gridded, xgv, ygv, zgv
+
 def sraw2hraw(fname_sav):
     """ Convert an IDL-Sav Raw file into an HDF5 Raw file
     Accepts data_forms of both "t" (diode reading) and "pos" (position scan)
@@ -24,7 +56,7 @@ def sraw2hraw(fname_sav):
 
     Returns
     -------
-        fname_h5
+        fname_h5 : str
             Name of the HDF5 Raw file
     """
     
@@ -54,7 +86,6 @@ def sraw2hraw(fname_sav):
         f.attrs['IDL_raw_filename'] = str(fname_sav)
         
         # Specify probe parameters
-        f.attrs['gridded'] = True
         f.attrs['probe_name'] = d['PROBE']
         f.attrs['probe_type'] = str(None) # Not included in the IDL save files
         
@@ -67,9 +98,11 @@ def sraw2hraw(fname_sav):
         if d['DATA_FORM'] == "t":
             f.attrs['space_unit'] = str(None)
             f.attrs['pos_labels'] = str(None)
+            f.attrs['gridded'] = False
         else:
             f.attrs['space_unit'] = 'cm' # TODO
             f.attrs['pos_labels'] = [s.encode('utf-8') for s in ['X', 'Y', 'Z']] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+            f.attrs['gridded'] = True
         
         # Specify several additional parameters
         goodkeys = ('DAQ', 'DRIVE', 'PLANE', 'DATA_TYPE', 'DATA_FORM', 'RUN', 'NOTES')
@@ -88,6 +121,9 @@ def sraw2hraw(fname_sav):
         else:
             [nti, nx, ny, nz, nreps, nchan] = idl_data.shape
             npos = nx * ny * nz # Total number of positions recorded
+            f.attrs['grid_nx'] = nx
+            f.attrs['grid_ny'] = ny
+            f.attrs['grid_nz'] = nz
         
         # Write the "data" array
         f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
@@ -105,15 +141,23 @@ def sraw2hraw(fname_sav):
             pos[0,:] = X.flatten()
             pos[1,:] = Y.flatten()
             pos[2,:] = Z.flatten()
+            f.attrs['grid_xgv'] = xgv
+            f.attrs['grid_ygv'] = ygv
+            f.attrs['grid_zgv'] = zgv
             f['pos'] = pos
 
     return fname_h5
 
 if __name__ == "__main__":
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_LAPD1_pos_raw.sav"
-    #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
+    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
-
-    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
+    #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     fname_h5 = sraw2hraw(fname_sav)
+    
+    with h5py.File(fname_h5, 'r') as f:
+        gridded, xgv, ygv, zgv = regrid(f)
+    
+    print(np.max(gridded))
+    
 

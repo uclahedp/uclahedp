@@ -17,14 +17,14 @@ def regrid(f):
     
     Parameters
     ----------
-        f : str
-            Open file handle for the an HDF5 Raw file
+        f : file object
+            Opened file object (allowing read mode) for an HDF5 Raw file
             
     Returns
     -------
         gridded : numpy.ndarray
             Gridded data of shape [nti, nx, ny, nz, npos, nreps, nchan]
-        xgv, ygv, zgv : np.ndarray
+        xgv, ygv, zgv : numpy.ndarray
             1D axis vectors for x, y, and z
     """
     

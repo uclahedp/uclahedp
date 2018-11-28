@@ -141,12 +141,30 @@ def sraw2hraw(fname_sav):
         # Extract info needed to create "data" and "pos" arrays
         idl_data = d['DATA'].T # Transpose puts it back into correct index order
 
+        # Write the "pos" array if appicable, obtain array dims
         if d['DATA_FORM'] == "t":
             [nti, nreps, nchan] = idl_data.shape
             npos = 1
         else:
+            ndim = 3
             [nti, nx, ny, nz, nreps, nchan] = idl_data.shape
-            npos = nx * ny * nz # Total number of positions recorded
+            npos = nx * ny * nz  # Total number of positions recorded
+            pos = np.zeros([ndim, npos])
+            xgv = d['XAXES']
+            ygv = d['YAXES']
+            zgv = d['ZAXES']
+            X, Y, Z = np.meshgrid(xgv, ygv, zgv, indexing='ij')
+            pos[0, :] = X.flatten()
+            pos[1, :] = Y.flatten()
+            pos[2, :] = Z.flatten()
+            f['grid_xgv'] = xgv
+            f['grid_xgv'].attrs['unit'] = 'cm'
+            f['grid_ygv'] = ygv
+            f['grid_ygv'].attrs['unit'] = 'cm'
+            f['grid_zgv'] = zgv
+            f['grid_zgv'].attrs['unit'] = 'cm'
+            f['pos'] = pos
+            f['pos'].attrs['unit'] = 'cm'
             f.attrs['grid_nx'] = nx
             f.attrs['grid_ny'] = ny
             f.attrs['grid_nz'] = nz
@@ -164,38 +182,19 @@ def sraw2hraw(fname_sav):
         # This array stores the time
         f['t0'] = np.zeros([npos, nreps])
         f['t0'].attrs['unit'] = 's'
-        # Write the "pos" array, if applicable
-        if d['DATA_FORM'] == "t":
-            pass
-        else:
-            ndim = 3
-            pos = np.zeros([ndim, npos])
-            xgv = d['XAXES']
-            ygv = d['YAXES']
-            zgv = d['ZAXES']
-            X, Y, Z = np.meshgrid(xgv, ygv, zgv, indexing='ij')
-            pos[0,:] = X.flatten()
-            pos[1,:] = Y.flatten()
-            pos[2,:] = Z.flatten()
-            f['grid_xgv'] = xgv
-            f['grid_xgv'].attrs['unit'] = 'cm'
-            f['grid_ygv'] = ygv
-            f['grid_ygv'].attrs['unit'] = 'cm'
-            f['grid_zgv'] = zgv
-            f['grid_zgv'].attrs['unit'] = 'cm'
-            f['pos'] = pos
-            f['pos'].attrs['unit'] = 'cm'
 
-    return fname_h5
+        return fname_h5
+
 
 if __name__ == "__main__":
+
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.sav"
     fname_h5 = sraw2hraw(fname_sav)
-    
+
     with h5py.File(fname_h5, 'r') as f:
         gridded, xgv, ygv, zgv = regrid(f)
         print(np.shape(gridded))

@@ -12,17 +12,13 @@ import h5py
 import numpy as np
 import datetime
 
-
-
-#TODO: This function should grid the t0 vector too? Maybe use same function but with a keyword eg. quantity='data'?
+# TODO: This function should grid the t0 vector too? Maybe use same function but with a keyword eg. quantity='data'?
 def regrid(f):
     """ Put the data in the open HDF5 file "f" back onto a grid
-    
     Parameters
     ----------
         f : file object
-            Opened file object (allowing read mode) for an HDF5 Raw file
-            
+            Opened file object (allowing read mode) for an HDF5 Raw file       
     Returns
     -------
         gridded : numpy.ndarray
@@ -30,17 +26,17 @@ def regrid(f):
         xgv, ygv, zgv : numpy.ndarray
             1D axis vectors for x, y, and z
     """
-    
+
     if not f.attrs['gridded']:
         raise Exception("Data not gridded!")
-    
+
     nx = f.attrs['grid_nx']
     ny = f.attrs['grid_ny']
     nz = f.attrs['grid_nz']
 
     [nti, npos, nreps, nchan] = f['data'].shape
     gridded = np.reshape(f['data'], [nti, nx, ny, nz, nreps, nchan])
-    
+
     xgv = f['grid_xgv']
     ygv = f['grid_ygv']
     zgv = f['grid_zgv']
@@ -52,7 +48,6 @@ def regrid(f):
 #TODO: handle lists of positions, reps and produce an array of time vectors all in one function call?
 def timevector(f, pos=0, rep=0):
     """ Generates a time vector for a given shot in any HDF5 file
-    
     Parameters
     ----------
         f : file object
@@ -63,23 +58,22 @@ def timevector(f, pos=0, rep=0):
 
         rep : integer
             Repetition index of the requested time vector
-            
     Returns
     -------
-       time : Time vector in time units of the base HDF file, shifted by the appropriate time shift.
+       time : Time vector in time units of the base HDF file, shifted by
+       the appropriate time shift.
     """
-    
-    time =  np.arange(f.attrs['nti'])*f.attrs['dt'] - f['t0'][pos,rep]
+    time = np.arange(f.attrs['nti'])*f.attrs['dt'] - f['t0'][pos, rep]
 
     return time
 
-    
 
 def sraw2hraw(fname_sav):
     """ Convert an IDL-Sav Raw file into an HDF5 Raw file
     Accepts data_forms of both "t" (diode reading) and "pos" (position scan)
-    For "pos" types, requires the items "XAXES", "YAXES", and "ZAXES" in the IDL struct
-    
+    For "pos" types, requires the items "XAXES", "YAXES", and "ZAXES"
+    in the IDL struct
+
     Parameters
     ----------
         fname_sav : str
@@ -90,18 +84,18 @@ def sraw2hraw(fname_sav):
         fname_h5 : str
             Name of the HDF5 Raw file
     """
-    
+
     # Read the IDL raw save file into a python dictionary, d
     idl_dict = readsav(fname_sav, python_dict=True)
     mynames = idl_dict['struct'].dtype.names
     myitems = idl_dict['struct'][0]
-    
-    d = {} # Temporary dictionary holding values
-    for name, item in zip(mynames, myitems): # Python3 syntax
-        if isinstance(item, bytes): # Interpret any byte strings as UTF-8
+
+    d = {}  # Temporary dictionary holding values
+    for name, item in zip(mynames, myitems):  # Python3 syntax
+        if isinstance(item, bytes):  # Interpret any byte strings as UTF-8
             item = item.decode('UTF-8')
         d[name] = item
-    
+
     # Homogenize instances of "None" for case consistency
     for k in d.keys():
         if isinstance(d[k], str) and (d[k] == 'None' or d[k] == 'none'):
@@ -109,21 +103,21 @@ def sraw2hraw(fname_sav):
 
     # Create the HDF5 raw save filename
     fname_h5 = os.path.splitext(fname_sav)[0] + ".h5"
-    
+
     # Open the HDF5 raw save file and write IDL elements per the new syntax
     with h5py.File(fname_h5, 'w') as f:
         # Specify HDF5 file creation parameters
         f.attrs['H5_creation_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         f.attrs['IDL_raw_filename'] = str(fname_sav)
-        
+
         # Specify probe parameters
         f.attrs['probe_name'] = d['PROBE']
-        f.attrs['probe_type'] = str(None) # Not included in the IDL save files
+        f.attrs['probe_type'] = str(None)  # Not included in the IDL save files
         
         # Specify some time parameters
-        f.attrs['dt'] = d['DT'] #Store in the same units as the t0 time for consistency
+        f.attrs['dt'] = d['DT']  #Store in the same units as the t0 time for consistency
         f.attrs['dt_unit'] = 's'
-        f.attrs['chan_labels'] = [s for s in d['CHAN_TITLE']] # Note that these elements are already in utf-8 format
+        f.attrs['chan_labels'] = [s for s in d['CHAN_TITLE']]  # Note that these elements are already in utf-8 format
 
         # Specify some spatial parameters
         if d['DATA_FORM'] == "t":
@@ -131,12 +125,13 @@ def sraw2hraw(fname_sav):
             f.attrs['pos_labels'] = str(None)
             f.attrs['gridded'] = False
         else:
-            f.attrs['space_unit'] = 'cm' # TODO
+            f.attrs['space_unit'] = 'cm'  # TODO
             f.attrs['pos_labels'] = [s.encode('utf-8') for s in ['X', 'Y', 'Z']] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
             f.attrs['gridded'] = True
-        
+
         # Specify several additional parameters
-        goodkeys = ('DAQ', 'DRIVE', 'PLANE', 'DATA_TYPE', 'DATA_FORM', 'RUN', 'NOTES')
+        goodkeys = ('DAQ', 'DRIVE', 'PLANE', 'DATA_TYPE',
+                    'DATA_FORM', 'RUN', 'NOTES')
         for k in goodkeys: # Add everything else into the HDF5 file as an attribute
             if k in d.keys():
                 f.attrs[k.lower()] = d[k]
@@ -156,22 +151,19 @@ def sraw2hraw(fname_sav):
             f.attrs['grid_ny'] = ny
             f.attrs['grid_nz'] = nz
 
-
-        #Save the number of timesteps, reps, and channels for later easy access.
+        # Save the number of timesteps, reps, and channels for later
+        # easy access.
         f.attrs['nti'] = nti
         f.attrs['nreps'] = nreps
         f.attrs['nchan'] = nchan
-        
+
         # Write the "data" array
         f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
         f['data'].attrs['unit'] = 'V'
-
-
         # Create the t0 array
         # This array stores the time
-        f['t0'] = np.zeros([npos,nreps])
+        f['t0'] = np.zeros([npos, nreps])
         f['t0'].attrs['unit'] = 's'
-        
         # Write the "pos" array, if applicable
         if d['DATA_FORM'] == "t":
             pass

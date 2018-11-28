@@ -16,10 +16,9 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
     # Load data from the raw HDF file
     # ******
     with h5py.File(rawfilename, 'r') as f:
-        data = f['data']
-        pos = f['pos']
-        
-        print(np.shape(data))
+        data = f['data'][:]
+        pos = f['pos'][:]
+
         
         run = f.attrs['run']
         probe = f.attrs['probe_name']
@@ -32,7 +31,7 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
         daq = f.attrs['daq']
         plane = f.attrs['plane']
         drive = f.attrs['drive']
-        dt = f.attrs['dt']
+        dt = f.attrs['dt'] #dt MUST be in s for this algorithm to work...
     
     # ******
     # Load data from bdot runs csv
@@ -86,9 +85,38 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
         print("Handle tdiode correction here...")
         
     # Create an array of calibration coefficents
-    atten = 10.0^(atten/20.0) # Convert from decibels
-    cal = 1.0e4*(atten/gain)
+    atten = np.power([10,10,10], atten/20.0) # Convert from decibels
+    # Required input units
+    # dt -> s
+    # area -> mm^2
+    cal = 1.0e16*dt*atten/gain/(nturns*area)
+    #Integrate the data
+    bx = cal[0]*pol[0]*np.cumsum(data[:, :, :, 0], axis=0)
+    by = cal[1]*pol[1]*np.cumsum(data[:, :, :, 1], axis=0)
+    bz = cal[2]*pol[2]*np.cumsum(data[:, :, :, 2], axis=0)
     
+    # Correct for probe rotation (generally accidental...)
+    # This is rotation about the probe's main (x) axis
+    if probe_rot is not 0:
+        probe_rot = np.deg2rad(probe_rot)
+        by = by*np.cos(probe_rot) - bz*np.sin(probe_rot)
+        bz = bz*np.cos(probe_rot) + by*np.sin(probe_rot)
+    
+    print(np.shape(pos))
+    #Reassemble the data array, correcting for angles due to the drive
+    if drive in ['xy','xz', 'polar_xy', 'polar_xz']:
+        print(1)
+    elif drive in ['cartesian_xyz' ]:
+        data[:, :, :, 0] = bx
+        data[:, :, :, 1] = by
+        data[:, :, :, 2] = bz
+    else:
+        print("Invalid drive type: " + drive)
+    return None
+    
+
+    
+    print(np.shape(bx))
     return
 
 

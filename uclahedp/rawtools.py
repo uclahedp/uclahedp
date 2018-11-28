@@ -149,6 +149,7 @@ def sraw2hraw(fname_sav):
             ndim = 3
             [nti, nx, ny, nz, nreps, nchan] = idl_data.shape
             npos = nx * ny * nz  # Total number of positions recorded
+            f.attrs['npos'] = npos
             pos = np.zeros([ndim, npos])
             xgv = d['XAXES']
             ygv = d['YAXES']

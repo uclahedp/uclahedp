@@ -42,7 +42,7 @@ def opencsv(fname):
     return csvdict
 
 
-def findvalue(csvdict, key, run=0, probe=None):
+def findvalue(csvdict, key, run=None, probe=None):
     """ Picks out a value from a csv file dictionary
     Returns a list of all values which match the given key, run, and probe.
 
@@ -64,15 +64,38 @@ def findvalue(csvdict, key, run=0, probe=None):
     if probe is None:
         value = [v for i, v in enumerate(csvdict[key]) if
                  csvdict['run'][i] == str(run)]
+    elif run is None:
+        value = [v for i, v in enumerate(csvdict[key]) if
+                 csvdict['probe'][i] == str(probe)]
     else:
         value = [v for i, v in enumerate(csvdict[key]) if
                  (csvdict['run'][i] == str(run) and
                   csvdict['probe'][i] == str(probe))]
-    return value
+    
+    if len(value) == 0:
+        return []
+    elif len(value) == 1:
+        value = value[0]
+    
+    
+    try: 
+        value = float(value)
+        
+        if value.is_integer():
+            return int(value)
+        else:
+            return value
+        
+    except ValueError:
+        return str(value)
+
+
 
 
 if __name__ == "__main__":
-    fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/bdot_runs_LAPD_Mar2018.csv"
+    fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/bdot_runs.csv"
 
     csvdict = opencsv(fname)
-    print(findvalue(csvdict, 'probe_xpos', run=40, probe='LAPD1'))
+    v = findvalue(csvdict, 'probe_origin_z', run=40, probe='LAPD4')
+    print(v)
+    print(type(v))

@@ -14,7 +14,8 @@ from collections import defaultdict
 
 def opencsv(fname):
     """ Opens a CSV files as a dictionary
-    Keys are taken from the first row of the csv. Columns without a key are ignored
+    Keys are taken from the first row of the csv. Columns without
+    a key are ignored
     Skips the 2nd and 3rd lines of the CSV, which are human-readable titles
 
     Parameters
@@ -44,7 +45,7 @@ def opencsv(fname):
 def findvalue(csvdict, key, run=0, probe=None):
     """ Picks out a value from a csv file dictionary
     Returns a list of all values which match the given key, run, and probe.
-    
+
     Parameters
     ----------
         csvdict: dict
@@ -60,22 +61,18 @@ def findvalue(csvdict, key, run=0, probe=None):
     -------
         value: list
     """
-    if probe == None:
-        value = [v for i,v in enumerate(csvdict[key]) if 
+    if probe is None:
+        value = [v for i, v in enumerate(csvdict[key]) if
                  csvdict['run'][i] == str(run)]
     else:
-        value = [v for i,v in enumerate(csvdict[key]) if 
-                 (csvdict['run'][i] == str(run) and 
-                  csvdict['probe'][i] == str(probe)  )]
+        value = [v for i, v in enumerate(csvdict[key]) if
+                 (csvdict['run'][i] == str(run) and
+                  csvdict['probe'][i] == str(probe))]
     return value
-
-
-
-
 
 
 if __name__ == "__main__":
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/bdot_runs_LAPD_Mar2018.csv"
 
     csvdict = opencsv(fname)
-    print(findvalue(csvdict, 'probe_xpos', run=40, probe = 'LAPD1'))
+    print(findvalue(csvdict, 'probe_xpos', run=40, probe='LAPD1'))

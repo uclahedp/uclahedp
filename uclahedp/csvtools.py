@@ -26,10 +26,20 @@ def opencsv(fname):
     return d
 
 
+def findvalue(csvdict, key, run=0, probe=None):
+
+    if probe == None:
+        value = [v for i,v in enumerate(csvdict[key]) if 
+                 csvdict['run'][i] == str(run)]
+    else:
+        value = [v for i,v in enumerate(csvdict[key]) if 
+                 (csvdict['run'][i] == str(run) and 
+                  csvdict['probe'][i] == str(probe)  )]
+    return value
+
+
 if __name__ == "__main__":
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/bdot_runs_LAPD_Mar2018.csv"
 
-    csvobj = opencsv(fname)
-    
-    print(csvobj.keys())
-    print(csvobj['probe'])
+    csvdict = opencsv(fname)
+    print(findvalue(csvdict, 'probe_xpos'))

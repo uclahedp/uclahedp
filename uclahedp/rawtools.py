@@ -90,8 +90,7 @@ def sraw2hraw(fname_sav):
         f.attrs['probe_type'] = str(None) # Not included in the IDL save files
         
         # Specify some time parameters
-        f.attrs['dt_secs'] = d['DT']
-        f.attrs['time_unit'] = 'us' # TODO
+        f.attrs['dt'] = d['DT']*1e6 #Store dt in the same time units as the time array for consistency
         f.attrs['chan_labels'] = [s for s in d['CHAN_TITLE']] # Note that these elements are already in utf-8 format
 
         # Specify some spatial parameters
@@ -124,9 +123,17 @@ def sraw2hraw(fname_sav):
             f.attrs['grid_nx'] = nx
             f.attrs['grid_ny'] = ny
             f.attrs['grid_nz'] = nz
+
+        
         
         # Write the "data" array
         f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
+        f['data'].attrs['unit'] = 'V'
+
+        #Create the time array
+        print(nti)
+        f['time'] =  np.arange(nti)*f.attrs['dt']
+        f['time'].attrs['unit'] = 'us'
         
         # Write the "pos" array, if applicable
         if d['DATA_FORM'] == "t":
@@ -142,22 +149,29 @@ def sraw2hraw(fname_sav):
             pos[1,:] = Y.flatten()
             pos[2,:] = Z.flatten()
             f['grid_xgv'] = xgv
+            f['grid_xgv'].attrs['unit'] = 'cm'
             f['grid_ygv'] = ygv
+            f['grid_ygv'].attrs['unit'] = 'cm'
             f['grid_zgv'] = zgv
+            f['grid_zgv'].attrs['unit'] = 'cm'
             f['pos'] = pos
+            f['pos'].attrs['unit'] = 'cm'
 
     return fname_h5
 
 if __name__ == "__main__":
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_LAPD1_pos_raw.sav"
-    fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
+    #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run56_LAPD1_pos_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
+    fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.sav"
     fname_h5 = sraw2hraw(fname_sav)
     
     with h5py.File(fname_h5, 'r') as f:
         gridded, xgv, ygv, zgv = regrid(f)
+        print(np.shape(gridded))
+        print(np.shape(f['time']))
     
-    print(np.max(gridded))
+    
     
 

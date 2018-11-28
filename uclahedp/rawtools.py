@@ -12,6 +12,9 @@ import h5py
 import numpy as np
 import datetime
 
+
+
+#TODO: This function should grid the t0 vector too? Maybe use same function but with a keyword eg. quantity='data'?
 def regrid(f):
     """ Put the data in the open HDF5 file "f" back onto a grid
     
@@ -43,6 +46,34 @@ def regrid(f):
     zgv = f['grid_zgv']
 
     return gridded, xgv, ygv, zgv
+
+
+#TODO: move this time vector function into a file of functions that apply to ANY HEDP HDF5 file, not just raw ones?
+#TODO: handle lists of positions, reps and produce an array of time vectors all in one function call?
+def timevector(f, pos=0, rep=0):
+    """ Generates a time vector for a given shot in any HDF5 file
+    
+    Parameters
+    ----------
+        f : file object
+            Opened file object (allowing read mode) for an HDF5 Raw file
+
+        pos : integer
+            Position index of the requested time vector
+
+        rep : integer
+            Repetition index of the requested time vector
+            
+    Returns
+    -------
+       time : Time vector in time units of the base HDF file, shifted by the appropriate time shift.
+    """
+    
+    time =  np.arange(f.attrs['nti'])*f.attrs['dt'] - f['t0'][pos,rep]
+
+    return time
+
+    
 
 def sraw2hraw(fname_sav):
     """ Convert an IDL-Sav Raw file into an HDF5 Raw file
@@ -90,7 +121,8 @@ def sraw2hraw(fname_sav):
         f.attrs['probe_type'] = str(None) # Not included in the IDL save files
         
         # Specify some time parameters
-        f.attrs['dt'] = d['DT']*1e6 #Store dt in the same time units as the time array for consistency
+        f.attrs['dt'] = d['DT'] #Store in the same units as the t0 time for consistency
+        f.attrs['dt_unit'] = 's'
         f.attrs['chan_labels'] = [s for s in d['CHAN_TITLE']] # Note that these elements are already in utf-8 format
 
         # Specify some spatial parameters
@@ -124,16 +156,21 @@ def sraw2hraw(fname_sav):
             f.attrs['grid_ny'] = ny
             f.attrs['grid_nz'] = nz
 
-        
+
+        #Save the number of timesteps, reps, and channels for later easy access.
+        f.attrs['nti'] = nti
+        f.attrs['nreps'] = nreps
+        f.attrs['nchan'] = nchan
         
         # Write the "data" array
         f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
         f['data'].attrs['unit'] = 'V'
 
-        #Create the time array
-        print(nti)
-        f['time'] =  np.arange(nti)*f.attrs['dt']
-        f['time'].attrs['unit'] = 'us'
+
+        # Create the t0 array
+        # This array stores the time
+        f['t0'] = np.zeros([npos,nreps])
+        f['t0'].attrs['unit'] = 's'
         
         # Write the "pos" array, if applicable
         if d['DATA_FORM'] == "t":
@@ -170,8 +207,7 @@ if __name__ == "__main__":
     with h5py.File(fname_h5, 'r') as f:
         gridded, xgv, ygv, zgv = regrid(f)
         print(np.shape(gridded))
-        print(np.shape(f['time']))
-    
+
     
     
 

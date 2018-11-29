@@ -62,7 +62,6 @@ def findvalue(csvdict, key, run=None, probe=None):
         value: list
     """
     
-    # Peter, does this need to work if probe and run are both None? Currently doesn't handle that well. -Scott
     if probe is None:
         value = [v for i, v in enumerate(csvdict[key]) if
                  csvdict['run'][i] == str(run)]
@@ -98,6 +97,6 @@ if __name__ == "__main__":
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/bdot_runs.csv"
 
     csvdict = opencsv(fname)
-    v = findvalue(csvdict, 'probe_origin_z', run=40, probe='LAPD4')
+    v = findvalue(csvdict, 'probe_origin_z')
     print(v)
     print(type(v))

@@ -11,6 +11,7 @@ import csvtools
 import numpy as np
 import os
 from shutil import copyfile
+import h5py
 
 def bdot_raw_to_full(rawfilepath, csvdir, tdiode_hdf=None, fullfilepath=None):
     """ Integrates bdot data, calibrates output using information about the probe.

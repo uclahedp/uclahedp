@@ -90,10 +90,13 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
     # dt -> s
     # area -> mm^2
     cal = 1.0e16*dt*atten/gain/(nturns*area)
+
+    print(np.shape(data))
     #Integrate the data
     bx = cal[0]*pol[0]*np.cumsum(data[:, :, :, 0], axis=0)
     by = cal[1]*pol[1]*np.cumsum(data[:, :, :, 1], axis=0)
     bz = cal[2]*pol[2]*np.cumsum(data[:, :, :, 2], axis=0)
+    
     
     # Correct for probe rotation (generally accidental...)
     # This is rotation about the probe's main (x) axis
@@ -101,22 +104,43 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
         probe_rot = np.deg2rad(probe_rot)
         by = by*np.cos(probe_rot) - bz*np.sin(probe_rot)
         bz = bz*np.cos(probe_rot) + by*np.sin(probe_rot)
-    
-    print(np.shape(pos))
+
     #Reassemble the data array, correcting for angles due to the drive
-    if drive in ['xy','xz', 'polar_xy', 'polar_xz']:
-        print(1)
-    elif drive in ['cartesian_xyz' ]:
+    
+    if drive in ['none', 'cartesian_xyz' ]:
         data[:, :, :, 0] = bx
         data[:, :, :, 1] = by
         data[:, :, :, 2] = bz
+    elif drive in ['xy','polar_xy']:
+        # Calculate the angle made by the probe shaft at each pos
+        angle = np.arctan(pos[1,:]/pos[0,:])
+        # The remainder of this mess creates a matrix ready for multiplication
+        theta = np.outer(np.ones(nti), angle)
+        theta = theta.flatten()
+        theta = np.outer(theta,np.ones(nreps))
+        theta = np.reshape( theta.flatten(), [nti,npos, nreps])
+    
+        data[:, :, :, 0] = bx*np.cos(theta) - by*np.sin(theta)
+        data[:, :, :, 1] = by*np.cos(theta) + bx*np.sin(theta)
+        data[:, :, :, 2] = bz
+    elif drive in ['xz','polar_xz']:
+        # Calculate the angle made by the probe shaft at each pos
+        angle = np.arctan(pos[2, :]/pos[0, :])
+        # The remainder of this mess creates a matrix ready for multiplication
+        theta = np.outer(np.ones(nti), angle)
+        theta = theta.flatten()
+        theta = np.outer(theta,np.ones(nreps))
+        theta = np.reshape( theta.flatten(), [nti,npos, nreps])
+        
+        data[:, :, :, 0] = bx*np.cos(theta) - bz*np.sin(theta)
+        data[:, :, :, 1] = by
+        data[:, :, :, 2] = bz*np.cos(theta) + bx*np.sin(theta)
     else:
         print("Invalid drive type: " + drive)
     return None
-    
 
     
-    print(np.shape(bx))
+    print(np.shape(data))
     return
 
 

@@ -9,8 +9,10 @@ Created on Wed Nov 28 13:37:21 2018
 """
 import csvtools
 import numpy as np
+import os
+from shutil import copyfile
 
-def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
+def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None, fullfilename=None):
     
     # ******
     # Load data from the raw HDF file
@@ -18,7 +20,7 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
     with h5py.File(rawfilename, 'r') as f:
         data = f['data'][:]
         pos = f['pos'][:]
-
+    
         
         run = f.attrs['run']
         probe = f.attrs['probe_name']
@@ -32,6 +34,7 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
         plane = f.attrs['plane']
         drive = f.attrs['drive']
         dt = f.attrs['dt'] #dt MUST be in s for this algorithm to work...
+
     
     # ******
     # Load data from bdot runs csv
@@ -90,8 +93,8 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
     # dt -> s
     # area -> mm^2
     cal = 1.0e16*dt*atten/gain/(nturns*area)
+    print(cal)
 
-    print(np.shape(data))
     #Integrate the data
     bx = cal[0]*pol[0]*np.cumsum(data[:, :, :, 0], axis=0)
     by = cal[1]*pol[1]*np.cumsum(data[:, :, :, 1], axis=0)
@@ -137,15 +140,29 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None):
         data[:, :, :, 2] = bz*np.cos(theta) + bx*np.sin(theta)
     else:
         print("Invalid drive type: " + drive)
-    return None
+        return None
 
+
+    #If necessary, come up with a new filename
+    if fullfilename is None:
+        rawdir = os.path.dirname(rawfilename) + '/'
+        fullfilename = rawdir + 'run' + str(run) + '_' + str(probe) + '_full.h5'
+        
+    copyfile(rawfilename, fullfilename)
     
-    print(np.shape(data))
-    return
+    #Change the relevant variables in the previous HDF file
+    with h5py.File(fullfilename, 'a') as f2:
+        f2['data'][...] = data # The [...] is essential for overwriting data, but I don't understand what it does...
+        f2["data"].attrs['unit'] = 'G'
+        f2.attrs['data_type'] = 'full'
+        f2.attrs['chan_labels'] =  [s.encode('utf-8') for s in ['BX', 'BY', 'BZ']] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289 
+
+    return fullfilename
 
 
 if __name__ == "__main__":
     csvdir = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/"
     rawfilename = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
+    #rawfilename = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_pos_raw.h5"
     full_file = bdot_raw_to_full(rawfilename, csvdir)
     print('Done')

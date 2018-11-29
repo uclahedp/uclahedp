@@ -23,13 +23,56 @@ parent: ndf
 class ndf:
     """Parent class for a generic HEDP dataset of any dimensionality"""
     def __init__(self, f): # Initialize object
-
-        # Init quantities that every HDF file should have
+        
+        self.data = f['data'][:]
+        
+        
+        self.dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
+        self.units =  [ x.decode("utf-8") for x in f.attrs['units']  ]
+        self.ndim = len(self.dimlabels)
+        
+        # Init quantites that we want to have easily available
+        self.run = f.attrs['run']
         self.drive = f.attrs['drive']
+        self.daq = f.attrs['daq']
+        self.dt = f.attrs['dt']
+        self.probe_name = f.attrs['probe_name']
+        self.probe_type = f.attrs['probe_type']
         # TODO others here...
         
-
+        #Make a list of all of the attributes in the HDF, so we can perpetuate them
+        self.attrs = {}
+        keys = list(f.attrs)
+        for key in keys:
+            self.attrs[key] = f.attrs[key]
+            
+        
+    def save(self, f):
+        f['data'] = self.data
+        
+        f.attrs['dimlabels'] = [s.encode('utf-8') for s in self.dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        f.attrs['units'] = [s.encode('utf-8') for s in self.units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        
+        
+        # Add the original list of all attributes back to the dataset
+        # This comes before the explictly coded ones, so those will take 
+        # precedence in case of changes
+        for key in self.attrs.keys():
+            f.attrs[key] =self.attrs[key]
+        
+        # Write the important attributes, with the new object values overwriting
+        # any duplicates from self.attrs
+        f.attrs['run'] = self.run
+        f.attrs['drive'] = self.drive
+        f.attrs['daq'] =  self.daq 
+        f.attrs['dt'] =  self.dt
+        f.attrs['probe_name'] = self.probe_name 
+        f.attrs['probe_type'] = self.probe_type
+        
     
+
+
+
 class ndfgrid (ndf):
     """
     Class of gridded NDF datasets
@@ -37,31 +80,89 @@ class ndfgrid (ndf):
     """
     def __init__(self, f):
         ndf.__init__(self, f)
-        self.dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
-        self.units =  [ x.decode("utf-8") for x in f.attrs['units']  ]
         
-        self.ndim = len(self.dimlabels)
         
         #Add quantities we only want if a dimension is non-trivial
         for dim in self.dimlabels:
-            if dim is 'time':
-                self.time = f['time']
+            if dim == 'time':
+                self.time = f['time'][:]
                 self.nti = len(self.time)
-            if dim is 'x':
-                self.x = f['x']
+            else:
+                self.nti = 1
+            if dim == 'x':
+                self.x = f['x'][:]
                 self.nx = len(self.x)
-            if dim is 'y':
-                self.y = f['y']
+            else: 
+                self.nx = 1
+            if dim == 'y':
+                self.y = f['y'][:]
                 self.ny = len(self.y)
-            if dim is 'z':
-                self.x = f['z']
+            else:
+                self.ny = 1
+            if dim == 'z':
+                self.z = f['z'][:]
                 self.nz = len(self.z)
-            if dim is 'reps':
-                self.reps = f['reps']
-            if dim is 'channels':
-                self.channels = f['channels']
+            else:
+                self.nz = 1
+            if dim == 'reps':
+                self.reps = f['reps'][:]
+                self.nreps = len(self.reps)
+            else:
+                self.nreps = 1
+            if dim == 'channels':
+                self.channels = f['channels'][:]
+                self.nchan = len(self.channels)
+            else:
+                self.nchan = 1
+        self.npos = self.nx*self.ny*self.nz
+        self.nshots = self.npos*self.nreps
+               
         
         
+        
+        
+    def save(self, f):
+        ndf.save(self,f)
+        
+        #Add quantities we only want if a dimension is non-trivial
+        for dim in self.dimlabels:
+            print(dim)
+            if dim == 'time':
+                f['time'] = self.time
+            if dim == 'x':
+                f['x'] = self.x
+            if dim == 'y':
+                f['y'] = self.y 
+            if dim == 'z':
+                f['z'] = self.z 
+            if dim == 'reps':
+                f['reps'] = self.reps
+            if dim == 'channels':
+                f['channels'] = self.channels
+           
+            
+            
+            
+    def plot(self):
+        if self.ndim == 1:
+            print("Call simple 1D plotting routine")
+            
+        elif self.ndim == 2:
+            print("Call simple 2D contour plotting routine")
+            
+        elif self.ndim == 3:
+            print("Ugh call a 3D plotting routine yuck")
+        
+        else:
+            print("STOP TRYING TO VISUALIZE 4+ SPATIAL DIMENSIONS")
+        
+
+
+
+
+
+
+
         
 class ndfpoints(ndf):
     """
@@ -69,11 +170,16 @@ class ndfpoints(ndf):
     Inherits ndf
     """
     def __init__(self, f):
-        pass
+        ndf.__init__(self, f)
+        
+    def save(self, f):
+        ndf.save(self,f)
     
         
         
 if __name__ == "__main__":
+    sname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/testsave.h5"
+    
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_full.h5"
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
@@ -82,11 +188,11 @@ if __name__ == "__main__":
     obj = ndfgrid(f)
     f.close()
     print(type(obj))
-    print(obj.dimlabels)
+    print(obj.ndim)
     print(obj.drive)
+    obj.plot()
+    f2 = h5py.File(sname, 'w')
+    obj.save(f2)
+    f2.close()
 
-
-        #    self.attrs = {}
-         #   keys = list(f.attrs)
-          #  for key in keys:
-           #     self.attrs[key] = f.attrs[key]
+    

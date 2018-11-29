@@ -61,6 +61,8 @@ def findvalue(csvdict, key, run=None, probe=None):
     -------
         value: list
     """
+    
+    # Peter, does this need to work if probe and run are both None? Currently doesn't handle that well. -Scott
     if probe is None:
         value = [v for i, v in enumerate(csvdict[key]) if
                  csvdict['run'][i] == str(run)]

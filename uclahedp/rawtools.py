@@ -158,31 +158,70 @@ def sraw2hraw(fname_sav):
             pos[0, :] = X.flatten()
             pos[1, :] = Y.flatten()
             pos[2, :] = Z.flatten()
-            f['grid_xgv'] = xgv
-            f['grid_xgv'].attrs['unit'] = 'cm'
-            f['grid_ygv'] = ygv
-            f['grid_ygv'].attrs['unit'] = 'cm'
-            f['grid_zgv'] = zgv
-            f['grid_zgv'].attrs['unit'] = 'cm'
-            f['pos'] = pos
-            f['pos'].attrs['unit'] = 'cm'
-            f.attrs['grid_nx'] = nx
-            f.attrs['grid_ny'] = ny
-            f.attrs['grid_nz'] = nz
+            #f['grid_xgv'] = xgv
+            #f['grid_xgv'].attrs['unit'] = 'cm'
+            #f['grid_ygv'] = ygv
+            #f['grid_ygv'].attrs['unit'] = 'cm'
+            #f['grid_zgv'] = zgv
+            #f['grid_zgv'].attrs['unit'] = 'cm'
+            #f['pos'] = pos
+            #f['pos'].attrs['unit'] = 'cm'
+            #f.attrs['grid_nx'] = nx
+            #f.attrs['grid_ny'] = ny
+            #f.attrs['grid_nz'] = nz
+            
+            f['x'] = xgv
+            f['y'] = ygv
+            f['z'] = zgv
+            
+        
 
         # Save the number of timesteps, reps, and channels for later
         # easy access.
-        f.attrs['nti'] = nti
-        f.attrs['nreps'] = nreps
-        f.attrs['nchan'] = nchan
+        #f.attrs['nti'] = nti
+        #f.attrs['nreps'] = nreps
+        #f.attrs['nchan'] = nchan
 
         # Write the "data" array
         f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
-        f['data'].attrs['unit'] = 'V'
+        #f['data'].attrs['unit'] = 'V'
         # Create the t0 array
         # This array stores the time
-        f['t0'] = np.zeros([npos, nreps])
-        f['t0'].attrs['unit'] = 's'
+        #f['t0'] = np.zeros([npos, nreps])
+        #f['t0'].attrs['unit'] = 's'
+        
+        
+        # These parts of the hdf file are dependent on what the dimensions are
+        dimlabels = []
+        units=[]
+        if nti is not 1:
+            dimlabels.append('time')
+            units.append('s')
+            f['time'] = np.arange(nti)*f.attrs['dt']
+        if nx is not 1:
+            dimlabels.append('x')
+            units.append('cm')
+            
+        if ny is not 1:
+            dimlabels.append('y')
+            units.append('cm')
+            
+        if nz is not 1:
+            dimlabels.append('z')
+            units.append('cm')
+
+        if nreps is not 1:
+            dimlabels.append('reps')
+            units.append('#')
+            f['reps'] = np.arange(nreps)
+        if nchan is not 1:
+            dimlabels.append('channels')
+            units.append('#')
+            f['channels'] = np.arange(nchan)
+            
+        f.attrs['dimlabels'] = [s.encode('utf-8') for s in dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        f.attrs['units'] = [s.encode('utf-8') for s in units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        f.attrs['data_unit'] = 'V'
 
         return fname_h5
 
@@ -194,12 +233,12 @@ if __name__ == "__main__":
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.sav"
-    fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_pos_raw.sav"
+    #fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_pos_raw.sav"
     fname_h5 = sraw2hraw(fname_sav)
 
-    with h5py.File(fname_h5, 'r') as f:
-        gridded, xgv, ygv, zgv = regrid(f)
-        print(np.shape(gridded))
+    #with h5py.File(fname_h5, 'r') as f:
+    #    gridded, xgv, ygv, zgv = regrid(f)
+    #    print(np.shape(gridded))
         
     print('Done')
 

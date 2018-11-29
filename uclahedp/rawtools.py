@@ -106,9 +106,16 @@ def sraw2hraw(fname_sav):
 
     # Open the HDF5 raw save file and write IDL elements per the new syntax
     with h5py.File(fname_h5, 'w') as f:
+        
+        # CHANGE: Removed these two attributes, replace them with a log list that can be appended
+        # each time a file is changed, maitaining a paper trail of what functions have touched it.
         # Specify HDF5 file creation parameters
-        f.attrs['H5_creation_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        f.attrs['IDL_raw_filename'] = str(fname_sav)
+        #f.attrs['H5_creation_time'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #f.attrs['IDL_raw_filename'] = str(fname_sav)
+        
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Created from IDL sav file: ' + str(fname_sav)
+        log = [entry]
+        f['log'] = [s.encode('utf-8') for s in log] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
 
         # Specify probe parameters
         f.attrs['probe_name'] = d['PROBE']
@@ -170,9 +177,9 @@ def sraw2hraw(fname_sav):
             #f.attrs['grid_ny'] = ny
             #f.attrs['grid_nz'] = nz
             
-            f['x'] = xgv
-            f['y'] = ygv
-            f['z'] = zgv
+            
+           
+            
             
         
 
@@ -190,7 +197,7 @@ def sraw2hraw(fname_sav):
         #f['t0'] = np.zeros([npos, nreps])
         #f['t0'].attrs['unit'] = 's'
         
-        
+
         # These parts of the hdf file are dependent on what the dimensions are
         dimlabels = []
         units=[]
@@ -198,17 +205,27 @@ def sraw2hraw(fname_sav):
             dimlabels.append('time')
             units.append('s')
             f['time'] = np.arange(nti)*f.attrs['dt']
+            
         if nx is not 1:
             dimlabels.append('x')
             units.append('cm')
+            f['x'] = xgv
+        else:
+            f.attrs['x0'] = xgv[0]
             
         if ny is not 1:
             dimlabels.append('y')
             units.append('cm')
+            f['y'] = ygv
+        else:
+            f.attrs['y0'] = ygv[0]
             
         if nz is not 1:
             dimlabels.append('z')
             units.append('cm')
+            f['z'] = zgv
+        else:
+            f.attrs['z0'] = zgv[0]
 
         if nreps is not 1:
             dimlabels.append('reps')

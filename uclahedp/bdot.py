@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-bdot_raw_to_full.py: BDOT analysis package
+bdot.py: BDOT analysis package
 
 Created on Wed Nov 28 13:37:21 2018
 
@@ -12,16 +12,38 @@ import numpy as np
 import os
 from shutil import copyfile
 
-def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None, fullfilename=None):
-    
+def bdot_raw_to_full(rawfilepath, csvdir, tdiode_hdf=None, fullfilepath=None):
+    """ Integrates bdot data, calibrates output using information about the probe.
+        Corrects for probe angle based on which drive is being used.
+
+    Parameters
+    ----------
+        rawfilepath: str
+            Path string to a raw hdf5 file containing bdot data
+            
+        csvdir: str
+            Path to the directory that contains the csv metadata files
+            The names of the files in that directory are hardcoded in here...
+            
+        tdiode_hdf: str
+            Path to a tdiode full hdf5 file containing diode t0 times and
+            an array of boolean 'bad shot' flags.
+            
+        fullfilepath: str
+            Path at which to store the full hdf file once it is created
+
+    Returns
+    -------
+        fullfilepath : str
+            Path string for the newly created full hdf5 file
+    """ 
     # ******
     # Load data from the raw HDF file
     # ******
-    with h5py.File(rawfilename, 'r') as f:
+    with h5py.File(rawfilepath, 'r') as f:
         data = f['data'][:]
         pos = f['pos'][:]
     
-        
         run = f.attrs['run']
         probe = f.attrs['probe_name']
         
@@ -30,10 +52,8 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None, fullfilename=None):
         nreps = f.attrs['nreps']
         nchan = f.attrs['nchan']
         
-        daq = f.attrs['daq']
-        plane = f.attrs['plane']
         drive = f.attrs['drive']
-        dt = f.attrs['dt'] #dt MUST be in s for this algorithm to work...
+        dt = f.attrs['dt'] # dt MUST be in s for this algorithm to work...
 
     
     # ******
@@ -147,28 +167,36 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None, fullfilename=None):
     else:
         print("Invalid drive type: " + drive)
         return None
+    
+    
+    # Shift the position array to be relative to TCC
+    pos[0,:] = pos[0,:] - target_pos[0]
+    pos[1,:] = pos[1,:] - target_pos[1]
+    pos[2,:] = pos[2,:] - target_pos[2]
+    
 
 
     #If necessary, come up with a new filename
-    if fullfilename is None:
-        rawdir = os.path.dirname(rawfilename) + '/'
-        fullfilename = rawdir + 'run' + str(run) + '_' + str(probe) + '_full.h5'
+    if fullfilepath is None:
+        rawdir = os.path.dirname(rawfilepath) + '/'
+        fullfilepath = rawdir + 'run' + str(run) + '_' + str(probe) + '_full.h5'
         
-    copyfile(rawfilename, fullfilename)
+    copyfile(rawfilepath, fullfilepath)
     
     #Change the relevant variables in the previous HDF file
-    with h5py.File(fullfilename, 'a') as f2:
+    with h5py.File(fullfilepath, 'a') as f2:
         f2['data'][...] = data # The [...] is essential for overwriting data, but I don't understand what it does...
         f2["data"].attrs['unit'] = 'G'
+        f2['pos'][...] = pos
         f2.attrs['data_type'] = 'full'
         f2.attrs['chan_labels'] =  [s.encode('utf-8') for s in ['BX', 'BY', 'BZ']] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289 
 
-    return fullfilename
+    return fullfilepath
 
 
 if __name__ == "__main__":
     csvdir = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/"
-    rawfilename = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
+    rawfilepath = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
     #rawfilename = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_pos_raw.h5"
-    full_file = bdot_raw_to_full(rawfilename, csvdir)
+    full_filepath = bdot_raw_to_full(rawfilepath, csvdir)
     print('Done')

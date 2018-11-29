@@ -10,14 +10,26 @@ import h5py
 
 class ndf:
     
-    def __init__(self, f):
+    def __init__(self, f, filetype=None):
+            
+            self.data_unit = f['data'].attrs['unit']
+            self.pos_unit = f['pos'].attrs['unit']
+            self.t0_unit = f['t0'].attrs['unit']
+            
+            self.chan_labels = f.attrs['chan_labels']
+            self.daq = f.attrs['daq']
+            self.drive = f.attrs['drive']
+            self.plane = f.attrs['plane']
+        
+
+                
+    def open_hedp_hdf(self, f):
         with h5py.File(rawfilepath, 'r') as f:
             
             self.gridded = f.attrs['gridded']
             self.data_form = f.attrs['data_form']
             
             self.data = f['data'][:]
-            
             self.t0 = f['t0'][:]
             
             if self.gridded:
@@ -33,11 +45,25 @@ class ndf:
             self.pos_unit = f['pos'].attrs['unit']
             self.t0_unit = f['t0'].attrs['unit']
             
+            self.chan_labels = f.attrs['chan_labels']
+            self.daq = f.attrs['daq']
+            self.drive = f.attrs['drive']
+            self.plane = f.attrs['plane']
             
             self.attrs = {}
             keys = list(f.attrs)
             for key in keys:
                 self.attrs[key] = f.attrs[key]
+        
+                
+   def open_hedp_idlsav(self,f):
+       print("Handle the idl->python conversion here")
+       
+
+   def open_lapd_hdf(self,f):
+       print("Hypothetical future function for loading the LAPD output files")
+                
+                
                 
     
     def save(self, filepath):

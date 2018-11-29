@@ -91,14 +91,20 @@ def bdot_raw_to_full(rawfilename, csvdir, tdiode_hdf=None, fullfilename=None):
     atten = np.power([10,10,10], atten/20.0) # Convert from decibels
     # Required input units
     # dt -> s
-    # area -> mm^2
-    cal = 1.0e16*dt*atten/gain/(nturns*area)
-    print(cal)
+    # dt is already in s
+    # area : mm^2 -> m^2
+    area = area*1e-6
+    cal = 1.0e4*dt*atten/gain/(nturns*area)
+
 
     #Integrate the data
-    bx = cal[0]*pol[0]*np.cumsum(data[:, :, :, 0], axis=0)
-    by = cal[1]*pol[1]*np.cumsum(data[:, :, :, 1], axis=0)
-    bz = cal[2]*pol[2]*np.cumsum(data[:, :, :, 2], axis=0)
+    bx = np.cumsum(data[:, :, :, 0], axis=0)
+    by = np.cumsum(data[:, :, :, 1], axis=0)
+    bz = np.cumsum(data[:, :, :, 2], axis=0)
+    
+    bx = cal[0]*pol[0]*bx
+    by = cal[1]*pol[1]*by
+    bz = cal[2]*pol[2]*bz
     
     
     # Correct for probe rotation (generally accidental...)

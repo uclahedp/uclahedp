@@ -22,7 +22,7 @@ parent: ndf
 """
 
 class ndf:
-    """Parent class for a generic HEDP dataset of any dimensionality"""
+    """Parent class for a generic HEDP dataset of any form"""
 
     def __init__(self, filepath): # Initialize object
         self.read(filepath)
@@ -36,7 +36,7 @@ class ndf:
     def save(self, filepath):
         self.save_filepath = filepath
         with h5py.File(filepath, 'w') as f:
-            elf.pack(f)
+            self.pack(f)
 
 
         
@@ -106,22 +106,7 @@ class ndfgrid (ndf):
     Class of gridded NDF datasets
     Inherits ndf
     """
-    def __init__(self, filepath):
-        ndf.__init__(self, filepath)
-        
-        
-    def read(self, filepath):
-        self.read_filepath = filepath
-        with h5py.File(filepath, 'r') as f:
-            self.unpack(f)
-        
-    def save(self, filepath):
-        self.save_filepath = filepath
-        with h5py.File(filepath, 'w') as f:
-            self.pack(f)
-        
-      
-        
+
     def unpack(self,f):
         ndf.unpack(self,f)
         #Add quantities we only want if a dimension is non-trivial
@@ -209,22 +194,21 @@ class ndfpoints(ndf):
     Class of NDF dataset that is not gridded
     Inherits ndf
     """
-    def __init__(self, f):
-        ndf.__init__(self, f)
-        
+    def unpack(self, f):
+        ndf.unpack(self,f)
         self.pos = f['pos'] # pos is only stored for non-gridded data which requires it.
         self.npos = len(self.pos)
         
         
+    def pack(self, f):
+        ndf.pack(self,f)
         
-    def save(self, f):
-        ndf.save(self,f)
     
         
         
 if __name__ == "__main__":
     sname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/testsave.h5"
-    
+
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_full.h5"
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
@@ -232,6 +216,7 @@ if __name__ == "__main__":
     
     obj = ndfgrid(fname)
     obj.plot()
+    obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     obj.save(sname)
 
 

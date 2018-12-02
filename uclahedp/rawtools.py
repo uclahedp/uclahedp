@@ -201,40 +201,41 @@ def sraw2hraw(fname_sav):
         # These parts of the hdf file are dependent on what the dimensions are
         dimlabels = []
         units=[]
+        axnames = ['ax0', 'ax1', 'ax2', 'ax3', 'ax4', 'ax5', 'ax6', 'ax7', 'ax8']
         if nti is not 1:
             dimlabels.append('time')
             units.append('s')
-            f['time'] = np.arange(nti)*f.attrs['dt']
+            f[axnames.pop(0)] = np.arange(nti)*f.attrs['dt']
             
         if nx is not 1:
             dimlabels.append('x')
             units.append('cm')
-            f['x'] = xgv
+            f[axnames.pop(0)] = xgv
         else:
             f.attrs['x0'] = xgv[0]
             
         if ny is not 1:
             dimlabels.append('y')
             units.append('cm')
-            f['y'] = ygv
+            f[axnames.pop(0)] = ygv
         else:
             f.attrs['y0'] = ygv[0]
             
         if nz is not 1:
             dimlabels.append('z')
             units.append('cm')
-            f['z'] = zgv
+            f[axnames.pop(0)] = zgv
         else:
             f.attrs['z0'] = zgv[0]
 
         if nreps is not 1:
             dimlabels.append('reps')
             units.append('#')
-            f['reps'] = np.arange(nreps)
+            f[axnames.pop(0)] = np.arange(nreps)
         if nchan is not 1:
             dimlabels.append('channels')
             units.append('#')
-            f['channels'] = np.arange(nchan)
+            f[axnames.pop(0)] = np.arange(nchan)
             
         f.attrs['dimlabels'] = [s.encode('utf-8') for s in dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         f.attrs['units'] = [s.encode('utf-8') for s in units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289

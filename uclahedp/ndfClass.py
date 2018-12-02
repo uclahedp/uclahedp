@@ -8,6 +8,7 @@ Created on Wed Nov 28 18:05:25 2018
 import numpy as np
 import h5py
 import datetime
+import matplotlib.pyplot as plt   
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -24,16 +25,17 @@ parent: ndf
 class ndf:
     """Parent class for a generic HEDP dataset of any form"""
 
-    def __init__(self, filepath): # Initialize object
-        self.read(filepath)
+    def __init__(self): # Initialize object
+        #TODO: Initialize all of the variables here for use in a separate constructor method?
+        pass
 
 
-    def read(self, filepath):
+    def readHDF(self, filepath):
         self.read_filepath = filepath
         with h5py.File(filepath, 'r') as f:   
             self.unpack(f)
         
-    def save(self, filepath):
+    def saveHDF(self, filepath):
         self.save_filepath = filepath
         with h5py.File(filepath, 'w') as f:
             self.pack(f)
@@ -71,9 +73,7 @@ class ndf:
         for key in keys:
             self.attrs[key] = f.attrs[key]
             
-        
-        
-        
+
         
     def pack(self, f):
         f['data'] = self.data
@@ -114,6 +114,8 @@ class ndf:
     
     def avgDim(self, dim ):
         ind = self._getAxisInd(dim)
+        print(np.shape(self.data))
+        print(ind)
         #Average the data
         self.data = np.average(self.data, axis=ind)
         
@@ -133,7 +135,7 @@ class ndf:
         #Find the index along the axis that is closes to 'value'
         ind = np.where(abs(ax - value) == abs(ax - value).min())[0][0]
         
-        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Collapsed dimension ' + str(ind) + ' (' + self.dimlabels[ind] + ')' 
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Collapsed dimension ' + str(ax_ind) + ' (' + self.dimlabels[ax_ind] + ')' 
         self.log.append(entry)
 
         #Collapse the dimension in the array
@@ -141,18 +143,18 @@ class ndf:
         #Delete the axis from the object
         self._deleteAxisRefs(ax_ind)
         
-        
 
-        
-        
-        
-        
-        
-    
-    def plot(self):
+
+
+
+    def plot(self, xrange=(None,None), yrange=(None,None), zrange=(None,None)):
         if self.ndim == 1:
             print("Call simple 1D plotting routine")
-            
+            plt.plot(self.getAxis(0), self.data)
+            plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
+            plt.xlabel(self.dimlabels[0] + ' (' + self.units[0] + ')'  )
+            #plt.ylabel('BY (G)')
+            plt.show()
         elif self.ndim == 2:
             print("Call simple 2D contour plotting routine")
             
@@ -241,16 +243,20 @@ if __name__ == "__main__":
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
     
     
-    obj = ndf(fname)
+    obj = ndf()
+    obj.readHDF(fname)
     #obj.plot()
-    obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
+    #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     
-    #obj.avgDim('reps')
+    obj.avgDim('Reps')
     #print(dir(obj))
     #print(np.shape(obj.getAxis('X') ))
+    obj.collapseDim('x', 1)
+    obj.collapseDim('channels', 1)
     
-    obj.collapseDim('Channels', 1)
-    obj.save(sname)
+    obj.plot(xrange=(0,40*1e-6))
+    
+    obj.saveHDF(sname)
 
 
     

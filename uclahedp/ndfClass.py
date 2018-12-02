@@ -61,6 +61,9 @@ class ndf:
         self.probe_type = f.attrs['probe_type']
         # TODO others here...
         
+        self.axes = []
+        for di in range(len(self.dimlabels)):
+            self.axes.append( f[ 'ax' + str(di) ][:] )
 
         #Make a list of all of the attributes in the HDF, so we can perpetuate them
         self.attrs = {}
@@ -68,6 +71,9 @@ class ndf:
         for key in keys:
             self.attrs[key] = f.attrs[key]
             
+        
+        
+        
         
     def pack(self, f):
         f['data'] = self.data
@@ -90,12 +96,78 @@ class ndf:
         f.attrs['dimlabels'] = [s.encode('utf-8') for s in self.dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         f.attrs['units'] = [s.encode('utf-8') for s in self.units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
+        
+        for di in range(len(self.dimlabels)):
+            f['ax' + str(di)] = self.axes[di]
+
+        
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Saving NDF object as HDF ' + self.save_filepath
         self.log.append(entry)
         f['log'] = [s.encode('utf-8') for s in self.log] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
     
+    
+    def getAxis(self, name):
+        ind = [i for i,v in enumerate(self.dimlabels) if v.lower() == name.lower()]
+        if len(ind) == 0:
+            print("No axis exists with the name: " + name)
+            return None
+        elif len(ind) > 1:
+            print("Multiple axes exist with the name:" + name)
+            return None
+        
+        return self.axes['ax' + str(ind[0])]
+    
+    
+    def avg(self, dim ):
+        if isinstance(dim, str):
+            if not dim.isnumeric(): #Assume a dimlabel was requested
+                ind = [i for i,v in enumerate(self.dimlabels) if v.lower() == dim.lower()]
+                if len(ind) == 0:
+                    print("No axis exists with the name: " + dim)
+                    return None
+                elif len(ind) > 1:
+                    print("Multiple axes exist with the name:" + dim)
+                    return None
+                else:
+                    ind=ind[0]
+                        
+        #If not a string, assume an integer index was given
+        else:
+            ind = int(dim)
+            if ind >= self.ndim or ind < 0:
+                print("Invalid dimension index to average: " + str(ind))
+                return None
+            
+        #Average the data
+        self.data = np.average(self.data, axis=ind)
+        #Remove that axis from the relevant attribute lists
+        self.axes.pop(ind)
+        labelpopped = self.dimlabels.pop(ind)
+        self.units.pop(ind)
+        self.ndim = self.ndim - 1
+        
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Averaged over dimension ' + str(ind) + ' (' + labelpopped + ')' 
+        self.log.append(entry)
+        
 
+
+
+
+
+
+    def plot(self):
+        if self.ndim == 1:
+            print("Call simple 1D plotting routine")
+            
+        elif self.ndim == 2:
+            print("Call simple 2D contour plotting routine")
+            
+        elif self.ndim == 3:
+            print("Ugh call a 3D plotting routine yuck")
+        
+        else:
+            print("STOP TRYING TO VISUALIZE 4+ SPATIAL DIMENSIONS")
 
     
 
@@ -109,83 +181,9 @@ class ndfgrid (ndf):
 
     def unpack(self,f):
         ndf.unpack(self,f)
-        #Add quantities we only want if a dimension is non-trivial
-        if 'time' in self.dimlabels:
-            self.time = f['time'][:]
-            self.nti = len(self.time)
-        else:
-            self.nti = 1
-        if 'x' in self.dimlabels:
-            self.x = f['x'][:]
-            self.nx = len(self.x)
-        else: 
-            self.nx = 1
-        if 'y' in self.dimlabels:
-            self.y = f['y'][:]
-            self.ny = len(self.y)
-        else:
-            self.ny = 1
-        if 'z' in self.dimlabels:
-            self.z = f['z'][:]
-            self.nz = len(self.z)
-        else:
-            self.nz = 1
-        if 'reps' in self.dimlabels:
-            self.reps = f['reps'][:]
-            self.nreps = len(self.reps)
-        else:
-            self.nreps = 1
-        if 'channels' in self.dimlabels:
-            self.channels = f['channels'][:]
-            self.nchan = len(self.channels)
-        else:
-            self.nchan = 1
-        self.npos = self.nx*self.ny*self.nz
-        self.nshots = self.npos*self.nreps
-               
-        
-        
-        
         
     def pack(self, f):
         ndf.pack(self,f)
-        #Add quantities we only want if a dimension is non-trivial
-        for dim in self.dimlabels:
-            print(dim)
-            if dim == 'time':
-                f['time'] = self.time
-            if dim == 'x':
-                f['x'] = self.x
-            if dim == 'y':
-                f['y'] = self.y 
-            if dim == 'z':
-                f['z'] = self.z 
-            if dim == 'reps':
-                f['reps'] = self.reps
-            if dim == 'channels':
-                f['channels'] = self.channels
-           
-            
-            
-            
-    def plot(self):
-        if self.ndim == 1:
-            print("Call simple 1D plotting routine")
-            
-        elif self.ndim == 2:
-            print("Call simple 2D contour plotting routine")
-            
-        elif self.ndim == 3:
-            print("Ugh call a 3D plotting routine yuck")
-        
-        else:
-            print("STOP TRYING TO VISUALIZE 4+ SPATIAL DIMENSIONS")
-        
-
-
-
-
-
 
 
         
@@ -214,9 +212,13 @@ if __name__ == "__main__":
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
     
     
-    obj = ndfgrid(fname)
+    obj = ndf(fname)
     obj.plot()
     obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
+    
+    obj.avg('reps')
+    #print(dir(obj))
+    #print(obj.getAxis('X'))
     obj.save(sname)
 
 

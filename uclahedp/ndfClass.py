@@ -107,19 +107,68 @@ class ndf:
         
     
     
-    def getAxis(self, name):
-        ind = [i for i,v in enumerate(self.dimlabels) if v.lower() == name.lower()]
-        if len(ind) == 0:
-            print("No axis exists with the name: " + name)
-            return None
-        elif len(ind) > 1:
-            print("Multiple axes exist with the name:" + name)
-            return None
-        
-        return self.axes['ax' + str(ind[0])]
+    def getAxis(self, dim):
+        ind = self.getAxisInd(dim)
+        return self.axes[ind]
     
     
     def avg(self, dim ):
+        ind = self.getAxisInd(dim)
+        #Average the data
+        self.data = np.average(self.data, axis=ind)
+        
+        self.deleteAxisRefs(ind)
+        
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Averaged over dimension ' + str(ind) + ' (' + self.dimlabels[ind] + ')' 
+        self.log.append(entry)
+        
+
+
+
+    def collapseDim(self, dim, value):
+        
+        #TODO THIS CODE DOESN'T WORK
+        
+        ax_ind = self.getAxisInd(dim)
+        ax = self.getAxis(dim)
+        
+        ax = self.axes[ax_ind]
+        #ind = np.find_nearest(ax, value)
+        ind = np.where(abs(ax - value) == abs(ax - value).min())[0][0]
+        
+        print(ind)
+        print(ax[ind])
+
+        print(np.shape(self.data))
+        idx = tuple(  slice( s[0], s[1], None  ) for s in self.data )
+        print(idx)
+        self.data = self.data[s] #Must be a tuple for slicing
+        #self.deleteAxisRefs(ax_ind)
+        print(np.shape(self.data))
+        
+        
+        
+        
+        
+    
+    def plot(self):
+        if self.ndim == 1:
+            print("Call simple 1D plotting routine")
+            
+        elif self.ndim == 2:
+            print("Call simple 2D contour plotting routine")
+            
+        elif self.ndim == 3:
+            print("Ugh call a 3D plotting routine yuck")
+        
+        else:
+            print("STOP TRYING TO VISUALIZE 4+ SPATIAL DIMENSIONS")
+    
+    
+    #**************
+    #HELPER METHODS
+    #**************
+    def getAxisInd(self, dim):
         if isinstance(dim, str):
             if not dim.isnumeric(): #Assume a dimlabel was requested
                 ind = [i for i,v in enumerate(self.dimlabels) if v.lower() == dim.lower()]
@@ -138,36 +187,16 @@ class ndf:
             if ind >= self.ndim or ind < 0:
                 print("Invalid dimension index to average: " + str(ind))
                 return None
-            
-        #Average the data
-        self.data = np.average(self.data, axis=ind)
+        return ind
+
+    def deleteAxisRefs(self, ind):
         #Remove that axis from the relevant attribute lists
         self.axes.pop(ind)
         labelpopped = self.dimlabels.pop(ind)
         self.units.pop(ind)
         self.ndim = self.ndim - 1
-        
-        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Averaged over dimension ' + str(ind) + ' (' + labelpopped + ')' 
-        self.log.append(entry)
-        
 
 
-
-
-
-
-    def plot(self):
-        if self.ndim == 1:
-            print("Call simple 1D plotting routine")
-            
-        elif self.ndim == 2:
-            print("Call simple 2D contour plotting routine")
-            
-        elif self.ndim == 3:
-            print("Ugh call a 3D plotting routine yuck")
-        
-        else:
-            print("STOP TRYING TO VISUALIZE 4+ SPATIAL DIMENSIONS")
 
     
 
@@ -213,12 +242,14 @@ if __name__ == "__main__":
     
     
     obj = ndf(fname)
-    obj.plot()
+    #obj.plot()
     obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     
-    obj.avg('reps')
+    #obj.avg('reps')
     #print(dir(obj))
-    #print(obj.getAxis('X'))
+    #print(np.shape(obj.getAxis('X') ))
+    
+    obj.collapseDim('X', 5)
     obj.save(sname)
 
 

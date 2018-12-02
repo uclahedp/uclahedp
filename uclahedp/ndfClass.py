@@ -108,16 +108,16 @@ class ndf:
     
     
     def getAxis(self, dim):
-        ind = self.getAxisInd(dim)
+        ind = self._getAxisInd(dim)
         return self.axes[ind]
     
     
-    def avg(self, dim ):
-        ind = self.getAxisInd(dim)
+    def avgDim(self, dim ):
+        ind = self._getAxisInd(dim)
         #Average the data
         self.data = np.average(self.data, axis=ind)
         
-        self.deleteAxisRefs(ind)
+        self._deleteAxisRefs(ind)
         
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Averaged over dimension ' + str(ind) + ' (' + self.dimlabels[ind] + ')' 
         self.log.append(entry)
@@ -126,25 +126,23 @@ class ndf:
 
 
     def collapseDim(self, dim, value):
-        
-        #TODO THIS CODE DOESN'T WORK
-        
-        ax_ind = self.getAxisInd(dim)
-        ax = self.getAxis(dim)
-        
+        #Find the axis index cooresponding to dim, and the axes it cooresponds to
+        ax_ind = self._getAxisInd(dim)
         ax = self.axes[ax_ind]
-        #ind = np.find_nearest(ax, value)
+        
+        #Find the index along the axis that is closes to 'value'
         ind = np.where(abs(ax - value) == abs(ax - value).min())[0][0]
         
-        print(ind)
-        print(ax[ind])
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Collapsed dimension ' + str(ind) + ' (' + self.dimlabels[ind] + ')' 
+        self.log.append(entry)
 
-        print(np.shape(self.data))
-        idx = tuple(  slice( s[0], s[1], None  ) for s in self.data )
-        print(idx)
-        self.data = self.data[s] #Must be a tuple for slicing
-        #self.deleteAxisRefs(ax_ind)
-        print(np.shape(self.data))
+        #Collapse the dimension in the array
+        self.data = np.take(self.data, ind, axis=ax_ind)
+        #Delete the axis from the object
+        self._deleteAxisRefs(ax_ind)
+        
+        
+
         
         
         
@@ -168,7 +166,7 @@ class ndf:
     #**************
     #HELPER METHODS
     #**************
-    def getAxisInd(self, dim):
+    def _getAxisInd(self, dim):
         if isinstance(dim, str):
             if not dim.isnumeric(): #Assume a dimlabel was requested
                 ind = [i for i,v in enumerate(self.dimlabels) if v.lower() == dim.lower()]
@@ -189,7 +187,9 @@ class ndf:
                 return None
         return ind
 
-    def deleteAxisRefs(self, ind):
+
+
+    def _deleteAxisRefs(self, ind):
         #Remove that axis from the relevant attribute lists
         self.axes.pop(ind)
         labelpopped = self.dimlabels.pop(ind)
@@ -245,11 +245,11 @@ if __name__ == "__main__":
     #obj.plot()
     obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     
-    #obj.avg('reps')
+    #obj.avgDim('reps')
     #print(dir(obj))
     #print(np.shape(obj.getAxis('X') ))
     
-    obj.collapseDim('X', 5)
+    obj.collapseDim('Channels', 1)
     obj.save(sname)
 
 

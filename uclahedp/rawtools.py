@@ -238,7 +238,8 @@ def sraw2hraw(fname_sav):
             f[axnames.pop(0)] = np.arange(nchan)
             
         f.attrs['dimlabels'] = [s.encode('utf-8') for s in dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        f.attrs['units'] = [s.encode('utf-8') for s in units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        f.attrs['dimunits'] = [s.encode('utf-8') for s in units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        f.attrs['data_label'] = 'Raw Data'
         f.attrs['data_unit'] = 'V'
 
         return fname_h5

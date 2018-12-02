@@ -9,6 +9,7 @@ import numpy as np
 import h5py
 import datetime
 import matplotlib.pyplot as plt   
+from astropy import units as u
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -26,8 +27,14 @@ class ndf:
     """Parent class for a generic HEDP dataset of any form"""
 
     def __init__(self): # Initialize object
-        #TODO: Initialize all of the variables here for use in a separate constructor method?
-        pass
+        self.data = None
+        self.axes = {}
+        
+        self.dimlabels = []
+        self.dimunits = []
+        self.data_label = None
+        self.data_unit = None
+        
 
 
     def readHDF(self, filepath):
@@ -47,25 +54,19 @@ class ndf:
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Opened HDF file as NDF object: ' + self.read_filepath
         self.log.append(entry)
         
-
+        self.data_label = f.attrs['data_label']
+        self.data_unit = f.attrs['data_unit']
         self.data = f['data'][:]
+        
+        
 
         self.dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
-        self.units =  [ x.decode("utf-8") for x in f.attrs['units']  ]
+        self.dimunits =  [ x.decode("utf-8") for x in f.attrs['dimunits']  ]
         self.ndim = len(self.dimlabels)
-        
-        # Init quantites that we want to have easily available
-        self.run = f.attrs['run']
-        self.drive = f.attrs['drive']
-        self.daq = f.attrs['daq']
-        self.dt = f.attrs['dt']
-        self.probe_name = f.attrs['probe_name']
-        self.probe_type = f.attrs['probe_type']
-        # TODO others here...
         
         self.axes = []
         for di in range(len(self.dimlabels)):
-            self.axes.append( f[ 'ax' + str(di) ][:] )
+            self.axes.append( f[ 'ax' + str(di) ][:]  )
 
         #Make a list of all of the attributes in the HDF, so we can perpetuate them
         self.attrs = {}
@@ -83,19 +84,11 @@ class ndf:
         # precedence in case of changes
         for key in self.attrs.keys():
             f.attrs[key] =self.attrs[key]
-        
-        # Write the important attributes, with the new object values overwriting
-        # any duplicates from self.attrs
-        f.attrs['run'] = self.run
-        f.attrs['drive'] = self.drive
-        f.attrs['daq'] =  self.daq 
-        f.attrs['dt'] =  self.dt
-        f.attrs['probe_name'] = self.probe_name 
-        f.attrs['probe_type'] = self.probe_type
-        
+
         f.attrs['dimlabels'] = [s.encode('utf-8') for s in self.dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        f.attrs['units'] = [s.encode('utf-8') for s in self.units] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        
+        f.attrs['dimunits'] = [s.encode('utf-8') for s in self.dimunits] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+        f.attrs['data_label'] = self.data_label
+        f.attrs['data_unit'] = self.data_unit
         
         for di in range(len(self.dimlabels)):
             f['ax' + str(di)] = self.axes[di]
@@ -143,6 +136,32 @@ class ndf:
         #Delete the axis from the object
         self._deleteAxisRefs(ax_ind)
         
+        
+        
+        
+    def setAxisUnit(self, dim, unitstr ):
+        ax_ind = self._getAxisInd(dim)
+        
+        try:
+            cur_unit = u.Unit( self.dimunits[ax_ind] )
+        except ValueError:
+            print("Current axis unit is not recognized by astropy.units: " + cur_unit)
+            return None
+        
+        try:
+            end_unit = u.Unit( unitstr )
+        except ValueError:
+            print("Requested axis unit is not recognized by astropy.units: " + unitstr)
+            return None
+            
+        ax = self.axes[ax_ind]
+        ax = ax * cur_unit
+        
+        self.axes[ax_ind] = ax.to_value(end_unit)
+        self.dimunits[ax_ind] = str(end_unit)
+        
+        
+        
 
 
 
@@ -152,8 +171,8 @@ class ndf:
             print("Call simple 1D plotting routine")
             plt.plot(self.getAxis(0), self.data)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
-            plt.xlabel(self.dimlabels[0] + ' (' + self.units[0] + ')'  )
-            #plt.ylabel('BY (G)')
+            plt.xlabel(self.dimlabels[0].title() + ' (' + self.dimunits[0] + ')'  )
+            plt.ylabel(self.data_label.title() + ' (' + self.data_unit + ')'  )
             plt.show()
         elif self.ndim == 2:
             print("Call simple 2D contour plotting routine")
@@ -195,7 +214,7 @@ class ndf:
         #Remove that axis from the relevant attribute lists
         self.axes.pop(ind)
         labelpopped = self.dimlabels.pop(ind)
-        self.units.pop(ind)
+        self.dimunits.pop(ind)
         self.ndim = self.ndim - 1
 
 
@@ -244,6 +263,9 @@ if __name__ == "__main__":
     
     
     obj = ndf()
+    obj.data = [1,2,3]
+    
+    
     obj.readHDF(fname)
     #obj.plot()
     #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
@@ -254,7 +276,10 @@ if __name__ == "__main__":
     obj.collapseDim('x', 1)
     obj.collapseDim('channels', 1)
     
-    obj.plot(xrange=(0,40*1e-6))
+    
+    obj.setAxisUnit('time', 'ns')
+    
+    obj.plot(xrange=(0,4000))
     
     obj.saveHDF(sname)
 

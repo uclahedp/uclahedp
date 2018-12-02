@@ -229,12 +229,12 @@ def sraw2hraw(fname_sav):
             f.attrs['z0'] = zgv[0]
 
         if nreps is not 1:
-            dimlabels.append('reps')
-            units.append('#')
+            dimlabels.append('reps') 
+            units.append('') # Astropy.unit will interpret empty string as dimensionless
             f[axnames.pop(0)] = np.arange(nreps)
         if nchan is not 1:
             dimlabels.append('channels')
-            units.append('#')
+            units.append('')
             f[axnames.pop(0)] = np.arange(nchan)
             
         f.attrs['dimlabels'] = [s.encode('utf-8') for s in dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289

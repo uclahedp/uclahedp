@@ -10,6 +10,7 @@ import h5py
 import datetime
 import matplotlib.pyplot as plt   
 from astropy import units as u
+from collections import OrderedDict
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -54,19 +55,20 @@ class ndf:
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Opened HDF file as NDF object: ' + self.read_filepath
         self.log.append(entry)
         
+        
+        
+        data_unit = f.attrs['data_unit']
+        self.data =  f['data'][:] *  u.Unit(data_unit, parse_strict = 'warn' )
         self.data_label = f.attrs['data_label']
-        self.data_unit = f.attrs['data_unit']
-        self.data = f['data'][:]
-        
-        
 
-        self.dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
-        self.dimunits =  [ x.decode("utf-8") for x in f.attrs['dimunits']  ]
-        self.ndim = len(self.dimlabels)
+
+        dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
+        dimunits =  [ x.decode("utf-8") for x in f.attrs['dimunits']  ]
+        self.ndim = len(dimlabels)
         
-        self.axes = []
-        for di in range(len(self.dimlabels)):
-            self.axes.append( f[ 'ax' + str(di) ][:]  )
+        self.axes = OrderedDict()
+        for di in range(self.ndim):
+            self.axes[ dimlabels[di] ] = ( f[ 'ax' + str(di) ][:] * u.Unit(dimunits[di], parse_strict = 'warn' ) )
 
         #Make a list of all of the attributes in the HDF, so we can perpetuate them
         self.attrs = {}
@@ -84,15 +86,21 @@ class ndf:
         # precedence in case of changes
         for key in self.attrs.keys():
             f.attrs[key] =self.attrs[key]
+            
+        dimlabels = self.axes.keys()
 
-        f.attrs['dimlabels'] = [s.encode('utf-8') for s in self.dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        f.attrs['dimunits'] = [s.encode('utf-8') for s in self.dimunits] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        f.attrs['data_label'] = self.data_label
-        f.attrs['data_unit'] = self.data_unit
+        f.attrs['dimlabels'] = [s.encode('utf-8') for s in dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
-        for di in range(len(self.dimlabels)):
-            f['ax' + str(di)] = self.axes[di]
+        f.attrs['data_label'] = self.data_label
+        f.attrs['data_unit'] = str(self.data.unit)
 
+        
+        dimunits = []
+        for i, key in enumerate(dimlabels):
+            f['ax' + str(i)] = self.axes[key].value
+            dimunits.append( str( self.axes[key].unit ) )
+
+        f.attrs['dimunits'] = [s.encode('utf-8') for s in dimunits] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Saving NDF object as HDF ' + self.save_filepath
         self.log.append(entry)
@@ -100,65 +108,76 @@ class ndf:
         
     
     
-    def getAxis(self, dim):
-        ind = self._getAxisInd(dim)
-        return self.axes[ind]
+    def getAxis(self, key):
+        key= self._getAxisKey(key)
+        return self.axes[key]
     
     
-    def avgDim(self, dim ):
-        ind = self._getAxisInd(dim)
-        print(np.shape(self.data))
-        print(ind)
+    def avgDim(self, dimkey ):
+        key = self._getAxisKey(dimkey)
+        ax_ind = self._getAxisInd(dimkey)
+   
         #Average the data
-        self.data = np.average(self.data, axis=ind)
+        self.data = np.average(self.data, axis=ax_ind)
+        #Remove the axis from the the axes dictionary
+        self.axes.pop(key)
+        self.ndim = self.ndim-1
         
-        self._deleteAxisRefs(ind)
-        
-        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Averaged over dimension ' + str(ind) + ' (' + self.dimlabels[ind] + ')' 
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Averaged over ' + key + ' axis'
         self.log.append(entry)
         
 
 
 
-    def collapseDim(self, dim, value):
+    def collapseDim(self, dimkey, value):
         #Find the axis index cooresponding to dim, and the axes it cooresponds to
-        ax_ind = self._getAxisInd(dim)
-        ax = self.axes[ax_ind]
+        dimkey = self._getAxisKey(dimkey)
+        ax_ind = self._getAxisInd(dimkey)
+        ax = self.axes[dimkey]
         
+        #If value isn't already an astropy quantity, assume it has the same units as the axis.
+        if not isinstance(value, u.Quantity ):
+            value = value * ax.unit
+
         #Find the index along the axis that is closes to 'value'
         ind = np.where(abs(ax - value) == abs(ax - value).min())[0][0]
-        
-        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Collapsed dimension ' + str(ax_ind) + ' (' + self.dimlabels[ax_ind] + ')' 
+
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Collapsed ' + dimkey + ' axis to ' + dimkey +  ' = ' + str(ax[ind])
         self.log.append(entry)
+
 
         #Collapse the dimension in the array
         self.data = np.take(self.data, ind, axis=ax_ind)
         #Delete the axis from the object
-        self._deleteAxisRefs(ax_ind)
+        self.axes.pop(dimkey)
+        self.ndim = self.ndim-1
         
         
         
+    def convertAxisUnit(self, dimkey, unit):
+        #Coerce the key to be valid
+        dimkey = self._getAxisKey(dimkey)
         
-    def setAxisUnit(self, dim, unitstr ):
-        ax_ind = self._getAxisInd(dim)
         
-        try:
-            cur_unit = u.Unit( self.dimunits[ax_ind] )
-        except ValueError:
-            print("Current axis unit is not recognized by astropy.units: " + cur_unit)
+        
+        if isinstance(unit, str ):
+            try:
+                unit = u.Unit( unit )
+            except ValueError:
+                print("Reqested axis unit is not recognized by astropy.units: " + str(unit) )
+                return None
+
+        if not isinstance(unit, u.UnitBase):
+            print("Reqested axis unit is not recognized by astropy.units: " + str(unit) )
             return None
         
-        try:
-            end_unit = u.Unit( unitstr )
-        except ValueError:
-            print("Requested axis unit is not recognized by astropy.units: " + unitstr)
-            return None
-            
-        ax = self.axes[ax_ind]
-        ax = ax * cur_unit
         
-        self.axes[ax_ind] = ax.to_value(end_unit)
-        self.dimunits[ax_ind] = str(end_unit)
+        old_unit = self.axes[dimkey].unit    
+        self.axes[dimkey] = self.axes[dimkey].to(unit)
+
+
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Converted ' + dimkey + ' from ' + str(old_unit) + ' to ' + str(self.axes[dimkey].unit) 
+        self.log.append(entry)
         
         
         
@@ -166,16 +185,32 @@ class ndf:
 
 
 
-    def plot(self, xrange=(None,None), yrange=(None,None), zrange=(None,None)):
+    def plot(self, xrange=[None,None], yrange=[None,None], zrange=[None,None]):
+        keyiter = iter( self.axes.keys() )
         if self.ndim == 1:
             print("Call simple 1D plotting routine")
-            plt.plot(self.getAxis(0), self.data)
+            xkey = next(keyiter)
+            
+            #Convert axis range units
+            if isinstance(xrange[0], u.Quantity):
+                xrange[0] = xrange[0].to_value(self.axes[xkey].unit)
+            if isinstance(xrange[1], u.Quantity):
+                xrange[1] = xrange[1].to_value(self.axes[xkey].unit)
+            if isinstance(yrange[0], u.Quantity):
+                yrange[0] = yrange[0].to_value(self.data.unit)
+            if isinstance(yrange[1], u.Quantity):
+                yrange[1] = yrange[1].to_value(self.data.unit)
+       
+
+            plt.plot(self.getAxis(xkey), self.data)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
-            plt.xlabel(self.dimlabels[0].title() + ' (' + self.dimunits[0] + ')'  )
-            plt.ylabel(self.data_label.title() + ' (' + self.data_unit + ')'  )
+            plt.xlabel(xkey + ' (' + str(self.axes[xkey].unit) + ')'  )
+            plt.ylabel(self.data_label.title() + ' (' + str(self.data.unit) + ')'  )
             plt.show()
         elif self.ndim == 2:
             print("Call simple 2D contour plotting routine")
+            xkey = next(keyiter)
+            ykey = next(keyiter)
             
         elif self.ndim == 3:
             print("Ugh call a 3D plotting routine yuck")
@@ -187,39 +222,30 @@ class ndf:
     #**************
     #HELPER METHODS
     #**************
-    def _getAxisInd(self, dim):
-        if isinstance(dim, str):
-            if not dim.isnumeric(): #Assume a dimlabel was requested
-                ind = [i for i,v in enumerate(self.dimlabels) if v.lower() == dim.lower()]
-                if len(ind) == 0:
-                    print("No axis exists with the name: " + dim)
-                    return None
-                elif len(ind) > 1:
-                    print("Multiple axes exist with the name:" + dim)
-                    return None
-                else:
-                    ind=ind[0]
-                        
-        #If not a string, assume an integer index was given
+    def _getAxisKey(self, dimkey):
+        key = [k for k in  self.axes.keys() if k.lower() == dimkey.lower()]
+        if len(key) == 0:
+            print("No axis exists with the name: " + dimkey)
+            return None
+        elif len(key) > 1:
+            print("Multiple axes exist with the name:" + dimkey)
+            return None
         else:
-            ind = int(dim)
-            if ind >= self.ndim or ind < 0:
-                print("Invalid dimension index to average: " + str(ind))
-                return None
-        return ind
+            return key[0]
+        
+        
+    def _getAxisInd(self, key):
+        ind = [i for i,k in  enumerate(self.axes.keys()) if k.lower() == key.lower()]
+        if len(ind) == 0:
+            print("No axis exists with the name: " + key)
+            return None
+        elif len(ind) > 1:
+            print("Multiple axes exist with the name:" + key)
+            return None
+        else:
+            return ind[0]
 
 
-
-    def _deleteAxisRefs(self, ind):
-        #Remove that axis from the relevant attribute lists
-        self.axes.pop(ind)
-        labelpopped = self.dimlabels.pop(ind)
-        self.dimunits.pop(ind)
-        self.ndim = self.ndim - 1
-
-
-
-    
 
 
 
@@ -263,23 +289,29 @@ if __name__ == "__main__":
     
     
     obj = ndf()
-    obj.data = [1,2,3]
-    
     
     obj.readHDF(fname)
     #obj.plot()
     #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     
+    print(np.shape(obj.data))
     obj.avgDim('Reps')
+    print(np.shape(obj.data))
+    
+    
     #print(dir(obj))
-    #print(np.shape(obj.getAxis('X') ))
-    obj.collapseDim('x', 1)
+    print(np.shape(obj.getAxis('X') ))
+    
+    print(np.shape(obj.data))
+    obj.collapseDim('x', .05*u.m)
+    print(np.shape(obj.data))
     obj.collapseDim('channels', 1)
+    print(np.shape(obj.data))
     
+    obj.convertAxisUnit('time', u.us)
+ 
     
-    obj.setAxisUnit('time', 'ns')
-    
-    obj.plot(xrange=(0,4000))
+    obj.plot(xrange=[0, 40], yrange=[-150*u.mV, 150*u.mV])
     
     obj.saveHDF(sname)
 

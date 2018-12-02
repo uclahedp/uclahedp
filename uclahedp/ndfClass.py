@@ -30,11 +30,8 @@ class ndf:
     def __init__(self): # Initialize object
         self.data = None
         self.axes = {}
-        
-        self.dimlabels = []
-        self.dimunits = []
         self.data_label = None
-        self.data_unit = None
+
         
 
 
@@ -201,7 +198,7 @@ class ndf:
             if isinstance(yrange[1], u.Quantity):
                 yrange[1] = yrange[1].to_value(self.data.unit)
        
-
+            #Make plot
             plt.plot(self.getAxis(xkey), self.data)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
             plt.xlabel(xkey + ' (' + str(self.axes[xkey].unit) + ')'  )
@@ -211,6 +208,33 @@ class ndf:
             print("Call simple 2D contour plotting routine")
             xkey = next(keyiter)
             ykey = next(keyiter)
+            
+            #Convert axis range units
+            if isinstance(xrange[0], u.Quantity):
+                xrange[0] = xrange[0].to_value(self.axes[xkey].unit)
+            if isinstance(xrange[1], u.Quantity):
+                xrange[1] = xrange[1].to_value(self.axes[xkey].unit)
+            if isinstance(yrange[0], u.Quantity):
+                yrange[0] = yrange[0].to_value(self.axes[ykey].unit)
+            if isinstance(yrange[1], u.Quantity):
+                yrange[1] = yrange[1].to_value(self.axes[ykey].unit)
+            if isinstance(zrange[0], u.Quantity):
+                zrange[0] = zrange[0].to_value(self.data.unit)
+            if isinstance(zrange[1], u.Quantity):
+                zrange[1] = zrange[1].to_value(self.data.unit)
+            
+            print(xkey)
+            print(np.shape(self.getAxis(xkey)))
+            print(ykey)
+            print(np.shape(self.getAxis(ykey)))
+            print(np.shape(self.data))
+            plt.figure()
+            plt.contourf(self.getAxis(xkey), self.getAxis(ykey), self.data.T)
+            plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
+            plt.xlabel(xkey + ' (' + str(self.axes[xkey].unit) + ')'  )
+            plt.ylabel(ykey + ' (' + str(self.axes[ykey].unit) + ')'  )
+            plt.title(self.data_label.title() + ' (' + str(self.data.unit) + ')'  )
+            plt.show()
             
         elif self.ndim == 3:
             print("Ugh call a 3D plotting routine yuck")
@@ -303,15 +327,16 @@ if __name__ == "__main__":
     print(np.shape(obj.getAxis('X') ))
     
     print(np.shape(obj.data))
-    obj.collapseDim('x', .05*u.m)
-    print(np.shape(obj.data))
+    #obj.collapseDim('x', .05*u.m)
+    #print(np.shape(obj.data))
     obj.collapseDim('channels', 1)
     print(np.shape(obj.data))
     
     obj.convertAxisUnit('time', u.us)
- 
+    obj.convertAxisUnit('x', u.mm)
     
-    obj.plot(xrange=[0, 40], yrange=[-150*u.mV, 150*u.mV])
+    #obj.plot(xrange=[0, 40], yrange=[-150*u.mV, 150*u.mV])
+    obj.plot( xrange = [0, 40*u.us])
     
     obj.saveHDF(sname)
 

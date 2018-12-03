@@ -52,17 +52,14 @@ class ndf:
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': Opened HDF file as NDF object: ' + self.read_filepath
         self.log.append(entry)
         
-        
-        
-        data_unit = f.attrs['data_unit']
-        self.data =  f['data'][:] *  u.Unit(data_unit, parse_strict = 'warn' )
+
+        self.data =  f['data'][:] *  u.Unit(f.attrs['data_unit'], parse_strict = 'warn' )
         self.data_label = f.attrs['data_label']
 
 
         dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
         dimunits =  [ x.decode("utf-8") for x in f.attrs['dimunits']  ]
         self.ndim = len(dimlabels)
-        
         self.axes = OrderedDict()
         for di in range(self.ndim):
             self.axes[ dimlabels[di] ] = ( f[ 'ax' + str(di) ][:] * u.Unit(dimunits[di], parse_strict = 'warn' ) )
@@ -83,17 +80,16 @@ class ndf:
         # precedence in case of changes
         for key in self.attrs.keys():
             f.attrs[key] =self.attrs[key]
-            
-        dimlabels = self.axes.keys()
 
-        f.attrs['dimlabels'] = [s.encode('utf-8') for s in dimlabels] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+
+        f.attrs['dimlabels'] = [s.encode('utf-8') for s in self.axes.keys()] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
         f.attrs['data_label'] = self.data_label
         f.attrs['data_unit'] = str(self.data.unit)
 
         
         dimunits = []
-        for i, key in enumerate(dimlabels):
+        for i, key in enumerate(self.axes.keys()):
             f['ax' + str(i)] = self.axes[key].value
             dimunits.append( str( self.axes[key].unit ) )
 
@@ -127,7 +123,7 @@ class ndf:
 
 
     def collapseDim(self, dimkey, value):
-        #Find the axis index cooresponding to dim, and the axes it cooresponds to
+        # Find the axis index cooresponding to dim, and the axes it cooresponds to
         dimkey = self._getAxisKey(dimkey)
         ax_ind = self._getAxisInd(dimkey)
         ax = self.axes[dimkey]

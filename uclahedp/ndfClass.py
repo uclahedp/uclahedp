@@ -220,17 +220,6 @@ class ndf:
         if len(self.axes) == 1:
             print("Call simple 1D plotting routine")
             
-            
-            #Convert axis range units
-            if isinstance(xrange[0], u.Quantity):
-                xrange[0] = xrange[0].to_value(self.axes[xkey].unit)
-            if isinstance(xrange[1], u.Quantity):
-                xrange[1] = xrange[1].to_value(self.axes[xkey].unit)
-            if isinstance(yrange[0], u.Quantity):
-                yrange[0] = yrange[0].to_value(self.data.unit)
-            if isinstance(yrange[1], u.Quantity):
-                yrange[1] = yrange[1].to_value(self.data.unit)
-       
             #Make plot
             plt.plot(xaxes, self.data)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
@@ -242,25 +231,7 @@ class ndf:
             yname = self.axes[1]['name']
             yaxes = self.axes[1]['axis']
             
-            #Convert axis range units
-            if isinstance(xrange[0], u.Quantity):
-                xrange[0] = xrange[0].to_value(self.axes[xkey].unit)
-            if isinstance(xrange[1], u.Quantity):
-                xrange[1] = xrange[1].to_value(self.axes[xkey].unit)
-            if isinstance(yrange[0], u.Quantity):
-                yrange[0] = yrange[0].to_value(self.axes[ykey].unit)
-            if isinstance(yrange[1], u.Quantity):
-                yrange[1] = yrange[1].to_value(self.axes[ykey].unit)
-            if isinstance(zrange[0], u.Quantity):
-                zrange[0] = zrange[0].to_value(self.data.unit)
-            if isinstance(zrange[1], u.Quantity):
-                zrange[1] = zrange[1].to_value(self.data.unit)
-            
-            print(xkey)
-            print(np.shape(self.getAxis(xkey)))
-            print(ykey)
-            print(np.shape(self.getAxis(ykey)))
-            print(np.shape(self.data))
+
             plt.figure()
             plt.contourf(xaxes, yaxes, self.data.T)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
@@ -349,7 +320,7 @@ if __name__ == "__main__":
     #print( obj.getAxis('time') )
     
     print(np.shape(obj.data))
-    obj.collapseDim('x', 5*u.cm)
+    #obj.collapseDim('x', 5*u.cm)
     
     print(np.shape(obj.data))
     obj.collapseDim('channels', 2)

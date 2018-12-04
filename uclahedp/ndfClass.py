@@ -224,17 +224,7 @@ class ndf:
         self.axes[ax_ind]['axis'] = newax * self.axes[ax_ind]['axis'].unit
         
         
-    # TODO: write this method that reorders the existing data and axes arrays
-    def reorder(self, neworder):
-        pass
-    
-    # TODO: write this method that reshapes the data array and does something sensible with the axes??
-    def reshape(self, newshape):
-        pass
-        
-        
-        
-        
+
     def convertAxisUnit(self, name, unit):
         if isinstance(unit, str ):
             try:
@@ -309,24 +299,16 @@ class ndf:
         # If the axis is called, give the full astropy quantity object
         if key in axes_list:
             return self.getAxis(key)
-        # If axis.unit is called, give the unit as a string
-        elif key in axes_list + '.unit':
-            return self.getAxis(key).unit
-        # If axis.value is called, return the astropy value
-        elif key in axes_list + '.value':
-            return self.getAxis(key).value
+        elif key in [ 'd' + s for s in axes_list] :
+            # Strip off the 'd' to get the axis name
+            k = key.replace('d', '')
+            # Return the mean gradient as the step size
+            return np.mean(  np.gradient( self.getAxis(k) ) )
         # Do some the same things for the dataset
-        elif key == 'data':
-            return self.data
         elif key == 'data.unit':
             return self.data.unit
         elif key == 'data.value':
             return self.data.value
-        elif key == 'data_label':
-            return self.data_label
-        #allow access to some extra stuff here
-        elif key == 'log':
-            return self.log
         else:
             raise AttributeError
     
@@ -390,7 +372,7 @@ if __name__ == "__main__":
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
     
-    fname = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.h5"
+    #fname = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.h5"
     #fname = r"C:\Users\Peter\Desktop\TempData\run102_PL11B_pos_raw.h5"
     
     
@@ -415,6 +397,7 @@ if __name__ == "__main__":
     a = obj.data.unit
     print(a)
     
+    print(obj.dtime.to(u.ns))
     
     #print(dir(obj))
     #print( obj.getAxis('time') )

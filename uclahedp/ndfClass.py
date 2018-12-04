@@ -10,6 +10,7 @@ import h5py
 import datetime
 import matplotlib.pyplot as plt   
 from astropy import units as u
+import copy
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -32,7 +33,12 @@ class ndf:
         self.data_label = None
         self.log = []
 
-        
+
+    def close(self):
+        pass
+    
+    def copy(self):
+        return copy.deepcopy(self)
 
 
     def readHDF(self, filepath):
@@ -46,7 +52,6 @@ class ndf:
             self.pack(f)
 
 
-        
     def unpack(self, f):
         self._log('Opened HDF file as NDF object: ' + self.read_filepath)
 
@@ -101,15 +106,36 @@ class ndf:
     
     def getAxis(self, name):
         name = str(name)
-        return [ax['axis'] for ax in self.axes if ax['name'].lower().strip() == name.lower().strip()  ][0]
+        l = [ax['axis'] for ax in self.axes if ax['name'].lower().strip() == name.lower().strip()  ]
+        if len(l) == 0:
+            print("No axis found with name: " + str(name))
+            return None
+        elif len(l) > 1:
+            print("Multiple axes found with name: " + str(name))
+            return None
+        else:
+            return l[0]
     
     def getAxisInd(self, name):
         name = str(name)
-        return [i for i,ax in enumerate(self.axes) if ax['name'].lower().strip() == name.lower().strip()  ] [0]
+        l = [i for i,ax in enumerate(self.axes) if ax['name'].lower().strip() == name.lower().strip()  ]
+        if len(l) == 0:
+            print("No axis found with name: " + str(name))
+            return None
+        elif len(l) > 1:
+            print("Multiple axes found with name: " + str(name))
+            return None
+        else:
+            return l[0]
     
     
     def avgDim(self, name ):
         ax_ind = self.getAxisInd(name)
+        
+        if ax_ind is None:
+            print("DID NOT AVERAGE DIM: " + str(name))
+            return None
+        
         #Average the data
         self.data = np.average(self.data, axis=ax_ind)
         #Remove the axis from the the axes dictionary
@@ -124,6 +150,11 @@ class ndf:
     def collapseDim(self, name, value):
         # Find the axis index cooresponding to dim, and the axes it cooresponds to
         ax_ind = self.getAxisInd(name)
+        
+        if ax_ind is None:
+            print("DID NOT COLLAPSE DIM: " + str(name))
+            return None
+        
         ax = self.getAxis(name)
 
         #If value isn't already an astropy quantity, assume it has the same units as the axis.
@@ -146,8 +177,16 @@ class ndf:
         
         
     def thinDim(self, name, bin=10):
+        
+        bin = int(bin)
+        
         # Get the index that goes with this name
         ax_ind = self.getAxisInd(name)
+        
+        if ax_ind is None:
+            print("DID NOT THIN DIM: " + str(name))
+            return None
+
         ax = self.getAxis(name)
         # Get the current shape vector
         shape = list( self.data.shape )
@@ -200,6 +239,11 @@ class ndf:
             return None
         
         ax_ind = self.getAxisInd(name)
+        
+        if ax_ind is None:
+            print("DID NOT CONVERT : " + str(name))
+            return None
+        
         ax = self.getAxis(name)
         
         old_unit = ax.unit    
@@ -290,6 +334,12 @@ class ndfpoints(ndf):
     
         
         
+        
+        
+        
+        
+        
+        
 if __name__ == "__main__":
     sname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/testsave.h5"
     sname = r"C:\Users\Peter\Desktop\TempData\testsave.h5"
@@ -311,31 +361,36 @@ if __name__ == "__main__":
     
     #obj.thinDim('time', bin=20)
     
+    obj2 = obj.copy()
+    
     print(np.shape(obj.data))
     obj.avgDim('Reps')
     print(np.shape(obj.data))
+    print(np.shape(obj2.data))
+    
     
     
     #print(dir(obj))
     #print( obj.getAxis('time') )
     
-    print(np.shape(obj.data))
+    #print(np.shape(obj.data))
     #obj.collapseDim('x', 5*u.cm)
     
-    print(np.shape(obj.data))
-    obj.collapseDim('channels', 2)
-    print(np.shape(obj.data))
+    #print(np.shape(obj.data))
+    #obj.collapseDim('channels', 2)
+    #print(np.shape(obj.data))
     
-    obj.convertAxisUnit('time', u.us)
+    #obj.convertAxisUnit('time', u.us)
 
     
-    print(np.shape(obj.data))
+    #print(np.shape(obj.data))
     
     
-    obj.plot(xrange=[0,20 ])
+    #obj.plot(xrange=[0,20 ])
     #obj.plot( xrange = [0, 40*u.us])
     
     obj.saveHDF(sname)
 
 
+    obj.close()
     

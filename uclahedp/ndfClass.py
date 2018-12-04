@@ -224,6 +224,15 @@ class ndf:
         self.axes[ax_ind]['axis'] = newax * self.axes[ax_ind]['axis'].unit
         
         
+    # TODO: write this method that reorders the existing data and axes arrays
+    def reorder(self, neworder):
+        pass
+    
+    # TODO: write this method that reshapes the data array and does something sensible with the axes??
+    def reshape(self, newshape):
+        pass
+        
+        
         
         
     def convertAxisUnit(self, name, unit):

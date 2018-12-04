@@ -11,6 +11,7 @@ import datetime
 import matplotlib.pyplot as plt   
 from astropy import units as u
 import copy
+import hedpConstants as const
 
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -405,8 +406,7 @@ if __name__ == "__main__":
    #       {'name':'sec', 'axis': np.arange(20)*u.mm}]
    # obj = ndf(data=z, axes=a)
     
-    
-    
+
     obj = ndf()
     obj.readHDF(fname)
     #obj.plot()

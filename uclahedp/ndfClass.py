@@ -27,12 +27,34 @@ parent: ndf
 class ndf:
     """Parent class for a generic HEDP dataset of any form"""
 
-    def __init__(self): # Initialize object
-        self.data = None
-        self.axes = {}
-        self.data_label = None
-        self.log = []
-
+    def __init__(self, data=None, axes=[], data_label='', log=[], attrs={} ): # Initialize object
+        self.data = data
+        self.axes = axes
+        self.data_label =data_label
+        self.log = log
+        self.attrs = attrs
+        
+        if self.data is not None:
+            #If data doesn't already have units, make it a dimensionless quantity
+            if not isinstance(self.data, u.UnitBase ):
+                self.data = self.data*u.Unit('' )
+            # If axes haven't been created, make them up
+            if len(self.axes) == 0:
+                for i,n in enumerate(self.data.shape):
+                    # Fill with a dimensionless unit
+                    print('Creating axis')
+                    a = {'name': 'ax' + str(i),   'axis' : np.arange(n)* u.Unit('' )}
+                    self.axes.append(a)
+            
+            # Do some validation of the construction just in case
+            if self.data.ndim != len(self.axes):
+                print("ERROR: Number of axes does not match number of array dimensions! " + str(self.data.ndim) + ' != ' + str(len(self.axes))  )
+                return None
+            
+            for i, ax in enumerate(self.axes):
+                if len(ax['axis']) != self.data.shape[i]:
+                    print("ERROR: Number of points in axis " + str( ax['name'] ) + ' does not match data shape: ' + str(self.data.shape)  )
+                    return None
 
     def close(self):
         pass
@@ -77,6 +99,7 @@ class ndf:
 
         
     def pack(self, f):
+
         f['data'] = self.data
 
         # Add the original list of all attributes back to the dataset
@@ -366,7 +389,7 @@ class ndfpoints(ndf):
         
 if __name__ == "__main__":
     sname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/testsave.h5"
-    sname = r"C:\Users\Peter\Desktop\TempData\testsave.h5"
+    #sname = r"C:\Users\Peter\Desktop\TempData\testsave.h5"
 
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_full.h5"
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
@@ -377,9 +400,14 @@ if __name__ == "__main__":
     
     
     
+   # z = np.zeros([10,20])
+   #a = [{'name':'first', 'axis': np.arange(10)*u.m},
+   #       {'name':'sec', 'axis': np.arange(20)*u.mm}]
+   # obj = ndf(data=z, axes=a)
+    
+    
     
     obj = ndf()
-    
     obj.readHDF(fname)
     #obj.plot()
     #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
@@ -394,10 +422,8 @@ if __name__ == "__main__":
     #obj.avgDim('Reps')
     #print(np.shape(obj.data))
 
-    a = obj.data.unit
-    print(a)
-    
-    print(obj.dtime.to(u.ns))
+
+    #print(obj.dtime.to(u.ns))
     
     #print(dir(obj))
     #print( obj.getAxis('time') )

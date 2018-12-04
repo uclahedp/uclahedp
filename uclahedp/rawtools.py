@@ -190,7 +190,7 @@ def sraw2hraw(fname_sav):
         #f.attrs['nchan'] = nchan
 
         # Write the "data" array
-        f['data'] = np.reshape(idl_data, [nti, npos, nreps, nchan])
+        f['data'] =  np.squeeze( np.reshape(idl_data, [nti, nx, ny, nz, nreps, nchan]) )
         #f['data'].attrs['unit'] = 'V'
         # Create the t0 array
         # This array stores the time
@@ -252,8 +252,12 @@ if __name__ == "__main__":
     #fname_sav = r"C:\Users\scott\Documents\UCLA\IDL to Python Bdot\DataForScott\DataForScott\RAW\run40_tdiode_t_raw.sav"
     #fname_sav = r"C:\Users\scott\Documents\DATA\2018-11-26 Example UCLA Raw files\run102_PL11B_pos_raw.sav"
     fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.sav"
-    fname_sav = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.sav"
+    
     #fname_sav = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_pos_raw.sav"
+    
+    
+    fname_sav = r"C:\Users\Peter\Desktop\TempData\run102_PL11B_pos_raw.sav"
+    
     fname_h5 = sraw2hraw(fname_sav)
 
     #with h5py.File(fname_h5, 'r') as f:

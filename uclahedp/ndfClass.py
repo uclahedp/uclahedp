@@ -56,9 +56,8 @@ class ndf:
 
         dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
         dimunits =  [ x.decode("utf-8") for x in f.attrs['dimunits']  ]
-        self.ndim = len(dimlabels)
         self.axes = []
-        for i in range(self.ndim):
+        for i in range(len(dimlabels)):
             ax = f[ 'ax' + str(i) ][:] * u.Unit(dimunits[i], parse_strict = 'warn' )
             name = dimlabels[i]
             a = {'name':name, 'axis':ax}
@@ -101,20 +100,20 @@ class ndf:
     
     
     def getAxis(self, name):
-        return [ax['axis'] for ax in self.axes if ax['name'].lower() == name.lower()  ][0]
+        name = str(name)
+        return [ax['axis'] for ax in self.axes if ax['name'].lower().strip() == name.lower().strip()  ][0]
     
     def getAxisInd(self, name):
-        return [i for i,ax in enumerate(self.axes) if ax['name'].lower() == name.lower()  ][0]
+        name = str(name)
+        return [i for i,ax in enumerate(self.axes) if ax['name'].lower().strip() == name.lower().strip()  ] [0]
     
     
     def avgDim(self, name ):
         ax_ind = self.getAxisInd(name)
-   
         #Average the data
         self.data = np.average(self.data, axis=ax_ind)
         #Remove the axis from the the axes dictionary
         self.axes.pop(ax_ind)
-        self.ndim = self.ndim -1 
         
         self._log('Averaged over ' + name + ' axis')
         
@@ -138,9 +137,53 @@ class ndf:
         self.data = np.take(self.data, ind, axis=ax_ind)
         #Delete the axis from the object
         self.axes.pop(ax_ind)
-        self.ndim = self.ndim-1
+
         
         self._log('Collapsed ' + name + ' axis to ' + name +  ' = ' + str(ax[ind]))
+        
+        
+        
+        
+        
+    def thinDim(self, name, bin=10):
+        # Get the index that goes with this name
+        ax_ind = self.getAxisInd(name)
+        ax = self.getAxis(name)
+        # Get the current shape vector
+        shape = list( self.data.shape )
+        # Calculate the new length of dim for the given bin
+        nbins  = int( shape[ax_ind] / bin )
+        shape[ax_ind] = nbins
+        # Construct a new shape vector and new data array
+        arr = np.zeros(shape)
+        newax = np.zeros(nbins)
+
+        # Fill the new data array while doing the averaging
+        for i in range(nbins):
+            # Create a range of indices within this row to average
+            indrange = range(i*bin, (i+1)*bin-1)
+            # Take them out
+            s = np.take(self.data, indrange, axis=ax_ind)
+            # Average them
+            s = np.average(s, axis=ax_ind)
+            # Create a slice object for this slice
+            pslice = [ slice(None) ]*arr.ndim
+            pslice[ax_ind] = slice(i, (i+1), None)
+            # Put the values into the slice
+            arr[ tuple(pslice) ] = s
+            
+            #Now do the same thing for the cooresponding axis
+            s = np.take(ax, indrange)
+            s = np.average(s)
+            np.put(newax, i, s)
+        
+ 
+            
+        # Put the data back into the array
+        self.data = arr*self.data.unit
+        # Put the new axis back too
+        self.axes[ax_ind]['axis'] = newax * self.axes[ax_ind]['axis'].unit
+        
         
         
         
@@ -171,10 +214,12 @@ class ndf:
 
 
     def plot(self, xrange=[None,None], yrange=[None,None], zrange=[None,None]):
-        axiter = iter( self.axes )
-        if self.ndim == 1:
+        xname = self.axes[0]['name']
+        xaxes = self.axes[0]['axis']
+        
+        if len(self.axes) == 1:
             print("Call simple 1D plotting routine")
-            xax = next(keyiter)
+            
             
             #Convert axis range units
             if isinstance(xrange[0], u.Quantity):
@@ -187,15 +232,15 @@ class ndf:
                 yrange[1] = yrange[1].to_value(self.data.unit)
        
             #Make plot
-            plt.plot(self.getAxis(xkey), self.data)
+            plt.plot(xaxes, self.data)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
-            plt.xlabel(xkey + ' (' + str(self.axes[xkey].unit) + ')'  )
+            plt.xlabel(xname + ' (' + str(xaxes.unit) + ')'  )
             plt.ylabel(self.data_label.title() + ' (' + str(self.data.unit) + ')'  )
             plt.show()
-        elif self.ndim == 2:
+        elif len(self.axes) == 2:
             print("Call simple 2D contour plotting routine")
-            xax = next(axiter)
-            yax = next(axiter)
+            yname = self.axes[1]['name']
+            yaxes = self.axes[1]['axis']
             
             #Convert axis range units
             if isinstance(xrange[0], u.Quantity):
@@ -217,14 +262,14 @@ class ndf:
             print(np.shape(self.getAxis(ykey)))
             print(np.shape(self.data))
             plt.figure()
-            plt.contourf(self.getAxis(xkey), self.getAxis(ykey), self.data.T)
+            plt.contourf(xaxes, yaxes, self.data.T)
             plt.axis([xrange[0], xrange[1] , yrange[0],  yrange[1]])
-            plt.xlabel(xkey + ' (' + str(self.axes[xkey].unit) + ')'  )
-            plt.ylabel(ykey + ' (' + str(self.axes[ykey].unit) + ')'  )
+            plt.xlabel(xname + ' (' + str(xaxes.unit) + ')'  )
+            plt.ylabel(yname + ' (' + str(yaxes.unit) + ')'  )
             plt.title(self.data_label.title() + ' (' + str(self.data.unit) + ')'  )
             plt.show()
             
-        elif self.ndim == 3:
+        elif len(self.axes) == 3:
             print("Ugh call a 3D plotting routine yuck")
         
         else:
@@ -281,8 +326,9 @@ if __name__ == "__main__":
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_full.h5"
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
-    fname = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.h5"
     
+    fname = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.h5"
+    #fname = r"C:\Users\Peter\Desktop\TempData\run102_PL11B_pos_raw.h5"
     
     obj = ndf()
     
@@ -290,7 +336,9 @@ if __name__ == "__main__":
     #obj.plot()
     #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     
-    print(obj.getAxis('X'))
+    #print(obj.getAxis('reps'))
+    
+    #obj.thinDim('time', bin=20)
     
     print(np.shape(obj.data))
     obj.avgDim('Reps')
@@ -298,19 +346,23 @@ if __name__ == "__main__":
     
     
     #print(dir(obj))
-    #print(np.shape(obj.getAxis('X') ))
+    #print( obj.getAxis('time') )
     
     print(np.shape(obj.data))
-    obj.collapseDim('x', .05*u.m)
+    obj.collapseDim('x', 5*u.cm)
+    
     print(np.shape(obj.data))
-    obj.collapseDim('channels', 1)
+    obj.collapseDim('channels', 2)
     print(np.shape(obj.data))
     
     obj.convertAxisUnit('time', u.us)
-    #obj.convertAxisUnit('x', u.mm)
+
     
-    #obj.plot(xrange=[0, 40], yrange=[-150*u.mV, 150*u.mV])
-    obj.plot( xrange = [0, 40*u.us])
+    print(np.shape(obj.data))
+    
+    
+    obj.plot(xrange=[0,20 ])
+    #obj.plot( xrange = [0, 40*u.us])
     
     obj.saveHDF(sname)
 

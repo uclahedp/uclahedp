@@ -289,6 +289,37 @@ class ndf:
         
         else:
             print("STOP TRYING TO VISUALIZE 4+ SPATIAL DIMENSIONS")
+            
+            
+            
+            
+    def __getattr__(self, key):
+        key = key.lower().strip()
+        axes_list = ['time', 'x', 'y', 'z', 'reps', 'channels', 'npos', 'nshots']
+        
+        # If the axis is called, give the full astropy quantity object
+        if key in axes_list:
+            return self.getAxis(key)
+        # If axis.unit is called, give the unit as a string
+        elif key in axes_list + '.unit':
+            return self.getAxis(key).unit
+        # If axis.value is called, return the astropy value
+        elif key in axes_list + '.value':
+            return self.getAxis(key).value
+        # Do some the same things for the dataset
+        elif key == 'data':
+            return self.data
+        elif key == 'data.unit':
+            return self.data.unit
+        elif key == 'data.value':
+            return self.data.value
+        elif key == 'data_label':
+            return self.data_label
+        #allow access to some extra stuff here
+        elif key == 'log':
+            return self.log
+        else:
+            raise AttributeError
     
     
     #**************
@@ -303,7 +334,7 @@ class ndf:
 
 
 
-class ndfgrid (ndf):
+class ndfxyz (ndf):
     """
     Class of gridded NDF datasets
     Inherits ndf
@@ -311,6 +342,8 @@ class ndfgrid (ndf):
 
     def unpack(self,f):
         ndf.unpack(self,f)
+        
+        self.x = self.getAxis('x')
         
     def pack(self, f):
         ndf.pack(self,f)
@@ -351,6 +384,9 @@ if __name__ == "__main__":
     fname = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.h5"
     #fname = r"C:\Users\Peter\Desktop\TempData\run102_PL11B_pos_raw.h5"
     
+    
+    
+    
     obj = ndf()
     
     obj.readHDF(fname)
@@ -361,13 +397,14 @@ if __name__ == "__main__":
     
     #obj.thinDim('time', bin=20)
     
-    obj2 = obj.copy()
+    #obj2 = obj.copy()
     
-    print(np.shape(obj.data))
-    obj.avgDim('Reps')
-    print(np.shape(obj.data))
-    print(np.shape(obj2.data))
-    
+    #print(np.shape(obj.data))
+    #obj.avgDim('Reps')
+    #print(np.shape(obj.data))
+
+    a = obj.data.unit
+    print(a)
     
     
     #print(dir(obj))
@@ -380,8 +417,9 @@ if __name__ == "__main__":
     #obj.collapseDim('channels', 2)
     #print(np.shape(obj.data))
     
-    #obj.convertAxisUnit('time', u.us)
-
+    #print(obj.x.unit)
+    #obj.convertAxisUnit('x', u.mm)
+    #print(obj.x.unit)
     
     #print(np.shape(obj.data))
     

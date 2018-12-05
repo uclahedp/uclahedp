@@ -62,6 +62,11 @@ def findvalue(csvdict, key, run=None, probe=None):
         value: list
     """
     
+    # These values all code to "None" 
+    int_none = [-111, -999]
+    float_none = [float(i) for i in int_none]
+    str_none = ['none', 'na']
+    
     if probe is None:
         value = [v for i, v in enumerate(csvdict[key]) if
                  csvdict['run'][i] == str(run)]
@@ -74,7 +79,7 @@ def findvalue(csvdict, key, run=None, probe=None):
                   csvdict['probe'][i] == str(probe))]
     
     if len(value) == 0:
-        return []
+        return None
     elif len(value) == 1:
         value = value[0]
     
@@ -82,13 +87,26 @@ def findvalue(csvdict, key, run=None, probe=None):
     try: 
         value = float(value)
         
+        #IS AN INT
         if value.is_integer():
-            return int(value)
-        else:
-            return value
+            if int(value) in int_none:
+                return None
+            else:
+                return int(value)
         
+        #IS A FLOAT
+        else:
+            if float(value) in float_none:
+                return None
+            else:
+                return value
+   
     except ValueError:
-        return str(value)
+        #IS A STRING
+        if str(value).lower() in str_none:
+            return None
+        else:
+            return str(value)
 
 
 

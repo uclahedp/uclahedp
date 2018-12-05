@@ -203,7 +203,7 @@ def sraw2hraw(fname_sav):
         units=[]
         axnames = ['ax0', 'ax1', 'ax2', 'ax3', 'ax4', 'ax5', 'ax6', 'ax7', 'ax8']
         if nti is not 1:
-            dimlabels.append('time')
+            dimlabels.append('t')
             units.append('s')
             f[axnames.pop(0)] = np.arange(nti)*f.attrs['dt']
             

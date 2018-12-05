@@ -7,6 +7,8 @@ and creates an ndfFile object containing the data.
 @author: peter
 """
 
+#TODO currently 'NI_XZ' isn't valid drive
+
 import numpy as np
 from astropy import units as u
 #
@@ -16,11 +18,6 @@ import csvtools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
 from bapsflib._hdf import HDFMap
-
-
-
-
-
 
 
 

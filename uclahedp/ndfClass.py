@@ -318,8 +318,7 @@ class ndf:
             
     def __getattr__(self, key):
         key = key.lower().strip()
-        axes_list = ['time', 'x', 'y', 'z', 'reps', 'channels', 'npos', 'nshots']
-        
+        axes_list = [ ax['name'] for ax in self.axes ]
         # If the axis is called, give the full astropy quantity object
         if key in axes_list:
             return self.getAxis(key)
@@ -328,13 +327,16 @@ class ndf:
             k = key.replace('d', '')
             # Return the mean gradient as the step size
             return np.mean(  np.gradient( self.getAxis(k) ) )
+       
         # Do some the same things for the dataset
-        elif key == 'data.unit':
+        if key == 'data.unit':
             return self.data.unit
         elif key == 'data.value':
             return self.data.value
-        else:
-            raise AttributeError
+        
+        #If you get this far, the key must be invalid
+        print("Invalid Key: " + str(key))
+        raise AttributeError
     
     
     #**************
@@ -414,7 +416,7 @@ if __name__ == "__main__":
     
     #print(obj.getAxis('reps'))
     
-    #obj.thinDim('time', bin=20)
+    obj.thinDim('t', bin=20)
     
     #obj2 = obj.copy()
     
@@ -437,7 +439,7 @@ if __name__ == "__main__":
     
     #print(obj.x.unit)
     #obj.convertAxisUnit('x', u.mm)
-    #print(obj.x.unit)
+    print(obj.dtime)
     
     #print(np.shape(obj.data))
     

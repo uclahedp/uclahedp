@@ -76,7 +76,7 @@ class ndf:
 
 
     def unpack(self, f):
-        self._log('Opened HDF file as NDF object: ' + self.read_filepath)
+        self.appendLog('Opened HDF file as NDF object: ' + self.read_filepath)
 
         self.data =  f['data'][:] *  u.Unit(f.attrs['data_unit'], parse_strict = 'warn' )
         self.data_label = f.attrs['data_label']
@@ -123,7 +123,7 @@ class ndf:
 
         f.attrs['dimunits'] = [s.encode('utf-8') for s in dimunits] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
-        self._log('Saving NDF object as HDF ' + self.save_filepath)
+        self.appendLog('Saving NDF object as HDF ' + self.save_filepath)
         f['log'] = [s.encode('utf-8') for s in self.log] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
         
     
@@ -165,7 +165,7 @@ class ndf:
         #Remove the axis from the the axes dictionary
         self.axes.pop(ax_ind)
         
-        self._log('Averaged over ' + name + ' axis')
+        self.appendLog('Averaged over ' + name + ' axis')
         
         
 
@@ -194,7 +194,7 @@ class ndf:
         self.axes.pop(ax_ind)
 
         
-        self._log('Collapsed ' + name + ' axis to ' + name +  ' = ' + str(ax[ind]))
+        self.appendLog('Collapsed ' + name + ' axis to ' + name +  ' = ' + str(ax[ind]))
         
         
         
@@ -272,7 +272,7 @@ class ndf:
         old_unit = ax.unit    
         self.axes[ax_ind]['axis'] = ax.to(unit)
 
-        self._log('Converted ' + name + ' from ' + str(old_unit) + ' to ' + str( (self.axes[ax_ind]['axis']).unit ) )
+        self.appendLog('Converted ' + name + ' from ' + str(old_unit) + ' to ' + str( (self.axes[ax_ind]['axis']).unit ) )
         
         
         
@@ -340,7 +340,7 @@ class ndf:
     #**************
     #HELPER METHODS
     #**************
-    def _log(self, message):
+    def appendLog(self, message):
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + str(message)
         self.log.append(entry)
         
@@ -418,9 +418,9 @@ if __name__ == "__main__":
     
     #obj2 = obj.copy()
     
-    #print(np.shape(obj.data))
-    #obj.avgDim('Reps')
-    #print(np.shape(obj.data))
+    print(np.shape(obj.data))
+    obj.avgDim('Reps')
+    print(np.shape(obj.data))
 
 
     #print(obj.dtime.to(u.ns))

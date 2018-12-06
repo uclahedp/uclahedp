@@ -42,7 +42,49 @@ def opencsv(fname):
     return csvdict
 
 
-def findvalue(csvdict, key, run=None, probe=None):
+def keyExists(csvdict, key):
+    """ Tests to see if a key exists in a csv dictionary
+    Parameters
+    ----------
+        key: str
+            Key for the value you are searching for
+            
+        csvdict: dict
+            Dictonary object to search
+
+    Returns
+    -------
+        check: boolean
+    """
+    return key.lower().strip() in [(k.lower().strip()) for k in csvdict.keys()]
+
+
+
+def getAttrs(csvdict, run=None, probe=None):
+    """ Returns a dictionary of all of the keyed csv lines for a run/probe/both
+    
+    Parameters
+    ----------
+        csvdict: dict
+            Dictonary object to search
+        run: int
+            Integer run number for the value you are searching for
+        probe: str
+            Name of the probe you are searching for.
+
+    Returns
+    -------
+        attrs: dict
+    """
+    attrs = {}
+    for key in csvdict.keys():
+        attrs[key] = findValue(csvdict, key, run=run, probe=probe)
+    
+    return attrs
+    
+
+
+def findValue(csvdict, key, run=None, probe=None):
     """ Picks out a value from a csv file dictionary
     Returns a list of all values which match the given key, run, and probe.
 
@@ -72,11 +114,11 @@ def findvalue(csvdict, key, run=None, probe=None):
                  csvdict['run'][i] == str(run)]
     elif run is None:
         value = [v for i, v in enumerate(csvdict[key]) if
-                 csvdict['probe'][i] == str(probe)]
+                 str( csvdict['probe'][i] ).lower().strip()  == str(probe).lower().strip()]
     else:
-        value = [v for i, v in enumerate(csvdict[key]) if
-                 (csvdict['run'][i] == str(run) and
-                  csvdict['probe'][i] == str(probe))]
+        value = [v for i, v in enumerate(csvdict[key]) if 
+                 (csvdict['run'][i] == str(run) and 
+                  str(csvdict['probe'][i]).lower().strip()  == str(probe).lower().strip() )  ]
     
     if len(value) == 0:
         return None
@@ -106,7 +148,7 @@ def findvalue(csvdict, key, run=None, probe=None):
         if str(value).lower() in str_none:
             return None
         else:
-            return str(value)
+            return str(value).strip()
 
 
 
@@ -115,6 +157,9 @@ if __name__ == "__main__":
     fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/CSV/bdot_runs.csv"
 
     csvdict = opencsv(fname)
-    v = findvalue(csvdict, 'probe_origin_z')
+    v = findValue( csvdict, 'probe_origin_z', run=50, probe='lapd1'  )
     print(v)
-    print(type(v))
+    v = keyExists(csvdict, 'probe_origin_zz' )
+    print(v)
+    attrs = getAttrs( csvdict,  run=50, probe='lapd1'  )
+    print(attrs)

@@ -156,7 +156,7 @@ def readRunProbe(run, probe, exp_dir, runs_csv_file):
     runs_csv = csvtools.opencsv(runs_csv_file)
     
     
-    datafile = csvtools.findvalue(runs_csv, 'datafile', run=run, probe=probe)
+    datafile = csvtools.findValue(runs_csv, 'datafile', run=run, probe=probe)
     
     datafile = exp_dir + c.hdf_dir + datafile + '.hdf5'
     print(datafile)
@@ -167,9 +167,9 @@ def readRunProbe(run, probe, exp_dir, runs_csv_file):
         return None
     
     
-    digitizer = csvtools.findvalue(runs_csv, 'digitizer', run=run, probe=probe)
-    adc = csvtools.findvalue(runs_csv, 'adc', run=run, probe=probe)
-    nchan = csvtools.findvalue(runs_csv, 'nchan', run=run, probe=probe)
+    digitizer = csvtools.findValue(runs_csv, 'digitizer', run=run, probe=probe)
+    adc = csvtools.findValue(runs_csv, 'adc', run=run, probe=probe)
+    nchan = csvtools.findValue(runs_csv, 'nchan', run=run, probe=probe)
     
     if (digitizer is None) or (adc is None):
         print("Digitizer or ADC field(s) are missing: " + probe + ", run " + str(run) + " in " + runs_csv_file)
@@ -180,9 +180,9 @@ def readRunProbe(run, probe, exp_dir, runs_csv_file):
         nchan = 1
         
 
-    motion_controller = csvtools.findvalue(runs_csv, 'motion_controller', run=run, probe=probe)
-    motion_receptacle = csvtools.findvalue(runs_csv, 'motion_receptacle', run=run, probe=probe)
-    gridded = csvtools.findvalue(runs_csv, 'gridded', run=run, probe=probe)
+    motion_controller = csvtools.findValue(runs_csv, 'motion_controller', run=run, probe=probe)
+    motion_receptacle = csvtools.findValue(runs_csv, 'motion_receptacle', run=run, probe=probe)
+    gridded = csvtools.findValue(runs_csv, 'gridded', run=run, probe=probe)
    
     gridded = bool(gridded)
         
@@ -207,8 +207,8 @@ def readRunProbe(run, probe, exp_dir, runs_csv_file):
 
     channel_arr = []
     for i in range(nchan):
-        brd = csvtools.findvalue(runs_csv, "brd" + str(i+1), run=run, probe=probe)
-        chan = csvtools.findvalue(runs_csv, "chan" + str(i+1), run=run, probe=probe)
+        brd = csvtools.findValue(runs_csv, "brd" + str(i+1), run=run, probe=probe)
+        chan = csvtools.findValue(runs_csv, "chan" + str(i+1), run=run, probe=probe)
         tp = (digitizer, adc, brd, chan)
         channel_arr.append(tp)
     

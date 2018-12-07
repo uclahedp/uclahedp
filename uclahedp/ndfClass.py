@@ -132,11 +132,9 @@ class ndf:
         name = str(name)
         l = [ax['axis'] for ax in self.axes if ax['name'].lower().strip() == name.lower().strip()  ]
         if len(l) == 0:
-            print("No axis found with name: " + str(name))
-            return None
+            raise Exception("No axis found with name: " + str(name))
         elif len(l) > 1:
-            print("Multiple axes found with name: " + str(name))
-            return None
+            raise Exception("Multiple axes found with name: " + str(name))
         else:
             return l[0]
     

@@ -5,6 +5,7 @@ hedpConstants.py: This file holds a list of string constants
 These are used throughout the analysis code to avoid hardcoding in file names
 @author: peter
 """
+from os.path import join
 #
 version = '1.0.0'
 #FILE PATHS
@@ -19,11 +20,11 @@ langmuir_dir = '/LANGMUIR/'
 interferometer_dir = '/INTERFEROMETER/'
 
 #FILES
-main_runs_csv = metadata_dir + 'main_runs.csv'
+main_runs_csv = join(metadata_dir , 'main_runs.csv')
 
-tdiode_runs_csv = metadata_dir +  'tdiode_runs.csv'
-bdot_runs_csv = metadata_dir +  'bdot_runs.csv'
-bdot_probes_csv = metadata_dir +  'bdot_probes.csv'
-langmuir_runs_csv = metadata_dir +  'langmuir_runs.csv'
-langmuir_probes_csv = metadata_dir +  'langmuir_probes.csv'
-interferometer_runs_csv = metadata_dir + 'interferometer_runs.csv'
+tdiode_runs_csv = join(metadata_dir , 'tdiode_runs.csv')
+bdot_runs_csv = join(metadata_dir , 'bdot_runs.csv')
+bdot_probes_csv = join(metadata_dir ,  'bdot_probes.csv')
+langmuir_runs_csv = join(metadata_dir ,   'langmuir_runs.csv')
+langmuir_probes_csv = join(metadata_dir ,  'langmuir_probes.csv')
+interferometer_runs_csv = join(metadata_dir ,  'interferometer_runs.csv')

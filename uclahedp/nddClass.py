@@ -20,20 +20,19 @@ Created on Thu Nov 29 13:08:18 2018
 
 @author: peter
 
-parent: ndf 
-
+ndd -> "N-Dimensional Dataset
+ndd's contain data arrays and axes
 
 """
 
-class ndf:
+class ndd_arr:
     """Parent class for a generic HEDP dataset of any form"""
 
-    def __init__(self, data=None, axes=[], data_label='', log=[], attrs={} ): # Initialize object
+    def __init__(self, data=None, axes=[], data_label='', log=[] ): # Initialize object
         self.data = data
         self.axes = axes
         self.data_label =data_label
         self.log = log
-        self.attrs = attrs
         
         if self.data is not None:
             #If data doesn't already have units, make it a dimensionless quantity
@@ -78,36 +77,25 @@ class ndf:
     def unpack(self, f):
         self.appendLog('Opened HDF file as NDF object: ' + self.read_filepath)
 
-        self.data =  f['data'][:] *  u.Unit(f.attrs['data_unit'], parse_strict = 'warn' )
-        self.data_label = f.attrs['data_label']
+        self.data =  f['data'][:] *  u.Unit(f.['data'].attrs['unit'], parse_strict = 'warn' )
+        self.data_label = f.attrs['data'].['label']
 
 
-        dimlabels =  [ x.decode("utf-8") for x in f.attrs['dimlabels']  ]
-        dimunits =  [ x.decode("utf-8") for x in f.attrs['dimunits']  ]
+        self.dimlabels =  []
+        self.dimunits =  []
         self.axes = []
         for i in range(len(dimlabels)):
-            ax = f[ 'ax' + str(i) ][:] * u.Unit(dimunits[i], parse_strict = 'warn' )
-            name = dimlabels[i]
+            loc = 'ax' + str(i)
+            name = f[ loc ].attrs['name']
+            ax = f[ loc ][:] * u.Unit(f[loc].attrs['unit'], parse_strict = 'warn' )
             a = {'name':name, 'axis':ax}
             self.axes.append(a)
 
-        #Make a list of all of the attributes in the HDF, so we can perpetuate them
-        self.attrs = {}
-        keys = list(f.attrs)
-        for key in keys:
-            self.attrs[key] = f.attrs[key]
-            
 
         
     def pack(self, f):
 
         f['data'] = self.data
-
-        # Add the original list of all attributes back to the dataset
-        # This comes before the explictly coded ones, so those will take 
-        # precedence in case of changes
-        for key in self.attrs.keys():
-            f.attrs[key] =self.attrs[key]
 
 
         f.attrs['dimlabels'] = [ax['name'].encode('utf-8') for ax in self.axes] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
@@ -291,6 +279,8 @@ class ndf:
             plt.xlabel(xname + ' (' + str(xaxes.unit) + ')'  )
             plt.ylabel(self.data_label.title() + ' (' + str(self.data.unit) + ')'  )
             plt.show()
+            plt.close()
+            
         elif len(self.axes) == 2:
             print("Call simple 2D contour plotting routine")
             yname = self.axes[1]['name']
@@ -304,6 +294,7 @@ class ndf:
             plt.ylabel(yname + ' (' + str(yaxes.unit) + ')'  )
             plt.title(self.data_label.title() + ' (' + str(self.data.unit) + ')'  )
             plt.show()
+            plt.close()
             
         elif len(self.axes) == 3:
             print("Ugh call a 3D plotting routine yuck")
@@ -344,6 +335,43 @@ class ndf:
         entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + str(message)
         self.log.append(entry)
         
+        
+        
+        
+        
+class ndd(ndd_arr):
+    """
+    ndd is an ndd_arr that has an attached dictionary of attributes
+    """
+    def __init__(self, data=None, axes=[], data_label='', log=[], attrs={} ): # Initialize object
+        ndd_arr.__init__(self, data=None, axes=[], data_label='', log=[])
+        self.attrs = {}
+        
+        
+    def unpack(self, f):
+        ndd_arr.unpack(self, f)
+        
+         #Make a list of all of the attributes in the HDF, so we can perpetuate them
+        self.attrs = {}
+        keys = list(f.attrs)
+        for key in keys:
+            self.attrs[key] = f.attrs[key]
+    
+    def pack(self, f):
+        ndd_arr.pack(self, f)
+        
+        # Add the original list of all attributes back to the dataset
+        for key in self.attrs.keys():
+            f.attrs[key] =self.attrs[key]
+        
+        
+    def readHDF(self, filepath):
+        ndd_arr.readHDF(self, filepath)
+        
+    def saveHDF(self, filepath):
+        ndd_arr.saveHDF(self, filepath)
+        
+        
 
         
         
@@ -360,26 +388,28 @@ if __name__ == "__main__":
     
     
     
-   # z = np.zeros([10,20])
-   #a = [{'name':'first', 'axis': np.arange(10)*u.m},
-   #       {'name':'sec', 'axis': np.arange(20)*u.mm}]
-   # obj = ndf(data=z, axes=a)
+    z = np.zeros([10,20])
+    a = [{'name':'first', 'axis': np.arange(10)*u.m},
+          {'name':'sec', 'axis': np.arange(20)*u.mm} ]
+   
+    attrs = {'one': 1, 'two' : [1,2,3] }
+    
+    obj = ndd(data=z, axes=a, attrs = attrs)
     
 
-    obj = ndf()
-    obj.readHDF(fname)
+    #obj.readHDF(fname)
     #obj.plot()
     #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
     
     #print(obj.getAxis('reps'))
     
-    obj.thinDim('t', bin=20)
+    #obj.thinDim('t', bin=20)
     
     #obj2 = obj.copy()
     
-    print(np.shape(obj.data))
-    obj.avgDim('Reps')
-    print(np.shape(obj.data))
+    #print(np.shape(obj.data))
+    #obj.avgDim('Reps')
+    #print(np.shape(obj.data))
 
 
     #print(obj.dtime.to(u.ns))
@@ -396,7 +426,7 @@ if __name__ == "__main__":
     
     #print(obj.x.unit)
     #obj.convertAxisUnit('x', u.mm)
-    print(obj.dtime)
+    #print(obj.dtime)
     
     #print(np.shape(obj.data))
     
@@ -404,8 +434,8 @@ if __name__ == "__main__":
     #obj.plot(xrange=[0,20 ])
     #obj.plot( xrange = [0, 40*u.us])
     
-    obj.saveHDF(sname)
+    #obj.saveHDF(sname)
 
 
-    obj.close()
+   # obj.close()
     

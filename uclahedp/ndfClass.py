@@ -345,47 +345,6 @@ class ndf:
         self.log.append(entry)
         
 
-
-
-
-
-class ndfxyz (ndf):
-    """
-    Class of gridded NDF datasets
-    Inherits ndf
-    """
-
-    def unpack(self,f):
-        ndf.unpack(self,f)
-        
-        self.x = self.getAxis('x')
-        
-    def pack(self, f):
-        ndf.pack(self,f)
-
-
-        
-class ndfpoints(ndf):
-    """
-    Class of NDF dataset that is not gridded
-    Inherits ndf
-    """
-    def unpack(self, f):
-        ndf.unpack(self,f)
-        self.pos = f['pos'] # pos is only stored for non-gridded data which requires it.
-        self.npos = len(self.pos)
-        
-        
-    def pack(self, f):
-        ndf.pack(self,f)
-        
-    
-        
-        
-        
-        
-        
-        
         
         
 if __name__ == "__main__":

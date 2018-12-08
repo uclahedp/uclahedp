@@ -77,8 +77,8 @@ class ndd_arr:
     def unpack(self, f):
         self.appendLog('Opened HDF file as NDF object: ' + self.read_filepath)
 
-        self.data =  f['data'][:] *  u.Unit(f.['data'].attrs['unit'], parse_strict = 'warn' )
-        self.data_label = f.attrs['data'].['label']
+        self.data =  f['data'][:] *  u.Unit( f['data'].attrs['unit'], parse_strict = 'warn' )
+        self.data_label = f['data'].attrs['label']
 
 
         self.dimlabels =  []

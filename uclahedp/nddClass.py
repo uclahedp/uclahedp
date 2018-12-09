@@ -201,7 +201,6 @@ class ndd_arr (ndd_base):
     def pack(self, g):
         
         for key in g.keys():
-            print(key)
             del(g[key])
 
         g['data'] = self.data
@@ -431,6 +430,8 @@ class ndd(ndd_base):
   
     
     def __getattr__(self, key):
+        for a in args:
+            print(a)
         axes_list = [ ax['label'] for ax in self.arr.axes ]
         if key == "data":
             return self.arr.data
@@ -441,6 +442,18 @@ class ndd(ndd_base):
             k = key.replace('d', '')
             # Return the mean gradient as the step size
             return np.mean(  np.gradient( self.arr.getAxis(k) ) )
+        
+    
+    # Allow some ndd_arr methods to be directly callable on the ndd object
+    # is this a good idea?
+    def avgDim(self, label):
+        self.arr.avgDim(label)
+    def collapseDim(self, label, value):
+        self.arr.collapseDim(label, value)
+    def thinDim(self, label, bin):
+        self.arr.thinDim(label, bin)
+    def plot(self, xrange, yrange,zrange):
+        self.arr.plot(xrange, yrange, zrange)
  
         
 
@@ -478,7 +491,7 @@ if __name__ == "__main__":
     
     obj = ndd(data=z*3, axes=a, attrs=attrs)
     obj.log.append("Overwriting with 3's")
-    obj.arr.avgDim('x')
+    obj.avgDim('x')
     obj.saveHDF(sname, '/run56/LAPD1/')
     
     

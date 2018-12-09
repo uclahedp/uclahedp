@@ -21,18 +21,141 @@ Created on Thu Nov 29 13:08:18 2018
 @author: peter
 
 ndd -> "N-Dimensional Dataset
-ndd's contain data arrays and axes
-
 """
 
-class ndd_arr:
-    """Parent class for a generic HEDP dataset of any form"""
 
-    def __init__(self, data=None, axes=[], data_label='', log=[] ): # Initialize object
+class ndd_base:
+    def __init__(self):
+        pass
+    
+    def close(self):
+        pass
+    
+    def copy(self):
+        return copy.deepcopy(self)
+    
+    def pack(self, g):
+        pass
+    
+    def unpack(self, g):
+        pass
+
+
+    def readHDF(self, filepath, hdfpath = ''):
+        with h5py.File(filepath, 'r') as f: 
+            g = f.require_group(hdfpath)
+            self.unpack(g)
+            
+            try:
+                self.log.append('Opened HDF file: ' + filepath + ':' + hdfpath + ' as ndd object ' + str(type(self)) ) 
+            except AttributeError:
+                pass
+
+    
+    def saveHDF(self, filepath, hdfpath = ''):
+        try:
+            self.log.append('Saving ndd object ' + str(type(self)) + ' in HDF file: ' + filepath + ':' + hdfpath)
+        except AttributeError:
+            pass
+        
+        with h5py.File(filepath) as f: 
+            g = f.require_group(hdfpath)
+            
+            self.pack(g)
+            
+
+
+class ndd_log(ndd_base):
+    def __init__(self, log=[] ):
+        self.setup(log)
+        
+    def setup(self, log):
+        self.log = log
+        
+    def append(self, message):
+        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + str(message)
+        self.log.append(entry)
+        
+    def getLog(self):
+        return self.log
+    
+    def pack(self, g):
+        
+        if 'log' in g.keys():
+            del(g['log'])
+
+        g['log'] = [s.encode('utf-8') for s in self.log] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+         
+        
+    def unpack(self, g):
+        self.log = g['log'][:]
+         
+        
+
+        
+        
+        
+class ndd_attrs (ndd_base):
+    def __init__(self, attrs={}, log=None ):
+        self.setup(attrs)
+        
+        # Log is an optional argument
+        # if a log object is used, that will be associated with this object
+        # if a list is used, that will be used to create a log object inside this object
+        # if nothing is given, no log will be added.
+        if isinstance(log, ndd_log):
+            self.log = log
+        else:
+            self.log = ndd_log(log)
+
+    
+    def setup(self, attrs):
+        self.attrs = attrs
+        
+        
+    def __getattr__(self, key):
+        if key == 'attrs':
+            return self.attrs
+
+
+    def unpack(self, f):
+        self.attrs = {}
+        keys = list(f.attrs)
+        for key in keys:
+            self.attrs[key] = f.attrs[key]
+            
+            
+    def pack(self, f):
+        for key in self.attrs.keys():
+            f.attrs[key] =self.attrs[key]
+
+        
+        
+        
+        
+
+class ndd_arr (ndd_base):
+    def __init__(self, data=None, axes=[], data_label='', log=None): # Initialize object
+        self.setup(data, axes, data_label)
+        
+        # Log is an optional argument
+        # if a log object is used, that will be associated with this object
+        # if a list is used, that will be used to create a log object inside this object
+        # if nothing is given, no log will be added.
+        
+        if isinstance(log, ndd_log):
+            self.log = log
+        else:
+            self.log = ndd_log(log)
+            
+
+        
+        
+    def setup(self, data, axes, data_label):
         self.data = data
         self.axes = axes
-        self.data_label =data_label
-        self.log = log
+        self.data_label = data_label
+        
         
         if self.data is not None:
             #If data doesn't already have units, make it a dimensionless quantity
@@ -43,129 +166,96 @@ class ndd_arr:
                 for i,n in enumerate(self.data.shape):
                     # Fill with a dimensionless unit
                     print('Creating axis')
-                    a = {'name': 'ax' + str(i),   'axis' : np.arange(n)* u.Unit('' )}
+                    a = {'label': 'ax' + str(i),   'axis' : np.arange(n)* u.Unit('' )}
                     self.axes.append(a)
             
             # Do some validation of the construction just in case
             if self.data.ndim != len(self.axes):
-                print("ERROR: Number of axes does not match number of array dimensions! " + str(self.data.ndim) + ' != ' + str(len(self.axes))  )
-                return None
-            
+                raise("ERROR: Number of axes does not match number of array dimensions! " + str(self.data.ndim) + ' != ' + str(len(self.axes))  )
+
             for i, ax in enumerate(self.axes):
                 if len(ax['axis']) != self.data.shape[i]:
-                    print("ERROR: Number of points in axis " + str( ax['name'] ) + ' does not match data shape: ' + str(self.data.shape)  )
-                    return None
-
-    def close(self):
-        pass
-    
-    def copy(self):
-        return copy.deepcopy(self)
+                    raise("ERROR: Number of points in axis " + str( ax['label'] ) + ' does not match data shape: ' + str(self.data.shape)  )
+                    
 
 
-    def readHDF(self, filepath):
-        self.read_filepath = filepath
-        with h5py.File(filepath, 'r') as f:   
-            self.unpack(f)
-        
-    def saveHDF(self, filepath):
-        self.save_filepath = filepath
-        with h5py.File(filepath, 'w') as f:
-            self.pack(f)
 
 
     def unpack(self, f):
-        self.appendLog('Opened HDF file as NDF object: ' + self.read_filepath)
+        
 
         self.data =  f['data'][:] *  u.Unit( f['data'].attrs['unit'], parse_strict = 'warn' )
         self.data_label = f['data'].attrs['label']
 
 
-        self.dimlabels =  []
-        self.dimunits =  []
         self.axes = []
         for i in range(len(dimlabels)):
-            loc = 'ax' + str(i)
-            name = f[ loc ].attrs['name']
-            ax = f[ loc ][:] * u.Unit(f[loc].attrs['unit'], parse_strict = 'warn' )
-            a = {'name':name, 'axis':ax}
+            label = f['ax' + str(i)].attrs['label']
+            unit = u.Unit(f['ax' + str(i)].attrs['unit'], parse_strict = 'warn' )
+            ax = f[ 'ax' + str(i) ][:] * unit 
+            a = {'label':label, 'axis':ax}
             self.axes.append(a)
 
 
         
-    def pack(self, f):
-
-        f['data'] = self.data
-
-
-        f.attrs['dimlabels'] = [ax['name'].encode('utf-8') for ax in self.axes] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
+    def pack(self, g):
         
-        f.attrs['data_label'] = self.data_label
-        f.attrs['data_unit'] = str(self.data.unit)
+        for key in g.keys():
+            print(key)
+            del(g[key])
 
-        
-        dimunits = []
+        g['data'] = self.data
+        g['data'].attrs['label'] = self.data_label
+        g['data'].attrs['unit'] = str(self.data.unit)
+    
         for i, ax in enumerate(self.axes):
-            f['ax' + str(i)] = ax['axis'].value
-            dimunits.append( str( ax['axis'].unit ) )
+            name = 'ax' + str(i)
+            g[name] = ax['axis'].value
+            g[name].attrs['label'] = ax['label']
+            g[name].attrs['unit'] = str( ax['axis'].unit )
 
-        f.attrs['dimunits'] = [s.encode('utf-8') for s in dimunits] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        
-        self.appendLog('Saving NDF object as HDF ' + self.save_filepath)
-        f['log'] = [s.encode('utf-8') for s in self.log] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289
-        
     
-    
-    def getAxis(self, name):
-        name = str(name)
-        l = [ax['axis'] for ax in self.axes if ax['name'].lower().strip() == name.lower().strip()  ]
+    def getAxis(self, label):
+        label = str(label)
+        l = [ax['axis'] for ax in self.axes if ax['label'].lower().strip() == label.lower().strip()  ]
         if len(l) == 0:
-            raise Exception("No axis found with name: " + str(name))
+            raise Exception("No axis found with label: " + str(label))
         elif len(l) > 1:
-            raise Exception("Multiple axes found with name: " + str(name))
+            raise Exception("Multiple axes found with label: " + str(label))
         else:
             return l[0]
     
-    def getAxisInd(self, name):
-        name = str(name)
-        l = [i for i,ax in enumerate(self.axes) if ax['name'].lower().strip() == name.lower().strip()  ]
+    def getAxisInd(self, label):
+        label = str(label)
+        l = [i for i,ax in enumerate(self.axes) if ax['label'].lower().strip() == label.lower().strip()  ]
         if len(l) == 0:
-            print("No axis found with name: " + str(name))
-            return None
+            raise("No axis found with label: " + str(label))
         elif len(l) > 1:
-            print("Multiple axes found with name: " + str(name))
-            return None
+           raise("Multiple axes found with label: " + str(label))
         else:
             return l[0]
     
     
-    def avgDim(self, name ):
-        ax_ind = self.getAxisInd(name)
+    def avgDim(self, label ):
+        ax_ind = self.getAxisInd(label)
         
-        if ax_ind is None:
-            print("DID NOT AVERAGE DIM: " + str(name))
-            return None
-        
+
         #Average the data
         self.data = np.average(self.data, axis=ax_ind)
         #Remove the axis from the the axes dictionary
         self.axes.pop(ax_ind)
-        
-        self.appendLog('Averaged over ' + name + ' axis')
+     
+        self.log.append('Averaged over ' + label + ' axis')
         
         
 
 
 
-    def collapseDim(self, name, value):
+    def collapseDim(self, label, value):
         # Find the axis index cooresponding to dim, and the axes it cooresponds to
-        ax_ind = self.getAxisInd(name)
-        
-        if ax_ind is None:
-            print("DID NOT COLLAPSE DIM: " + str(name))
-            return None
-        
-        ax = self.getAxis(name)
+        ax_ind = self.getAxisInd(label)
+      
+        ax = self.getAxis(label)
 
         #If value isn't already an astropy quantity, assume it has the same units as the axis.
         if not isinstance(value, u.Quantity ):
@@ -180,24 +270,20 @@ class ndd_arr:
         self.axes.pop(ax_ind)
 
         
-        self.appendLog('Collapsed ' + name + ' axis to ' + name +  ' = ' + str(ax[ind]))
+        self.log.append('Collapsed ' + label + ' axis to ' + label +  ' = ' + str(ax[ind]))
         
         
         
         
         
-    def thinDim(self, name, bin=10):
+    def thinDim(self, label, bin=10):
         
         bin = int(bin)
         
         # Get the index that goes with this name
-        ax_ind = self.getAxisInd(name)
+        ax_ind = self.getAxisInd(label)
+        ax = self.getAxis(label)
         
-        if ax_ind is None:
-            print("DID NOT THIN DIM: " + str(name))
-            return None
-
-        ax = self.getAxis(name)
         # Get the current shape vector
         shape = list( self.data.shape )
         # Calculate the new length of dim for the given bin
@@ -235,30 +321,23 @@ class ndd_arr:
         
         
 
-    def convertAxisUnit(self, name, unit):
+    def convertAxisUnit(self, label, unit):
         if isinstance(unit, str ):
             try:
                 unit = u.Unit( unit )
             except ValueError:
-                print("Reqested axis unit is not recognized by astropy.units: " + str(unit) )
-                return None
+                raise("Reqested axis unit is not recognized by astropy.units: " + str(unit) )
 
         if not isinstance(unit, u.UnitBase):
-            print("Reqested axis unit is not recognized by astropy.units: " + str(unit) )
-            return None
+            raise("Reqested axis unit is not recognized by astropy.units: " + str(unit) )
         
-        ax_ind = self.getAxisInd(name)
-        
-        if ax_ind is None:
-            print("DID NOT CONVERT : " + str(name))
-            return None
-        
-        ax = self.getAxis(name)
+        ax_ind = self.getAxisInd(label)
+        ax = self.getAxis(label)
         
         old_unit = ax.unit    
         self.axes[ax_ind]['axis'] = ax.to(unit)
 
-        self.appendLog('Converted ' + name + ' from ' + str(old_unit) + ' to ' + str( (self.axes[ax_ind]['axis']).unit ) )
+        self.log.append('Converted ' + label + ' from ' + str(old_unit) + ' to ' + str( (self.axes[ax_ind]['axis']).unit ) )
         
         
         
@@ -267,7 +346,7 @@ class ndd_arr:
 
 
     def plot(self, xrange=[None,None], yrange=[None,None], zrange=[None,None]):
-        xname = self.axes[0]['name']
+        xname = self.axes[0]['label']
         xaxes = self.axes[0]['axis']
         
         if len(self.axes) == 1:
@@ -283,7 +362,7 @@ class ndd_arr:
             
         elif len(self.axes) == 2:
             print("Call simple 2D contour plotting routine")
-            yname = self.axes[1]['name']
+            yname = self.axes[1]['label']
             yaxes = self.axes[1]['axis']
             
 
@@ -307,7 +386,7 @@ class ndd_arr:
             
     def __getattr__(self, key):
         key = key.lower().strip()
-        axes_list = [ ax['name'] for ax in self.axes ]
+        axes_list = [ ax['label'] for ax in self.axes ]
         # If the axis is called, give the full astropy quantity object
         if key in axes_list:
             return self.getAxis(key)
@@ -317,125 +396,106 @@ class ndd_arr:
             # Return the mean gradient as the step size
             return np.mean(  np.gradient( self.getAxis(k) ) )
        
-        # Do some the same things for the dataset
-        if key == 'data.unit':
-            return self.data.unit
-        elif key == 'data.value':
-            return self.data.value
+
         
         #If you get this far, the key must be invalid
         print("Invalid Key: " + str(key))
         raise AttributeError
     
-    
-    #**************
-    #HELPER METHODS
-    #**************
-    def appendLog(self, message):
-        entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + str(message)
-        self.log.append(entry)
+
         
         
-        
-        
-        
-class ndd(ndd_arr):
+class ndd(ndd_base):
     """
     ndd is an ndd_arr that has an attached dictionary of attributes
     """
     def __init__(self, data=None, axes=[], data_label='', log=[], attrs={} ): # Initialize object
-        ndd_arr.__init__(self, data=None, axes=[], data_label='', log=[])
-        self.attrs = {}
-        
-        
+        self.log = ndd_log( log)
+        self.attrs = ndd_attrs( attrs, log=self.log)
+        self.arr = ndd_arr(data, axes, data_label, log=self.log)
+
     def unpack(self, f):
-        ndd_arr.unpack(self, f)
+        self.log.unpack(f) #First so all messages get recorded
+        self.attrs.unpack(f)
+        self.arr.unpack(f)
+        pass
         
-         #Make a list of all of the attributes in the HDF, so we can perpetuate them
-        self.attrs = {}
-        keys = list(f.attrs)
-        for key in keys:
-            self.attrs[key] = f.attrs[key]
-    
+        
+         
     def pack(self, f):
-        ndd_arr.pack(self, f)
-        
-        # Add the original list of all attributes back to the dataset
-        for key in self.attrs.keys():
-            f.attrs[key] =self.attrs[key]
-        
-        
-    def readHDF(self, filepath):
-        ndd_arr.readHDF(self, filepath)
-        
-    def saveHDF(self, filepath):
-        ndd_arr.saveHDF(self, filepath)
-        
+        self.attrs.pack(f)
+        self.arr.pack(f)
+        self.log.pack(f) #Last so all messages get recorded
+        pass
+
+  
+    
+    def __getattr__(self, key):
+        axes_list = [ ax['label'] for ax in self.arr.axes ]
+        if key == "data":
+            return self.arr.data
+        elif key in axes_list:
+            return self.arr.getAxis(key)
+        elif key in [ 'd' + s for s in axes_list] :
+            # Strip off the 'd' to get the axis name
+            k = key.replace('d', '')
+            # Return the mean gradient as the step size
+            return np.mean(  np.gradient( self.arr.getAxis(k) ) )
+ 
         
 
         
-        
 if __name__ == "__main__":
-    sname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/testsave.h5"
+    sname = r"/Users/peter/Desktop/tempdata/testsave2.h5"
     #sname = r"C:\Users\Peter\Desktop\TempData\testsave.h5"
 
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_full.h5"
-    fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run56_LAPD1_pos_raw.h5"
+    fname = r"/Users/peter/Desktop/tempdata/run56_LAPD1_pos_raw.h5"
     #fname = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_full.h5"
     
     #fname = r"C:\Users\Peter\Desktop\TempData\run56_LAPD1_pos_raw.h5"
     #fname = r"C:\Users\Peter\Desktop\TempData\run102_PL11B_pos_raw.h5"
     
-    
-    
-    z = np.zeros([10,20])
-    a = [{'name':'first', 'axis': np.arange(10)*u.m},
-          {'name':'sec', 'axis': np.arange(20)*u.mm} ]
+
+
+    z = np.ones([10,20])*u.V
+    a = [{'label':'x', 'axis': np.arange(10)*u.m},
+          {'label':'y', 'axis': np.arange(20)*u.mm} ]
    
     attrs = {'one': 1, 'two' : [1,2,3] }
+    a2 = {'another': 1}
+
+    obj = ndd(data=z, axes=a, attrs=attrs)
+    obj.log.append("message1")
+    obj.saveHDF(sname, '/run56/LAPD1/')
     
-    obj = ndd(data=z, axes=a, attrs = attrs)
+    
+    obj = ndd(data=z*2, axes=a, attrs=attrs)
+    obj.log.append("message2")
+    obj.saveHDF(sname, '/run56/LAPD10/')
+    
+    
+    
+    obj = ndd(data=z*3, axes=a, attrs=attrs)
+    obj.log.append("Overwriting with 3's")
+    obj.arr.avgDim('x')
+    obj.saveHDF(sname, '/run56/LAPD1/')
+    
+    
+    
+    
+    obj = ndd_attrs(attrs = {'test add to atters':1})
+    obj.saveHDF(sname, '/run56/LAPD1/')
+    
+    obj = ndd_attrs(a2)
+    obj.saveHDF(sname, '/run56/')
+    
+    
+    
+    
+    
+    
+    
     
 
-    #obj.readHDF(fname)
-    #obj.plot()
-    #obj.data = obj.data*0 + 20 #Put in some fake data to test that it changes
-    
-    #print(obj.getAxis('reps'))
-    
-    #obj.thinDim('t', bin=20)
-    
-    #obj2 = obj.copy()
-    
-    #print(np.shape(obj.data))
-    #obj.avgDim('Reps')
-    #print(np.shape(obj.data))
-
-
-    #print(obj.dtime.to(u.ns))
-    
-    #print(dir(obj))
-    #print( obj.getAxis('time') )
-    
-    #print(np.shape(obj.data))
-    #obj.collapseDim('x', 5*u.cm)
-    
-    #print(np.shape(obj.data))
-    #obj.collapseDim('channels', 2)
-    #print(np.shape(obj.data))
-    
-    #print(obj.x.unit)
-    #obj.convertAxisUnit('x', u.mm)
-    #print(obj.dtime)
-    
-    #print(np.shape(obj.data))
-    
-    
-    #obj.plot(xrange=[0,20 ])
-    #obj.plot( xrange = [0, 40*u.us])
-    
-    #obj.saveHDF(sname)
-
-
-   # obj.close()
     

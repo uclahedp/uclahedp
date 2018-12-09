@@ -440,6 +440,11 @@ class ndd(ndd_base):
             k = key.replace('d', '')
             # Return the mean gradient as the step size
             return np.mean(  np.gradient( self.arr.getAxis(k) ) )
+        elif key == "ax_labels":
+            return [ax['label'] for ax in self.arr.axes]
+        elif key == "attr_keys":
+            return [k for k in self.attrs.attrs.keys()]
+
         
     
     # Allow some ndd_arr methods to be directly callable on the ndd object
@@ -479,31 +484,35 @@ if __name__ == "__main__":
     obj = ndd(data=z, axes=a, attrs=attrs)
     obj.log.append("message1")
     obj.saveHDF(sname, '/run56/LAPD1/')
+    obj.close()
     
     
     obj = ndd(data=z*2, axes=a, attrs=attrs)
     obj.log.append("message2")
     obj.saveHDF(sname, '/run56/LAPD10/')
-    
+    obj.close()
     
     
     obj = ndd(data=z*3, axes=a, attrs=attrs)
     obj.log.append("Overwriting with 3's")
     obj.avgDim('x')
     obj.saveHDF(sname, '/run56/LAPD1/')
-    
+    obj.close()
     
     
     
     obj = ndd_attrs(attrs = {'test add to atters':1})
     obj.saveHDF(sname, '/run56/LAPD1/')
+    obj.close()
     
     obj = ndd_attrs(a2)
     obj.saveHDF(sname, '/run56/')
+    obj.close()
     
     obj = ndd()
     obj.readHDF(sname,  '/run56/LAPD1/' )
-    print(obj.y)
+    print(obj.attr_keys)
+    obj.close()
     
     
     

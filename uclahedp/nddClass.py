@@ -181,18 +181,18 @@ class ndd_arr (ndd_base):
 
 
 
-    def unpack(self, f):
+    def unpack(self, g):
         
 
-        self.data =  f['data'][:] *  u.Unit( f['data'].attrs['unit'], parse_strict = 'warn' )
-        self.data_label = f['data'].attrs['label']
-
+        self.data =  g['data'][:] *  u.Unit( g['data'].attrs['unit'], parse_strict = 'warn' )
+        self.data_label = g['data'].attrs['label']
 
         self.axes = []
-        for i in range(len(dimlabels)):
-            label = f['ax' + str(i)].attrs['label']
-            unit = u.Unit(f['ax' + str(i)].attrs['unit'], parse_strict = 'warn' )
-            ax = f[ 'ax' + str(i) ][:] * unit 
+        for i in range(self.data.ndim):
+            name = 'ax' + str(i)
+            label = g[name].attrs['label']
+            unit = u.Unit(g[name].attrs['unit'], parse_strict = 'warn' )
+            ax = g[ name ][:] * unit 
             a = {'label':label, 'axis':ax}
             self.axes.append(a)
 
@@ -430,8 +430,6 @@ class ndd(ndd_base):
   
     
     def __getattr__(self, key):
-        for a in args:
-            print(a)
         axes_list = [ ax['label'] for ax in self.arr.axes ]
         if key == "data":
             return self.arr.data
@@ -502,6 +500,10 @@ if __name__ == "__main__":
     
     obj = ndd_attrs(a2)
     obj.saveHDF(sname, '/run56/')
+    
+    obj = ndd()
+    obj.readHDF(sname,  '/run56/LAPD1/' )
+    print(obj.y)
     
     
     

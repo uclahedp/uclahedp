@@ -11,7 +11,7 @@ and creates an ndfFile object containing the data.
 
 import numpy as np
 from astropy import units as u
-from uclahedp.sdfarrClass import sdfarr
+from uclahedp.sdfClass import sdfarr
 import uclahedp.hedpConstants as c
 import uclahedp.csvtools as csvtools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
@@ -95,7 +95,7 @@ def bapsfReadHDF(filepath=None, channel_arr = None, controls = None, gridded = T
     
     # Always include a time axis in the beginning
     if nti > 1:
-        axes.append( {'name':'t', 'axis':t} )
+        axes.append( {'label':'t', 'axis':t} )
     
     
     #Deal with motional gridded datasets
@@ -103,13 +103,13 @@ def bapsfReadHDF(filepath=None, channel_arr = None, controls = None, gridded = T
         output = np.zeros([nti, nx, ny, nz, nreps, nchan])
 
         if nx > 1:
-            axes.append( {'name':'x', 'axis':xaxis} )
+            axes.append( {'label':'x', 'axis':xaxis} )
         if ny > 1:
-            axes.append( {'name':'y', 'axis':yaxis} )
+            axes.append( {'label':'y', 'axis':yaxis} )
         if nz > 1:
-            axes.append( {'name':'z', 'axis':zaxis} )
+            axes.append( {'label':'z', 'axis':zaxis} )
         if nreps > 1:
-            axes.append( {'name':'reps', 'axis':rep_axis} )
+            axes.append( {'label':'reps', 'axis':rep_axis} )
 
     #Deal with motional non-gridded datasets
     #Deal with non-motional datasets (those with no motion device set  
@@ -117,14 +117,14 @@ def bapsfReadHDF(filepath=None, channel_arr = None, controls = None, gridded = T
     else: 
         output = np.zeros([nti, nshots, nchan])
         if nshots > 1:
-            axes.append( {'name':'shots', 'axis':shots_axis} )
+            axes.append( {'label':'shots', 'axis':shots_axis} )
       
         
         
         
     #Always include a channel axis at the end if there is more than one   
     if nchan > 1:
-            axes.append( {'name':'channels', 'axis':chan_axis} )
+            axes.append( {'label':'channels', 'axis':chan_axis} )
             
             
     # Create an output data array with the proper form

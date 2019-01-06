@@ -1,9 +1,13 @@
 #Example analyisis 
 
+import numpy as np
+import astropy.units as u
 from uclahedp.sdfClass import sdfarr, sdfattrs
 
 sname = r"C:\Users\Peter\Desktop\testsave.h5"
 groupname = '/testrun/testprobe/'
+
+groupname = '/'
     
 z = np.ones([10,100,200,3])*u.V
 

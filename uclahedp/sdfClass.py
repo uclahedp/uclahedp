@@ -27,7 +27,7 @@ class sdfarr:
         """Return a deep copy of this sdfarr object"""
         return copy.deepcopy(self)
     
-    def readHDF(self, filepath, hdfpath = ''):
+    def readHDF(self, filepath, hdfpath = '/'):
         """Read an sdfarr object from a location an an HDF file"""
         with h5py.File(filepath, 'r') as f: 
             g = f.require_group(hdfpath)
@@ -38,7 +38,7 @@ class sdfarr:
                 pass
 
     
-    def saveHDF(self, filepath, hdfpath = ''):
+    def saveHDF(self, filepath, hdfpath = '/'):
         """Write an sdfarr object to an HDF file"""
         try:
             self.appendLog('Saving sdfarr in HDF file: ' + filepath + ':' + hdfpath)
@@ -103,6 +103,7 @@ class sdfarr:
         g['data'] = self.data
         g['data'].attrs['label'] = self.data_label
         g['data'].attrs['unit'] = str(self.data.unit)
+        
     
         for i, ax in enumerate(self.axes):
             name = 'ax' + str(i)
@@ -127,6 +128,8 @@ class sdfarr:
             k = key.replace('d', '')
             # Return the mean gradient as the step size
             return np.mean(  np.gradient( self.getAxis(k) ) )
+        elif key == 'labels':
+            return [ax['label'] for ax in self.axes ]
 
         #If you get this far, the key must be invalid
         print("Invalid Key: " + str(key))

@@ -12,7 +12,7 @@ version = '1.0.0'
 #All filepaths and directories are given from a base directory
 raw_dir = '/RAW/'
 hdf_dir = '/HDF/'
-metadata_dir = '/METADATA/CSV/'
+metadata_dir = '/METADATA/'
 
 tdiode_dir = '/TDIODE/'
 bdot_dir = '/BDOT/'

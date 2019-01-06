@@ -11,10 +11,9 @@ and creates an ndfFile object containing the data.
 
 import numpy as np
 from astropy import units as u
-#
-from ndfClass import ndf
-import hedpConstants as c
-import csvtools
+from uclahedp.sdfarrClass import sdfarr
+import uclahedp.hedpConstants as c
+import uclahedp.csvtools as csvtools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
 from bapsflib._hdf import HDFMap
@@ -143,7 +142,7 @@ def bapsfReadHDF(filepath=None, channel_arr = None, controls = None, gridded = T
    
     
     #TODO add the pos array to the ndf object as an option and save as that type here
-    obj = ndf(data=output, axes=axes, data_label = data_label)
+    obj = sdfarr(data=output, axes=axes, data_label = data_label)
     obj.appendLog('Created by bapsftools.bapsfReadHDF from HDF file: ' + filepath)
     
     return obj

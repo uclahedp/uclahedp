@@ -214,17 +214,10 @@ class ndd_arr (ndd_base):
             g[name].attrs['unit'] = str( ax['axis'].unit )
 
     
-    def getAxis(self, label):
-        label = str(label)
-        l = [ax['axis'] for ax in self.axes if ax['label'].lower().strip() == label.lower().strip()  ]
-        if len(l) == 0:
-            raise Exception("No axis found with label: " + str(label))
-        elif len(l) > 1:
-            raise Exception("Multiple axes found with label: " + str(label))
-        else:
-            return l[0]
+
     
     def getAxisInd(self, label):
+        """Return the index of the axis cooresponding to the given axis label"""
         label = str(label)
         l = [i for i,ax in enumerate(self.axes) if ax['label'].lower().strip() == label.lower().strip()  ]
         if len(l) == 0:
@@ -233,6 +226,10 @@ class ndd_arr (ndd_base):
            raise("Multiple axes found with label: " + str(label))
         else:
             return l[0]
+        
+     def getAxis(self, label):
+        """ Return the axis array cooresponding to a particular axis label """ 
+        return self.axes[self.getAxisInd(label)]
     
     
     def avgDim(self, label ):

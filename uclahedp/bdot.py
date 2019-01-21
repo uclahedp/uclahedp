@@ -7,6 +7,13 @@ Created on Wed Nov 28 13:37:21 2018
 
 @author: peter
 """
+
+# TODO 
+# Program should check for four numbers in the spreadsheet: x, y, z, roll
+# numbers from the spreadsheet should take priority. Otherwise, use values from hdf5
+# Also allow a keyword argument to the function for each of these to allow setting manually
+
+
 import csvtools
 import numpy as np
 import os

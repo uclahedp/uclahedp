@@ -65,7 +65,9 @@ def opencsv(fname):
         next(reader) #Skip the human-readable titles line
         for row in reader:
             for key in keys:
-                csvdict[key].append( (row[key], unitdict[key] )    )  
+                #Don't include lines with no header key
+                if key != '':
+                    csvdict[key].append( (row[key], unitdict[key] )    )  
         #csvdict['units'] = unitdict
     return dict(csvdict)
 
@@ -107,7 +109,6 @@ def getAttrs(csvdict, run=None, probe=None):
     attrs = {}
     for key in csvdict.keys():
         attrs[key] = findValue(csvdict, key, run=run, probe=probe)
-    
     return attrs
 
 
@@ -213,8 +214,7 @@ def findValue(csvdict, key, run=None, probe=None):
         return None
     if probe and not keyExists(csvdict, 'probe'):
         return None
-    
- 
+
     if run is None and probe is None:
          arr = [v for v in csvdict[key]]
     elif run is not None and probe is None:
@@ -324,7 +324,7 @@ def getRunLevelAttrs(csv_dir, run):
      attrs = {}
      for csv_file in csvs:
         print(csv_file)
-        csv_attrs = getAttrs( opencsv(csv_file ) )
+        csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=None )
         for key in csv_attrs.keys():
             attrs[key] = csv_attrs[key]
      return attrs
@@ -349,9 +349,9 @@ def getProbeLevelAttrs(csv_dir, run, probe):
     """
      csvs = findCSV(csv_dir, run=None, probe=probe) + findCSV(csv_dir, run=run, probe=probe)
      attrs = {}
+
      for csv_file in csvs:
-         print(csv_file)
-         csv_attrs = getAttrs( opencsv(csv_file ) )
+         csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=probe)
          for key in csv_attrs.keys():
              attrs[key] = csv_attrs[key]
      return attrs 
@@ -364,9 +364,10 @@ if __name__ == "__main__":
     csv_dir = r"F:/LAPD_Mar2018/METADATA/"
 
     csvdict = opencsv(fname)
-    #v = findValue( csvdict, 'port_num', run=50, probe='LAPD1'  )
+    
+    #print( findValue( csvdict, 'probe', run=102, probe='PL11B'  ) )
     #v = keyExists(csvdict, 'probe_origin_zz' )
-    #print(getAttrs( csvdict,  run=50, probe='lapd1'  ))
+    #print(getAttrs( csvdict,  run=102, probe='PL11B'  ))
     
     #print(rowExists(csvdict, run=50, probe = "LAPD1")  )
 
@@ -374,6 +375,6 @@ if __name__ == "__main__":
     #print( findCSV(csv_dir, run=None, probe=None) )
     
     
-    print( getRunLevelAttrs(csv_dir, 10))
-    print( getProbeLevelAttrs(csv_dir, 4, 'Lang02'))
+    print( getRunLevelAttrs(csv_dir, 102))
+    #print( getProbeLevelAttrs(csv_dir,102, 'PL11B'))
     

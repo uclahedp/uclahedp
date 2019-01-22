@@ -131,89 +131,63 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
     
 
 
-def readRunProbe( run, probe, exp_dir):
+def readRunProbe( run, probe, exp_dir, dest):
 
     csv_dir = os.path.join(exp_dir, c.metadata_dir)
 
+    run_level_attrs = getRunLevelAttrs(csv_dir, run)
+    probe_level_attrs =  getProbeLevelAttrs(csv_dir, run, probe)
     
-    probe_conts_csvs = csvtools.findCSV(csv_dir, run=None, probe=probe)
-    probe_runs_csvs = csvtools.findCSV(csv_dir, run=run, probe=probe)
-    
-    run_level_csvs = exp_runs_csvs + exp_consts_csvs
-    probe_level_csvs = probe_conts_csvs + probe_runs_csvs
-    
-    
-    
-    run_level_attrs = {}
-    probe_level_attrs ={}
-    
-    attrs = csvtools.getAttrs(csvdict, run=)
-    
-    
-    # Get the information we need from the csv file
-    runs_csv = csvtools.opencsv(runs_csv_file)
-    
-    
-    datafile = csvtools.findValue(runs_csv, 'datafile', run=run, probe=probe)
-    
-    datafile = exp_dir + c.hdf_dir + datafile + '.hdf5'
-    print(datafile)
+    attrs = {**run_level_attrs,  **probe_level_attrs}
 
-    #Check to make sure this probe exists in the file specified
-    if (datafile is None):
-        print("No probe found matching: " + probe + ", run " + str(run) + " in " + runs_csv_file)
-        return None
     
+    req_keys = ['datafile', 'digitizer', 'adc']
+    motion_keys = ['motion_controller', 'motion_receptacle']
     
-    digitizer = csvtools.findValue(runs_csv, 'digitizer', run=run, probe=probe)
-    adc = csvtools.findValue(runs_csv, 'adc', run=run, probe=probe)
-    nchan = csvtools.findValue(runs_csv, 'nchan', run=run, probe=probe)
-    
-    if (digitizer is None) or (adc is None):
-        print("Digitizer or ADC field(s) are missing: " + probe + ", run " + str(run) + " in " + runs_csv_file)
-        return None
-    
-    if (nchan is None):
-        print("nchan not found in csv file: assuming nchan = 1")
-        nchan = 1
+    missing_keys = []
+    for k in req_keys:
+        if not k in attrs.keys():
+            missing_keys.append(k)
+    if len(missing_keys) > 0:
+        raise ValueError("Missing columns in csv files! The following keys were not found, and are required: " + str(missing_keys))
         
-
-    motion_controller = csvtools.findValue(runs_csv, 'motion_controller', run=run, probe=probe)
-    motion_receptacle = csvtools.findValue(runs_csv, 'motion_receptacle', run=run, probe=probe)
-    gridded = csvtools.findValue(runs_csv, 'gridded', run=run, probe=probe)
-   
-    gridded = bool(gridded)
         
-    
-        
-    if motion_controller is not None:
-        motion = True
-        
-        if motion_receptacle is None:
-            print("motion_receptacle not found in csv file: assuming motion_receptacle = 1")
-            motion_receptacle = 1
-            
-        controls = [(motion_controller, motion_receptacle)]
-        
-   
-    
-    else:
+    missing_keys = []
+    for k in motion_keys:
+        if not k in attrs.keys():
+            missing_keys.append(k)
+    if len(missing_keys) > 0:
+        print("Some motion keys not found: positon data will not be read out!")
         motion = False
-        controls = None
+    else:
+        motion = True
 
-    
 
+    digitizer = attrs['digitizer'][0]
+    adc = attrs['adc'][0]
     channel_arr = []
-    for i in range(nchan):
-        brd = csvtools.findValue(runs_csv, "brd" + str(i+1), run=run, probe=probe)
-        chan = csvtools.findValue(runs_csv, "chan" + str(i+1), run=run, probe=probe)
-        tp = (digitizer, adc, brd, chan)
-        channel_arr.append(tp)
+    nchan = 1
+    while True:
+        brdstr = 'brd' + str(int(nchan))
+        chanstr = 'chan' + str(int(nchan))
+        if brdstr in attrs.keys() and chanstr in attrs.keys():
+            channel_arr.append( (digitizer, adc, attrs[brdstr][0], attrs[chanstr][0]) )
+            nchan = nchan + 1
+        else:
+            break
+
+        
+    if motion:
+        motion_controller = attrs['motion_controller'][0]
+        motion_receptacle = attrs['motion_receptacle'][0]
+        controls = [(motion_controller, motion_receptacle)]
     
+    print(channel_arr)
+    print(controls)
+    
+    datafile = attrs['datafile'][0]
 
-    #TODO add the other fields here...
-
-    obj = bapsfReadHDF(filepath=datafile, channel_arr = channel_arr, controls = controls, gridded = gridded )
+    obj = bapsfReadHDF(src=datafile, dest = dest, channel_arr = channel_arr, controls = controls)
 
     return obj
 
@@ -231,6 +205,6 @@ if __name__ == "__main__":
     dest = r"/F:/LAPD_Mar2018/RAW/test_save.hdf5"
 
     print('reading')
-    x =  readRunProbe(102, 'PL11B', exp_dir)
+    x =  readRunProbe(102, 'PL11B', exp_dir, dest)
 
     print('done')

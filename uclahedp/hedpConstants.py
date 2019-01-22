@@ -10,14 +10,13 @@ from os.path import join
 version = '1.0.0'
 #FILE PATHS
 #All filepaths and directories are given from a base directory
-raw_dir = '/RAW/'
-hdf_dir = '/HDF/'
-metadata_dir = '/METADATA/'
+raw_dir = 'RAW'
+hdf_dir = 'HDF'
+metadata_dir = 'METADATA'
 
-tdiode_dir = '/TDIODE/'
-bdot_dir = '/BDOT/'
-langmuir_dir = '/LANGMUIR/'
-interferometer_dir = '/INTERFEROMETER/'
+tdiode_dir = 'TDIODE'
+bdot_dir = 'BDOT'
+langmuir_dir = 'LANGMUIR'
+interferometer_dir = 'INTERFEROMETER'
 
-not_applicable_codes = ['NA']
-not_recorded_codes = ['', 'NR']
+

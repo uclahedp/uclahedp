@@ -12,10 +12,8 @@ and creates an ndfFile object containing the data.
 import numpy as np
 from astropy import units as u
 
-import os
-
-import hedpConstants as c
-import csvtools as csvtools
+import uclahedp.hedpConstants as c
+import uclahedp.csvtools as csvtools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
 from bapsflib._hdf import HDFMap
@@ -29,13 +27,13 @@ from bapsflib._hdf import HDFMap
 # eg. controls = [('6K Compumotor', receptacle)]
 # note that 'receptacle' here is the receptacle NUMBER, 1 - indexed!)
 # if no control is specified, the measurement is assumed to be stationary
-def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
+def bapsfReadHDF(filepath=None, channel_arr = None, controls = None ):
     
     motion = not controls == None
     nchan = len(channel_arr)
     print('motion = ' + str(motion))
 
-    f = lapd.File(src, silent=True)
+    f = lapd.File(filepath, silent=True)
     
     arr = [] # Array for temporarily storing the read data
     for i in range(nchan):
@@ -58,9 +56,28 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
             dt =  (  1.0 / clock_rate  ).to(u.s)
             t = np.arange(nti)*dt
             chan_axis = np.arange(nchan)*u.Unit('')
-            shots_axis = np.arange(nshots)*u.Unit('')
             
+            #Deal with motional gridded datasets
+            if motion:
+                pos = np.around( data['xyz'], decimals = 2)* u.cm
+                if gridded: 
+                    # Get the sorted list of unique points in each direction as the axes
+                    # round these to .1 mm (2 decimal places) to reflect precision of LAPD drives
+                    xaxis = np.unique(  pos[:,0]  )
+                    yaxis = np.unique( pos[:,1]  ) 
+                    zaxis = np.unique( pos[:,2] ) 
+                    nx = len(xaxis)
+                    ny = len(yaxis)
+                    nz = len(zaxis)
+                    npos = nx*ny*nz
+                    nreps = int( nshots/npos )
+                    rep_axis = np.arange(nreps)*u.Unit('')
+                else:
+                    shots_axis = np.arange(nshots)*u.Unit('')
+            else:
+                shots_axis = np.arange(nshots)*u.Unit('')
 
+                
          # Reshape the array according to the axes read in
         if motion and gridded:
             signal = np.reshape(signal, (nti, nx, ny, nz, nreps))
@@ -131,25 +148,7 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
     
 
 
-def readRunProbe( run, probe, exp_dir):
-
-    csv_dir = os.path.join(exp_dir, c.metadata_dir)
-
-    
-    probe_conts_csvs = csvtools.findCSV(csv_dir, run=None, probe=probe)
-    probe_runs_csvs = csvtools.findCSV(csv_dir, run=run, probe=probe)
-    
-    run_level_csvs = exp_runs_csvs + exp_consts_csvs
-    probe_level_csvs = probe_conts_csvs + probe_runs_csvs
-    
-    
-    
-    run_level_attrs = {}
-    probe_level_attrs ={}
-    
-    attrs = csvtools.getAttrs(csvdict, run=)
-    
-    
+def readRunProbe(run, probe, exp_dir, runs_csv_file):
     # Get the information we need from the csv file
     runs_csv = csvtools.opencsv(runs_csv_file)
     
@@ -221,16 +220,17 @@ def readRunProbe( run, probe, exp_dir):
     
     
 if __name__ == "__main__":
+
+    exp_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/'
+    sfile = r"/Volumes/PVH_DATA/LAPD_Mar2018/raw/test_lapd_to_raw.h5"
     
-    exp_dir = os.path.join("F:", "/LAPD_Mar2018/")
-
-
-    src  = r"/F:/LAPD_Mar2018/HDF/peening074_apr09.hdf5" #Small file
-    #sfile = r"/F:/LAPD_Mar2018/HDF/peening065_apr06.hdf5" #big file
+    bdot_runs_csv= exp_dir + c.bdot_runs_csv
+    print(bdot_runs_csv)
     
-    dest = r"/F:/LAPD_Mar2018/RAW/test_save.hdf5"
-
     print('reading')
-    x =  readRunProbe(102, 'PL11B', exp_dir)
-
+    obj = readRunProbe(102, 'PL11B',  exp_dir, bdot_runs_csv)
+  
+    print('saving')
+    obj.saveHDF( sfile)
+    
     print('done')

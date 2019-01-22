@@ -9,11 +9,16 @@ Created on Wed Nov 28 13:37:21 2018
 """
 
 import csvtools
+import hdftools
+import util
+
 import numpy as np
 import os
-from shutil import copyfile
 import h5py
-import hdftools
+from scipy.signal import detrend as detrend
+import astropy.units as u
+
+
 
 def bdot_raw_to_full(src, dest, tdiode_hdf=None):
     """ Integrates bdot data, calibrates output using information about the probe.
@@ -45,6 +50,8 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
         kdict = {}
         srcgrp = sf[src.group]
         
+        src_run_grp = srcgrp.parent
+  
         
         #Check for keys always required by this function
         req_keys = ['brd1','brd2','brd3', 'chan1','chan2', 'chan3', 
@@ -52,7 +59,7 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
                     'xatten', 'yatten', 'zatten', 'gain',
                     'xpol', 'ypol', 'zpol', 'roll', 
                     'probe_origin_x', 'probe_origin_y', 'probe_origin_z',
-                    'dt']
+                    'dt', 'nturns']
        
         motion = None
         if  'pos' in srcgrp:
@@ -69,7 +76,6 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             req_keys = req_keys + ['xpos', 'ypos', 'zpos']
             
             
-        print(req_keys)
         #Process the required keys, throwing an error if any cannot be found
         missing_keys = []
         for k in req_keys:
@@ -96,6 +102,16 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
                 pass
             
             destgrp = df.require_group(dest.group)
+            
+            dest_run_grp = destgrp.parent
+            
+            #Copy over attributes
+            for k in src_run_grp.attrs.keys():
+                dest_run_grp.attrs[k] = src_run_grp.attrs[k]
+            for k in srcgrp.attrs.keys():
+                destgrp.attrs[k] = srcgrp.attrs[k]
+            
+            
             destgrp.create_dataset('data', (nshots, nti, nchan))
             
             
@@ -104,27 +120,34 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             if kdict['xatten'][1] == 'dB':
                 print("Converting dB to x")
                 atten = np.power([10,10,10], atten/20.0) # Convert from decibels
-            
-            
-            xarea = (kdict['xarea'][0])*u.Unit(kdict['xarea'][1]).to(u.m ** 2)
-            print(xarea)
-            #area = np.array([kdict['yarea'][0],kdict['zarea'][0]])
-            
-            
-            # Required input units
+           
             # dt -> s
-            # dt is already in s
+            dt = ( kdict['dt'][0]*u.Unit(kdict['dt'][1])).to(u.s).value
+            
             # area : mm^2 -> m^2
-            area = area*1e-6
-            cal = 1.0e4*dt*atten/gain/(nturns*area)
+            xarea = (kdict['xarea'][0]*u.Unit(kdict['xarea'][1])).to(u.m ** 2).value
+            yarea = (kdict['yarea'][0]*u.Unit(kdict['yarea'][1])).to(u.m ** 2).value
+            zarea = (kdict['zarea'][0]*u.Unit(kdict['zarea'][1])).to(u.m ** 2).value
+
+            gain = kdict['gain'][0]
+            nturns = kdict['nturns'][0]
+
+            xcal = 1.0e4*dt*atten[0]/gain/(nturns*xarea)
+            ycal = 1.0e4*dt*atten[1]/gain/(nturns*yarea)
+            zcal = 1.0e4*dt*atten[2]/gain/(nturns*zarea)
+            
+            xpol = kdict['xpol'][0]
+            ypol = kdict['ypol'][0]
+            zpol = kdict['zpol'][0]
             
             #Chunking data processing loop limits memory usage
             for i in range(nshots):
+
+                bx = np.cumsum( detrend(srcgrp['data'][i,:, 0]) )*xcal*xpol
+                by = np.cumsum( detrend(srcgrp['data'][i,:, 1]) )*ycal*ypol
+                bz = np.cumsum( detrend(srcgrp['data'][i,:, 2]) )*zcal*zpol
                 
-                bx = srcgrp['data'][i,:, 0]
-                by = srcgrp['data'][i,:, 1]
-                bz = srcgrp['data'][i,:, 2]
-                
+     
                 if motion == 'fixed_rotation':
                     x,y,z = srcgrp['pos'][i, :]
                     rx, ry, rz = kdict['rot_center_x'][0],kdict['rot_center_y'][0],kdict['rot_center_z'][0]
@@ -150,73 +173,37 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
                     bz =  ((np.cos(yaw)*np.sin(roll)*np.sin(pitch) - np.cos(roll)*np.sin(yaw))*bx + 
                            np.cos(pitch)*np.sin(roll)*by  +
                            (np.cos(roll)*np.cos(yaw) + np.sin(roll)*np.sin(pitch)*np.sin(yaw))*bz)
-    
+                    
 
+                destgrp['data'][i,:, 0] = bx
+                destgrp['data'][i,:, 1] = by 
+                destgrp['data'][i,:, 2] = bz                      
+            
+            
+            #Add the other axes and things we'd like in this file
+            destgrp.copy(srcgrp['pos'], 'pos' )
+            destgrp.copy(srcgrp['shots'], 'shots' )
+            destgrp.copy(srcgrp['time'], 'time' )
+            destgrp.copy(srcgrp['chan'], 'chan' )
+            
+            destgrp['data'].attrs['units'] = 'G'
+            dimlabels = ['shots', 'time', 'chan']
+            destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+            
             
             del(bx,by,bz)
-            
             if motion == 'fixed_rotation':
                 del(x,y,z,rx,ry,rz,roll, pitch, yaw)
-                
-        
-
-
-       
-        pos = f['pos'][:]
-    
-        run = f.attrs['run']
-        probe = f.attrs['probe_name']
-        
-        nti = f.attrs['nti']
-        npos = f.attrs['npos']
-        nreps = f.attrs['nreps']
-        nchan = f.attrs['nchan']
-        
-        drive = f.attrs['drive']
-        dt = f.attrs['dt'] # dt MUST be in s for this algorithm to work...
-
-        
-    
-
-
-    #Integrate the data
-    bx = np.cumsum(data[:, :, :, 0], axis=0)
-    by = np.cumsum(data[:, :, :, 1], axis=0)
-    bz = np.cumsum(data[:, :, :, 2], axis=0)
-    
-    bx = cal[0]*pol[0]*bx
-    by = cal[1]*pol[1]*by
-    bz = cal[2]*pol[2]*bz
-    
-    
 
 
 
-    
-
-
-    #If necessary, come up with a new filename
-    if fullfilepath is None:
-        rawdir = os.path.dirname(rawfilepath) + '/'
-        fullfilepath = rawdir + 'run' + str(run) + '_' + str(probe) + '_full.h5'
-        
-    copyfile(rawfilepath, fullfilepath)
-    
-    #Change the relevant variables in the previous HDF file
-    with h5py.File(fullfilepath, 'a') as f2:
-        f2['data'][...] = data # The [...] is essential for overwriting data, but I don't understand what it does...
-        f2["data"].attrs['unit'] = 'G'
-        f2['pos'][...] = pos
-        f2.attrs['data_type'] = 'full'
-        f2.attrs['chan_labels'] =  [s.encode('utf-8') for s in ['BX', 'BY', 'BZ']] # Note 'utf-8' syntax is a workaround for h5py issue: https://github.com/h5py/h5py/issues/289 
-
-    return fullfilepath
 
 
 if __name__ == "__main__":
     src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save.hdf5"), 'run102/PL11B')
     dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save_full.hdf5"), 'run102/PL11B')
     
-    #rawfilename = r"/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_pos_raw.h5"
+    util.mem()
     full_filepath = bdot_raw_to_full(src, dest)
+    util.mem()
     print('Done')

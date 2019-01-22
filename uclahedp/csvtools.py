@@ -106,6 +106,12 @@ def getAttrs(csvdict, run=None, probe=None):
     -------
         attrs: dict
     """
+    
+    if not keyExists(csvdict, 'run'):
+        run = None
+    if not keyExists(csvdict, 'probe'):
+        probe = None
+    
     attrs = {}
     for key in csvdict.keys():
         attrs[key] = findValue(csvdict, key, run=run, probe=probe)
@@ -161,6 +167,7 @@ def csvType(*args, run=None, probe=None):
     ----------
         csvdict: dict OPTIONAL
             Dictonary object to search
+            
         run: int/None or Boolean
         
         probe: str/None or Boolean
@@ -211,9 +218,15 @@ def findValue(csvdict, key, run=None, probe=None):
     
     #If the csvdict doesn't have the right key, it cannot have the data!
     if run and not keyExists(csvdict, 'run'):
-        return None
+        run = None
     if probe and not keyExists(csvdict, 'probe'):
-        return None
+        probe = None
+    
+    
+    
+    
+    
+    #If the CSV doesn't have one of the fields
 
     if run is None and probe is None:
          arr = [v for v in csvdict[key]]
@@ -366,11 +379,10 @@ def getProbeLevelAttrs(csv_dir, run, probe):
        dict: combined attribute dictionary describing the run and probe
     """
      csvs = findCSV(csv_dir, run=None, probe=probe) + findCSV(csv_dir, run=run, probe=probe)
-     run = (None, run)
+
      attrs = {}
 
      for csv_file in csvs:
-         print(csv_file)
          csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=probe)
          for key in csv_attrs.keys():
              attrs[key] = csv_attrs[key]
@@ -413,4 +425,4 @@ if __name__ == "__main__":
     
     
     #print( getRunLevelAttrs(csv_dir, 107))
-   # print( getProbeLevelAttrs(csv_dir,102, 'PL11B'))
+    print( getProbeLevelAttrs(csv_dir,102, 'PL11B'))

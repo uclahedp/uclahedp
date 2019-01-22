@@ -148,9 +148,9 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
         
         grp['shots'] = shots_axis
-        grp['shots'].attrs['unit'] = str(time.unit)
+        grp['shots'].attrs['unit'] = ''
         grp['time'] = time.value
-        grp['time'].attrs['unit'] = ''
+        grp['time'].attrs['unit'] =  str(time.unit)
         grp['chan'] = chan_axis
         grp['chan'].attrs['unit'] = ''
         

@@ -238,25 +238,28 @@ def findValue(csvdict, key, run=None, probe=None):
     val = arr[0]
     unit = str(arr[1])
         
-    #Determine if data is an int, float, or string, and type it accordingly
-    try: 
-        val = float(val)
-        #IS AN INT
-        if val.is_integer():
-                val= int(val)
-    except ValueError:
-        #IS A STRING
-        if val in nan_codes:
-            val = np.NAN
-        else:
-            val = str(val).strip()
+    
+    val = fixType(val)
     
     return (val, unit)
             
         
         
         
-        
+def fixType(val):
+    #Determine if data is an int, float, or string, and type it accordingly
+    try: 
+        val = float(val)
+        #IS AN INT
+        if val.is_integer():
+            val= int(val)
+    except ValueError:
+        #IS A STRING
+        if val in nan_codes:
+            val = np.NAN
+        else:
+            val = str(val).strip()
+    return val
         
         
         

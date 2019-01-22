@@ -16,9 +16,13 @@ import os
 
 import hedpConstants as c
 import csvtools as csvtools
+import hdftools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
 from bapsflib._hdf import HDFMap
+
+import h5py
+
 
 
 
@@ -29,121 +33,167 @@ from bapsflib._hdf import HDFMap
 # eg. controls = [('6K Compumotor', receptacle)]
 # note that 'receptacle' here is the receptacle NUMBER, 1 - indexed!)
 # if no control is specified, the measurement is assumed to be stationary
+
+import os
+import psutil
+
+def mem():
+    process = psutil.Process(os.getpid())
+    print(str(round(process.memory_info().rss*1e-6,2)) + ' MB') 
+
+
 def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
     
-    motion = not controls == None
-    nchan = len(channel_arr)
-    print('motion = ' + str(motion))
-
-    f = lapd.File(src, silent=True)
     
-    arr = [] # Array for temporarily storing the read data
-    for i in range(nchan):
-        channel = channel_arr[i]
-        data = f.read_data(channel[2], channel[3],
-                           digitizer =channel[0], adc = channel[1],
-                           add_controls=controls, 
-                           silent=True, )
-        
-        
-        signal = data['signal'].T
-        
-        # Only need to do this for one channel, since we assume
-        # that all channels coorespond to a single physical probe
-        if i == 0:
-            shotnum = data['shotnum']
-            nshots = len(shotnum)
-            nti = signal.shape[0]
-            clock_rate = data.info['clock rate'].to(u.Hz)
-            dt =  (  1.0 / clock_rate  ).to(u.s)
-            t = np.arange(nti)*dt
-            chan_axis = np.arange(nchan)*u.Unit('')
-            shots_axis = np.arange(nshots)*u.Unit('')
-            
 
-         # Reshape the array according to the axes read in
-        if motion and gridded:
-            signal = np.reshape(signal, (nti, nx, ny, nz, nreps))
-        else:
-            signal = np.reshape(signal, (nti, nshots))
-                
+
+
+    if controls is not None:
+        motion = True
+        motion_attrs = {}
+        
+        if controls[0][0] == '6K Compumotor':
+             with h5py.File(src, "r") as sf:
+                motion_group = sf['Raw data + config/6K Compumotor']
+                groups = [item[1] for item in motion_group.items() if isinstance(item[1], h5py.Group) ]
+                datasets = [item[1] for item in motion_group.items() if isinstance(item[1], h5py.Dataset) ]
+
+                #Find the probe probe group for this receptacle
+                for item in groups:
+                    if  'Receptacle' in item.attrs.keys():
+                        if item.attrs['Receptacle'] == controls[0][1]:
+                            print("Found probe group: " + item.name)
+                            probe_group = item
+                            
+                motion_table_name = 'XY[' + str(int(controls[0][1])) + ']: ' + probe_group['Probe']
+                print(motion_table_name)
+                motion_list = motion_group[motion_table_name]['Motion list'][0]
+                print(motion_list)
+                if motion_list != '':
+                    print('gotcha!')
+
+        
+        elif controls[0][0] == 'NI_XZ':
+            controls = None
+            with h5py.File(src, "r") as sf:
+                motion_group = sf['Raw data + config/NI_XZ']
+                for item in motion_group.items():
+                    #Find the group, which will be the motion group
+                    if isinstance(item[1], h5py.Group):
+                        config_name = str(item[0])
+                        #print('Motion configuration: ' +  config_name)
+                        for k in motion_group.attrs.keys():
+                            motion_attrs[k] = motion_group.attrs[k]
+                        for k in motion_group[config_name].attrs.keys():
+                            motion_attrs[k] = motion_group[config_name].attrs[k]
+                runtimelist = sf['Raw data + config/NI_XZ/Run time list']
+                xpos =   runtimelist['x']
+                zpos =   runtimelist['z']
+                nshots = len(xpos)
+                ypos = np.zeros([nshots])
+                pos = np.zeros([nshots, 3])
+                pos[:,0] = xpos
+                pos[:,1] = ypos
+                pos[:,2] = zpos
+
+        elif controls[0][0] == 'NI_XYZ':
+            controls = None
+            with h5py.File(src, "r") as sf:
+                motion_group = sf['Raw data + config/NI_XYZ']
+                for item in motion_group.items():
+                    #Find the group, which will be the motion group
+                    if isinstance(item[1], h5py.Group):
+                        config_name = str(item[0])
+                        #print('Motion configuration: ' +  config_name)
+                        for k in motion_group.attrs.keys():
+                            motion_attrs[k] = motion_group.attrs[k]
+                        for k in motion_group[config_name].attrs.keys():
+                            motion_attrs[k] = motion_group[config_name].attrs[k]
+                runtimelist = sf['Raw data + config/NI_XYZ/Run time list']
+                xpos =   runtimelist['x']
+                ypos = runtimelist['y']
+                zpos =   runtimelist['z']
+                nshots = len(xpos)
+                pos = np.zeros([nshots, 3])
+                pos[:,0] = xpos
+                pos[:,1] = ypos
+                pos[:,2] = zpos
+
+
+
+    sf = lapd.File(src, silent=True)
+    
+
+    with h5py.File(dest.file, "a") as df:
+        grp = df.require_group(dest.group)
+        
+         #If motor drive is not included in the LAPD package, process it separately.
        
-        # Temporarily store the array
-        arr.append(signal)
-        
-    
-    axes = []
-    
-    # Always include a time axis in the beginning
-    if nti > 1:
-        axes.append( {'label':'t', 'axis':t} )
-    
-    
-    #Deal with motional gridded datasets
-    if motion and gridded:
-        output = np.zeros([nti, nx, ny, nz, nreps, nchan])
+        nchan = len(channel_arr)
+        for i in range(nchan):
+            channel = channel_arr[i]
+            data = sf.read_data(channel[2], channel[3], digitizer =channel[0],
+                                adc = channel[1], add_controls=controls, 
+                                silent=True)
+            mem()
+            # Only need to do this for one channel, since we assume
+            # that all channels coorespond to a single physical probe
+            if i == 0:
+                shp = data['signal'].shape
+                nshots= shp[0]
+                nti = shp[1]
+                grp.create_dataset("data", (nshots, nti, nchan) )
+                
+                clock_rate = data.info['clock rate'].to(u.Hz)
+                dt =  (  1.0 / clock_rate  ).to(u.s)
+                time = np.arange(nti)*dt
+                chan_axis = np.arange(nchan)
+                shots_axis = np.arange(nshots)
+                
+                if controls is not None:
+                    if controls[0][0] == '6K Compumotor':
+                        pos =  data['xyz']
 
-        if nx > 1:
-            axes.append( {'label':'x', 'axis':xaxis} )
-        if ny > 1:
-            axes.append( {'label':'y', 'axis':yaxis} )
-        if nz > 1:
-            axes.append( {'label':'z', 'axis':zaxis} )
-        if nreps > 1:
-            axes.append( {'label':'reps', 'axis':rep_axis} )
-
-    #Deal with motional non-gridded datasets
-    #Deal with non-motional datasets (those with no motion device set  
-    #(here both of these options have the same axes and shape requirements)
-    else: 
-        output = np.zeros([nti, nshots, nchan])
-        if nshots > 1:
-            axes.append( {'label':'shots', 'axis':shots_axis} )
-      
-        
-        
-        
-    #Always include a channel axis at the end if there is more than one   
-    if nchan > 1:
-            axes.append( {'label':'channels', 'axis':chan_axis} )
             
-            
-    # Create an output data array with the proper form
-    
-    for i in range(nchan):
-        output[..., i] = arr[i]
+            grp['data'][:,:,i] = data['signal']
+            grp['data'].attrs['unit'] = 'V'
         
-    # Eliminate trivial dimensions 
-    output = np.squeeze(output)
-    # Set units of data to volts
-    output = output*u.V
-    # Set datalabel
-    data_label = 'Raw LAPD data'
-    
+        
+        if motion:
+            grp['pos'] = pos
+            del(pos)
+        
+        dimlabels = ['shots', 'time', 'chan']
+        grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+        
+        grp['shots'] = shots_axis
+        grp['shots'].attrs['unit'] = str(time.unit)
+        grp['time'] = time.value
+        grp['time'].attrs['unit'] = ''
+        grp['chan'] = chan_axis
+        grp['chan'].attrs['unit'] = ''
+        
+    #Clear the LAPD HDF file from memory
+    del(sf, data, time)
    
-    
-    #TODO add the pos array to the ndf object as an option and save as that type here
-    obj = sdfarr(data=output, axes=axes, data_label = data_label)
-    obj.appendLog('Created by bapsftools.bapsfReadHDF from HDF file: ' + filepath)
-    
-    return obj
   
     
 
 
-def readRunProbe( run, probe, exp_dir, dest):
+def readRunProbe( run, probe, data_dir, dest):
 
-    csv_dir = os.path.join(exp_dir, c.metadata_dir)
+    csv_dir = os.path.join(data_dir, c.metadata_dir)
 
-    run_level_attrs = getRunLevelAttrs(csv_dir, run)
-    probe_level_attrs =  getProbeLevelAttrs(csv_dir, run, probe)
+    run_level_attrs = csvtools.getRunLevelAttrs(csv_dir, run)
+    probe_level_attrs =  csvtools.getProbeLevelAttrs(csv_dir, run, probe)
     
     attrs = {**run_level_attrs,  **probe_level_attrs}
 
     
-    req_keys = ['datafile', 'digitizer', 'adc']
-    motion_keys = ['motion_controller', 'motion_receptacle']
     
+    
+    
+    req_keys = ['datafile', 'digitizer', 'adc']
     missing_keys = []
     for k in req_keys:
         if not k in attrs.keys():
@@ -151,7 +201,7 @@ def readRunProbe( run, probe, exp_dir, dest):
     if len(missing_keys) > 0:
         raise ValueError("Missing columns in csv files! The following keys were not found, and are required: " + str(missing_keys))
         
-        
+    motion_keys = ['motion_controller', 'motion_receptacle']    
     missing_keys = []
     for k in motion_keys:
         if not k in attrs.keys():
@@ -180,31 +230,62 @@ def readRunProbe( run, probe, exp_dir, dest):
     if motion:
         motion_controller = attrs['motion_controller'][0]
         motion_receptacle = attrs['motion_receptacle'][0]
-        controls = [(motion_controller, motion_receptacle)]
+        if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
+            controls = [(motion_controller, motion_receptacle)]
+        else:
+            controls = None
+
+    src =  os.path.join(data_dir, c.hdf_dir, attrs['datafile'][0] +  '.hdf5')
     
-    print(channel_arr)
+    #Write the attribute dictionaries into the file
+    with h5py.File(dest.file, "a") as df:
+        #Delete any existing group at this location
+        gpath = 'run' +str(int(run)) + '/' + probe
+        dest = hdftools.hdfPath( dest.file, gpath)
+        try:
+            del(df[gpath])
+        except KeyError:
+            pass
+        
+        #Create the new group structure.
+        run_group = df.require_group('run' +str(int(run)) )
+        probe_group = run_group.require_group( probe )
+        
+
+        for k in run_level_attrs:
+            if run_level_attrs[k] is not None:
+                val, unit =  run_level_attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                run_group.attrs.create(k,  (val, unit) ) 
+                
+        for k in probe_level_attrs:
+            if probe_level_attrs[k] is not None:
+                val, unit =  probe_level_attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                probe_group.attrs.create(k,  (val, unit) ) 
+     
+        
     print(controls)
+    bapsfReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls)
     
-    datafile = attrs['datafile'][0]
-
-    obj = bapsfReadHDF(src=datafile, dest = dest, channel_arr = channel_arr, controls = controls)
-
-    return obj
+    
 
     
     
     
 if __name__ == "__main__":
     
-    exp_dir = os.path.join("F:", "/LAPD_Mar2018/")
-
-
-    src  = r"/F:/LAPD_Mar2018/HDF/peening074_apr09.hdf5" #Small file
-    #sfile = r"/F:/LAPD_Mar2018/HDF/peening065_apr06.hdf5" #big file
+    mem()
     
-    dest = r"/F:/LAPD_Mar2018/RAW/test_save.hdf5"
+    data_dir = os.path.join("F:", "/LAPD_Mar2018/")
+
+    dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')
-    x =  readRunProbe(102, 'PL11B', exp_dir, dest)
+    x =  readRunProbe(102, 'LAPD1', data_dir, dest)
 
+    mem()
     print('done')
+    

@@ -28,6 +28,15 @@ def valid_dataset(dataset):
 
 
 
+
+class hdfPath():
+    def __init__(self, file, group=''):
+        self.file = file
+        self.group = group + '/'
+
+
+
+
 if __name__ == "__main__":
     
     filepath = '/Users/peter/Desktop/testhdf.h5'

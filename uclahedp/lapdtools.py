@@ -19,11 +19,9 @@ import csvtools as csvtools
 import hdftools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
-from bapsflib._hdf import HDFMap
+
 
 import h5py
-
-
 
 
 # channel_arr = array of tuples of form: (digitizer, adc, board#, channel#)
@@ -34,15 +32,8 @@ import h5py
 # note that 'receptacle' here is the receptacle NUMBER, 1 - indexed!)
 # if no control is specified, the measurement is assumed to be stationary
 
-import os
-import psutil
 
-def mem():
-    process = psutil.Process(os.getpid())
-    print(str(round(process.memory_info().rss*1e-6,2)) + ' MB') 
-
-
-def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
+def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
     
     
 
@@ -50,31 +41,11 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
 
     if controls is not None:
         motion = True
-        motion_attrs = {}
-        
-        if controls[0][0] == '6K Compumotor':
-             with h5py.File(src, "r") as sf:
-                motion_group = sf['Raw data + config/6K Compumotor']
-                groups = [item[1] for item in motion_group.items() if isinstance(item[1], h5py.Group) ]
-                datasets = [item[1] for item in motion_group.items() if isinstance(item[1], h5py.Dataset) ]
+        motion_attrs = {'unit':'cm'}
 
-                #Find the probe probe group for this receptacle
-                for item in groups:
-                    if  'Receptacle' in item.attrs.keys():
-                        if item.attrs['Receptacle'] == controls[0][1]:
-                            print("Found probe group: " + item.name)
-                            probe_group = item
-                            
-                motion_table_name = 'XY[' + str(int(controls[0][1])) + ']: ' + probe_group['Probe']
-                print(motion_table_name)
-                motion_list = motion_group[motion_table_name]['Motion list'][0]
-                print(motion_list)
-                if motion_list != '':
-                    print('gotcha!')
-
-        
-        elif controls[0][0] == 'NI_XZ':
+        if controls[0][0] == 'NI_XZ':
             controls = None
+            motion_format = 'fixed_rotation'
             with h5py.File(src, "r") as sf:
                 motion_group = sf['Raw data + config/NI_XZ']
                 for item in motion_group.items():
@@ -95,8 +66,10 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 pos[:,0] = xpos
                 pos[:,1] = ypos
                 pos[:,2] = zpos
+                del(xpos, ypos, zpos)
 
         elif controls[0][0] == 'NI_XYZ':
+            motion_format = 'fixed_rotation'
             controls = None
             with h5py.File(src, "r") as sf:
                 motion_group = sf['Raw data + config/NI_XYZ']
@@ -118,7 +91,10 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 pos[:,0] = xpos
                 pos[:,1] = ypos
                 pos[:,2] = zpos
-
+                del(xpos, ypos, zpos)
+                
+    else:
+        motion = False
 
 
     sf = lapd.File(src, silent=True)
@@ -135,7 +111,6 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
             data = sf.read_data(channel[2], channel[3], digitizer =channel[0],
                                 adc = channel[1], add_controls=controls, 
                                 silent=True)
-            mem()
             # Only need to do this for one channel, since we assume
             # that all channels coorespond to a single physical probe
             if i == 0:
@@ -152,16 +127,22 @@ def bapsfReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 
                 if controls is not None:
                     if controls[0][0] == '6K Compumotor':
+                        motion_format = 'fixed_rotation'
                         pos =  data['xyz']
 
             
             grp['data'][:,:,i] = data['signal']
             grp['data'].attrs['unit'] = 'V'
+            grp.attrs['dt'] = [s.encode('utf-8') for s in [str(dt.value), str(dt.unit)] ]
         
         
         if motion:
             grp['pos'] = pos
             del(pos)
+            for k in motion_attrs:
+                grp['pos'].attrs[k] = motion_attrs[k]
+                grp.attrs['motion_format'] = motion_format
+            del(motion_attrs)
         
         dimlabels = ['shots', 'time', 'chan']
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
@@ -217,23 +198,27 @@ def readRunProbe( run, probe, data_dir, dest):
     adc = attrs['adc'][0]
     channel_arr = []
     nchan = 1
+    #Loop through the file until there are no more channels specified
+    #Names must be "brd#" and "chan#"
     while True:
         brdstr = 'brd' + str(int(nchan))
         chanstr = 'chan' + str(int(nchan))
         if brdstr in attrs.keys() and chanstr in attrs.keys():
-            channel_arr.append( (digitizer, adc, attrs[brdstr][0], attrs[chanstr][0]) )
+            #CHeck to make sure channel has actual non-nan values
+            if not np.isnan(attrs[brdstr][0])  and not np.isnan(attrs[chanstr][0]):
+                #Append the channel to the list to be extracted
+                channel_arr.append( (digitizer, adc, attrs[brdstr][0], attrs[chanstr][0]) )
             nchan = nchan + 1
         else:
             break
 
-        
+    controls = None #Default value
     if motion:
         motion_controller = attrs['motion_controller'][0]
         motion_receptacle = attrs['motion_receptacle'][0]
         if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
             controls = [(motion_controller, motion_receptacle)]
-        else:
-            controls = None
+
 
     src =  os.path.join(data_dir, c.hdf_dir, attrs['datafile'][0] +  '.hdf5')
     
@@ -266,9 +251,8 @@ def readRunProbe( run, probe, data_dir, dest):
                 unit = str(unit).encode('utf-8')
                 probe_group.attrs.create(k,  (val, unit) ) 
      
-        
-    print(controls)
-    bapsfReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls)
+
+    lapdReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls)
     
     
 
@@ -276,16 +260,13 @@ def readRunProbe( run, probe, data_dir, dest):
     
     
 if __name__ == "__main__":
-    
-    mem()
-    
+
     data_dir = os.path.join("F:", "/LAPD_Mar2018/")
 
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')
-    x =  readRunProbe(102, 'LAPD1', data_dir, dest)
+    x =  readRunProbe(102, 'PL11B', data_dir, dest)
 
-    mem()
     print('done')
     

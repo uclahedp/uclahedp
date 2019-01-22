@@ -35,7 +35,7 @@ import numpy as np
 
 
 
-nan_codes = ['NA', '', 'NR']
+nan_codes = ['NA', '', 'NR', 'NONE']
 
 
 
@@ -260,8 +260,19 @@ def fixType(val):
         else:
             val = str(val).strip()
     return val
-        
-        
+
+
+def getCSVs(csv_dir):
+    output = []
+    #Walk the directory tree to find all files
+    for root, dir, files in os.walk(csv_dir):
+        for f in files:
+            name, ext = os.path.splitext(f)
+            #If file is a CSV and not hidden (starting with '.')
+            if ext == '.csv' and name[0] != '.':
+                fpath = os.path.join(root, f)
+                output.append(fpath)
+    return output
         
         
 def findCSV(csv_dir, run=None, probe=None):
@@ -288,21 +299,16 @@ def findCSV(csv_dir, run=None, probe=None):
     ctype = csvType(run=run, probe=probe)
 
     output = []
+    csvs = getCSVs(csv_dir)
     
-    #Walk the directory tree to find all files
-    for root, dir, files in os.walk(csv_dir):
-        for f in files:
-            name, ext = os.path.splitext(f)
-            #If file is a CSV and not hidden (starting with '.')
-            if ext == '.csv' and name[0] != '.':
-                fpath = os.path.join(root, f)
-                csvdict = opencsv(fpath)
-                #If the CSV is of the type implied by the run and probe keywords
-                if csvType(csvdict) == ctype:  
-                    #If the CSV file contains the run/probe requested
-                    #Second part of conditional deals with the case of experimental constants data
-                    if rowExists(csvdict, run=run, probe=probe) or (run is None and probe is None):
-                        output.append(fpath)
+    for fpath in csvs:
+        csvdict = opencsv(fpath)
+        #If the CSV is of the type implied by the run and probe keywords
+        if csvType(csvdict) == ctype:  
+            #If the CSV file contains the run/probe requested
+            #Second part of conditional deals with the case of experimental constants data
+            if rowExists(csvdict, run=run, probe=probe) or (run is None and probe is None):
+                output.append(fpath)
     return output
  
 
@@ -323,14 +329,23 @@ def getRunLevelAttrs(csv_dir, run):
     -------
        dict: combined attribute dictionary describing the run
        """
-     csvs = findCSV(csv_dir, run=run, probe=None) + findCSV(csv_dir, run=None, probe=None)
      attrs = {}
+     
+     csvs = findCSV(csv_dir, run=run, probe=None) + findCSV(csv_dir, run=None, probe=None)
+     
      for csv_file in csvs:
-        print(csv_file)
         csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=None )
         for key in csv_attrs.keys():
             attrs[key] = csv_attrs[key]
-     return attrs
+
+     #Validate that a matching line was actually found
+     #The main program depends on this function to throw an error
+     #if this is not the case
+     if 'run' in attrs.keys():
+         if run  in attrs['run']:
+             return attrs
+     raise ValueError("No spreadsheet found with a row matching input: run=" + str(run))
+     
     
     
 
@@ -351,26 +366,45 @@ def getProbeLevelAttrs(csv_dir, run, probe):
        dict: combined attribute dictionary describing the run and probe
     """
      csvs = findCSV(csv_dir, run=None, probe=probe) + findCSV(csv_dir, run=run, probe=probe)
+     run = (None, run)
      attrs = {}
 
      for csv_file in csvs:
+         print(csv_file)
          csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=probe)
          for key in csv_attrs.keys():
              attrs[key] = csv_attrs[key]
-     return attrs 
-    
+             
+     #Validate that a matching line was actually found
+     #The main program depends on this function to throw an error
+     #if this is not the case
+     if 'run' in attrs.keys() and 'probe' in attrs.keys():
+         if run  in attrs['run'] and probe in attrs['probe']:
+             return attrs
+     raise ValueError("No spreadsheet found with row matching input: run=" 
+                      + str(run) +', probe= ' + str(probe))
+     
+     
+     
+#TODO
+def getProbes(csv_dir, run):
+    csvs = getCSVs(csv_dir)
+    for f in csvs:
+        csvdict = opencsv(f)
+        if  csvType(csvdict) == csvType(run=True, probe=True):
+            print(f)
     
 
 
 if __name__ == "__main__":
-    fname = r"F:/LAPD_Mar2018/METADATA/CSV/bdot_runs.csv"
+    fname = r"F:/LAPD_Mar2018/METADATA/CSV/bdot_probes.csv"
     csv_dir = r"F:/LAPD_Mar2018/METADATA/"
 
     csvdict = opencsv(fname)
     
     #print( findValue( csvdict, 'probe', run=102, probe='PL11B'  ) )
     #v = keyExists(csvdict, 'probe_origin_zz' )
-    #print(getAttrs( csvdict,  run=102, probe='PL11B'  ))
+    #print(getAttrs( csvdict,  run=None, probe='PL11B'  ))
     
     #print(rowExists(csvdict, run=50, probe = "LAPD1")  )
 
@@ -378,6 +412,5 @@ if __name__ == "__main__":
     #print( findCSV(csv_dir, run=None, probe=None) )
     
     
-    print( getRunLevelAttrs(csv_dir, 102))
-    #print( getProbeLevelAttrs(csv_dir,102, 'PL11B'))
-    
+    #print( getRunLevelAttrs(csv_dir, 107))
+   # print( getProbeLevelAttrs(csv_dir,102, 'PL11B'))

@@ -146,6 +146,7 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
         
         dimlabels = ['shots', 'time', 'chan']
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+        grp['data'].attrs['shape'] = np.array([nshots, nti, nchan])
         
         grp['shots'] = shots_axis
         grp['shots'].attrs['unit'] = ''
@@ -266,7 +267,7 @@ if __name__ == "__main__":
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')
-    x =  readRunProbe(102, 'PL11B', data_dir, dest)
+    x =  readRunProbe(102, 'tdiode', data_dir, dest)
 
     print('done')
     

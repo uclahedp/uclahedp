@@ -11,12 +11,14 @@ Created on Wed Nov 28 13:37:21 2018
 import csvtools
 import hdftools
 import util
+import tdiode
 
 import numpy as np
 import os
 import h5py
 from scipy.signal import detrend as detrend
 import astropy.units as u
+
 
 
 
@@ -86,14 +88,23 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
         if len(missing_keys) > 0:
             raise ValueError("Missing required keys! ->" + str(missing_keys))
         
-        
-       
-        
 
-                
-                
         nshots, nti, nchan = srcgrp['data'].shape
         
+
+        if tdiode_hdf is not None:
+            #Get an array of all the t0 indices
+            t0indarr = tdiode.calcT0ind(tdiode_hdf)
+            #Get an array of all the good shots and badshots (indices)
+            badshots, goodshots = tdiode.findBadShots(tdiode_hdf)
+            #Replace any bad shots with a standin value for now
+            print(badshots)
+            t0indarr[badshots] = int(np.median(t0indarr[goodshots]))
+            
+            min_t0ind = np.min(t0indarr[goodshots])
+            max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
+            nti = nti - max_t0shift
+
         with h5py.File(dest.file, 'a') as df:
             #Clear group if it already exists
             try:
@@ -111,8 +122,17 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             for k in srcgrp.attrs.keys():
                 destgrp.attrs[k] = srcgrp.attrs[k]
             
-            
             destgrp.create_dataset('data', (nshots, nti, nchan))
+            
+            #Load the time vector
+            time = srcgrp['time']
+            #If a timing diode is being applied, correct the time vector here.
+            if tdiode_hdf is not None:
+                time = time[0:nti-1] - time[min_t0ind]
+                
+                
+            print(time[0])
+            print(time[min_t0ind])
             
             
             atten = np.array([kdict['xatten'][0],kdict['yatten'][0],kdict['zatten'][0]])
@@ -123,7 +143,7 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
            
             # dt -> s
             dt = ( kdict['dt'][0]*u.Unit(kdict['dt'][1])).to(u.s).value
-            
+
             # area : mm^2 -> m^2
             xarea = (kdict['xarea'][0]*u.Unit(kdict['xarea'][1])).to(u.m ** 2).value
             yarea = (kdict['yarea'][0]*u.Unit(kdict['yarea'][1])).to(u.m ** 2).value
@@ -143,9 +163,25 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             #Chunking data processing loop limits memory usage
             for i in range(nshots):
 
-                bx = np.cumsum( detrend(srcgrp['data'][i,:, 0]) )*xcal*xpol
-                by = np.cumsum( detrend(srcgrp['data'][i,:, 1]) )*ycal*ypol
-                bz = np.cumsum( detrend(srcgrp['data'][i,:, 2]) )*zcal*zpol
+                #If a tdiode hdf was supplied, apply the correction here.
+                if tdiode_hdf is not None:
+                    ta = t0indarr[i] - min_t0ind
+                    tb = ta + nti
+                   # print('t0ind:' + str(t0indarr[i]) +  ' ta: ' + str(ta) + 
+                   #    ', tb: ' + str(tb) + ', nti: ' + str(nti) + 
+                   #    ', tb-ta: ' +  str(tb-ta))
+                else:
+                    ta = 0
+                    tb = -1
+                
+                    
+                bx = srcgrp['data'][i,ta:tb, 0]
+                by = srcgrp['data'][i,ta:tb, 1]
+                bz = srcgrp['data'][i,ta:tb, 2]
+                
+                bx = np.cumsum( detrend(bx) )*xcal*xpol
+                by = np.cumsum( detrend(by) )*ycal*ypol
+                bz = np.cumsum( detrend(bz) )*zcal*zpol
                 
      
                 if motion == 'fixed_rotation':
@@ -183,11 +219,16 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             #Add the other axes and things we'd like in this file
             destgrp.copy(srcgrp['pos'], 'pos' )
             destgrp.copy(srcgrp['shots'], 'shots' )
-            destgrp.copy(srcgrp['time'], 'time' )
             destgrp.copy(srcgrp['chan'], 'chan' )
+            
+            
+            destgrp['time'] =  time
+            destgrp['time'].attrs['units'] = 's'
+
             
             destgrp['data'].attrs['units'] = 'G'
             dimlabels = ['shots', 'time', 'chan']
+            destgrp['data'].attrs['shape'] = [nshots, nti, nchan]
             destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
             
             
@@ -201,9 +242,10 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
 
 if __name__ == "__main__":
     src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save.hdf5"), 'run102/PL11B')
+    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save.hdf5"), 'run102/tdiode')
     dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save_full.hdf5"), 'run102/PL11B')
     
     util.mem()
-    full_filepath = bdot_raw_to_full(src, dest)
+    full_filepath = bdot_raw_to_full(src, dest, tdiode_hdf=tdiode_hdf)
     util.mem()
     print('Done')

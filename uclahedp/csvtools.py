@@ -69,88 +69,7 @@ def opencsv(fname):
                 if key != '':
                     csvdict[key].append( (row[key], unitdict[key] )    )  
         #csvdict['units'] = unitdict
-    return dict(csvdict)
-
-
-def keyExists(csvdict, key):
-    """ Tests to see if a key exists in a csv dictionary
-    Parameters
-    ----------
-        key: str
-            Key for the value you are searching for
-            
-        csvdict: dict
-            Dictonary object to search
-
-    Returns
-    -------
-        check: boolean
-    """
-    return key.lower().strip() in [(k.lower().strip()) for k in csvdict.keys()]
-
-
-
-def getAttrs(csvdict, run=None, probe=None):
-    """ Returns a dictionary of all of the keyed csv lines for a run/probe/both
-    
-    Parameters
-    ----------
-        csvdict: dict
-            Dictonary object to search
-        run: int
-            Integer run number for the value you are searching for
-        probe: str
-            Name of the probe you are searching for.
-
-    Returns
-    -------
-        attrs: dict
-    """
-    
-    if not keyExists(csvdict, 'run'):
-        run = None
-    if not keyExists(csvdict, 'probe'):
-        probe = None
-    
-    attrs = {}
-    for key in csvdict.keys():
-        attrs[key] = findValue(csvdict, key, run=run, probe=probe)
-    return attrs
-
-
-
-
-def rowExists(csvdict, run=None, probe=None):
-    """Checks to see if the given csv file has columns that match a run/probe
-    pair
-
-    Parameters
-    ----------
-        csvdict: dict
-            Dictonary object to search
-        run: int
-            Integer run number for the value you are searching for
-        probe: str
-            Name of the probe you are searching for.
-
-    Returns
-    -------
-        bool: A matching row exists, or it does not.
-    """
-    if run and not probe :
-        val = findValue(csvdict, 'run', run=run)
-    elif not run and probe:
-        val = findValue(csvdict, 'probe', probe=probe)
-    elif run and probe:
-        val = findValue(csvdict, 'run', run=run, probe=probe)
-    else:
-        #Without a run or probe column, this csv file cannot be used as valid
-        #metadata
-        return False
-    
-    return bool(val)
-
-
+    return csvdict
 
 
 def csvType(*args, run=None, probe=None):
@@ -191,6 +110,155 @@ def csvType(*args, run=None, probe=None):
         return 'probe_constants'
     elif run and probe:
         return 'probe_runs'
+
+
+def keyExists(csvdict, key):
+    """ Tests to see if a key exists in a csv dictionary
+    Parameters
+    ----------
+        key: str
+            Key for the value you are searching for
+            
+        csvdict: dict
+            Dictonary object to search
+
+    Returns
+    -------
+        check: boolean
+    """
+    return key.lower().strip() in [(k.lower().strip()) for k in csvdict.keys()]
+
+
+
+
+
+def getRowInd(csvdict, run=None, probe=None):
+    
+    if not keyExists(csvdict, 'run'):
+        run = None
+    if not keyExists(csvdict, 'probe'):
+        probe = None
+
+    if run is not None and probe is None:
+        rowind = [i for i, v in enumerate(csvdict['run']) if
+                 v[0] == str(run)]
+    elif run is None and probe is not None:
+        rowind = [i for i, v in enumerate(csvdict['probe']) if
+                 str( v[0] ).lower().strip()  == str(probe).lower().strip()]
+    elif run is not None and probe is not None:
+        rowind =  [i for i, v in enumerate(csvdict['run']) if 
+                 (csvdict['run'][i][0] == str(run) and 
+                  str(csvdict['probe'][i][0]).lower().strip()  == str(probe).lower().strip() )  ]
+    else:
+        rowind = []
+    
+    #By design there should only be ONE line in a csv file that meets these
+    #requirements, so it is safe to conver this to a scalar
+    #if the array is empty, the row must not exist.
+
+    if len(rowind) == 0:
+        return None
+    else:
+        return rowind
+    
+def getRow(csvdict, run=None, probe=None):
+    rowind = getRowInd(csvdict, run=run, probe=probe)
+
+    if rowind is None:
+        return None
+    elif len(rowind) > 1:
+        raise ValueError("Row specified is not unique! run=" + str(run) 
+            + ', probe=' + str(probe) + ' in ' + str(csvdict['csv_filename']))
+    else:
+        rowind =rowind[0]
+        return {key:( fixType(value[rowind][0]) , value[rowind][1] ) 
+                for (key,value) in csvdict.items()  }        
+    
+def rowExists(csvdict, run=None, probe=None):
+    """Checks to see if the given csv file has columns that match a run/probe
+    pair
+
+    Parameters
+    ----------
+        csvdict: dict
+            Dictonary object to search
+        run: int
+            Integer run number for the value you are searching for
+        probe: str
+            Name of the probe you are searching for.
+
+    Returns
+    -------
+        bool: A matching row exists, or it does not.
+    """
+    rowind = getRowInd(csvdict, run=run, probe=probe)
+    
+    if rowind is None:
+        return False
+    else:
+        return True
+
+
+def fixType(val):
+    """Coerces a value string into an int, str, or float type
+
+    Parameters
+    ----------
+        val: str
+
+    Returns
+    -------
+        val: str/ int/ float 
+        depending on the inherent type of the variable
+    """
+    #Determine if data is an int, float, or string, and type it accordingly
+    try: 
+        val = float(val)
+        #IS AN INT
+        if val.is_integer():
+            val= int(val)
+    except ValueError:
+        #IS A STRING
+        if val in nan_codes:
+            val = np.NAN
+        else:
+            val = str(val).strip()
+    return val
+
+
+def getCSVList(csv_dir):
+    """Return a list of all CSV files in a directory. Recursive in file
+    structure. Ignores files starting with '.' that are assumed to be hidden.
+
+    Parameters
+    ----------
+        csv_dir: string 
+            directory filepath
+
+    Returns
+    -------
+        output: list
+        List of absolute filepaths to all of the CSV files found.
+    """
+    output = []
+    #Walk the directory tree to find all files
+    for root, dir, files in os.walk(csv_dir):
+        for f in files:
+            name, ext = os.path.splitext(f)
+            #If file is a CSV and not hidden (starting with '.')
+            if ext == '.csv' and name[0] != '.':
+                fpath = os.path.join(root, f)
+                output.append(fpath)
+    return output
+
+
+
+
+
+
+
+
+
     
     
     
@@ -259,71 +327,7 @@ def findValue(csvdict, key, run=None, probe=None):
         
         
         
-def fixType(val):
-    #Determine if data is an int, float, or string, and type it accordingly
-    try: 
-        val = float(val)
-        #IS AN INT
-        if val.is_integer():
-            val= int(val)
-    except ValueError:
-        #IS A STRING
-        if val in nan_codes:
-            val = np.NAN
-        else:
-            val = str(val).strip()
-    return val
 
-
-def getCSVs(csv_dir):
-    output = []
-    #Walk the directory tree to find all files
-    for root, dir, files in os.walk(csv_dir):
-        for f in files:
-            name, ext = os.path.splitext(f)
-            #If file is a CSV and not hidden (starting with '.')
-            if ext == '.csv' and name[0] != '.':
-                fpath = os.path.join(root, f)
-                output.append(fpath)
-    return output
-        
-        
-def findCSV(csv_dir, run=None, probe=None):
-    """ Find CSV files in a directory that coorespond to a run/probe pair
-    The run/probe pair is exclusionary: searching for just a run will only
-    return csv files with JUST a run column, not those with a run and probe
-    column
-    
-    Parameters
-    ----------
-        csvdict: dict
-            Dictonary object to search
-        run: int
-            Integer run number for the value you are searching for
-        probe: str
-            Name of the probe you are searching for.
-
-    Returns
-    -------
-       list: List of absolute file paths to csv files matching request
-    """
-    
-    #Determine the type of CSV file implied by the keword arguments
-    ctype = csvType(run=run, probe=probe)
-
-    output = []
-    csvs = getCSVs(csv_dir)
-    
-    for fpath in csvs:
-        csvdict = opencsv(fpath)
-        #If the CSV is of the type implied by the run and probe keywords
-        if csvType(csvdict) == ctype:  
-            #If the CSV file contains the run/probe requested
-            #Second part of conditional deals with the case of experimental constants data
-            if rowExists(csvdict, run=run, probe=probe) or (run is None and probe is None):
-                output.append(fpath)
-    return output
- 
 
 
 
@@ -344,18 +348,26 @@ def getRunLevelAttrs(csv_dir, run):
        """
      attrs = {}
      
-     csvs = findCSV(csv_dir, run=run, probe=None) + findCSV(csv_dir, run=None, probe=None)
-     
+     csvs = getCSVList(csv_dir)
      for csv_file in csvs:
-        csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=None )
-        for key in csv_attrs.keys():
-            attrs[key] = csv_attrs[key]
+         csvdict = opencsv(csv_file)
+         #Experiment runs  
+         if csvType(csvdict) == csvType(run=run, probe=None):
+             csv_attrs = getRow( csvdict, run=run, probe=None )
+             for key in csv_attrs.keys():
+                 attrs[key] = csv_attrs[key]
+         #Experiment constants
+         elif csvType(csvdict) == csvType(run=None, probe=None):
+             #experiment constants by definition only have one line b/c
+             #they have no row or probe labels
+             csv_attrs = csvdict
+             for key in csv_attrs.keys():
+                 attrs[key] = csv_attrs[key][0]
 
      #Validate that a matching line was actually found
      #The main program depends on this function to throw an error
      #if this is not the case
      if 'run' in attrs.keys():
-         if run  in attrs['run']:
              return attrs
      raise ValueError("No spreadsheet found with a row matching input: run=" + str(run))
      
@@ -378,41 +390,117 @@ def getProbeLevelAttrs(csv_dir, run, probe):
     -------
        dict: combined attribute dictionary describing the run and probe
     """
-     csvs = findCSV(csv_dir, run=None, probe=probe) + findCSV(csv_dir, run=run, probe=probe)
-
+     csvs = getCSVList(csv_dir)
      attrs = {}
 
      for csv_file in csvs:
-         csv_attrs = getAttrs( opencsv(csv_file ), run=run, probe=probe)
-         for key in csv_attrs.keys():
-             attrs[key] = csv_attrs[key]
+         csvdict = opencsv(csv_file)
+         if (csvType(csvdict) == csvType(run=run, probe=probe ) 
+             or csvType(csvdict) == csvType(run=None, probe=probe )):
+             csv_attrs = getRow( csvdict, run=run, probe=probe)
+             if csv_attrs is not None:
+                 for key in csv_attrs.keys():
+                     attrs[key] = csv_attrs[key]
              
      #Validate that a matching line was actually found
      #The main program depends on this function to throw an error
      #if this is not the case
      if 'run' in attrs.keys() and 'probe' in attrs.keys():
-         if run  in attrs['run'] and probe in attrs['probe']:
              return attrs
      raise ValueError("No spreadsheet found with row matching input: run=" 
                       + str(run) +', probe= ' + str(probe))
      
      
-     
-#TODO
-def getProbes(csv_dir, run):
-    csvs = getCSVs(csv_dir)
-    for f in csvs:
-        csvdict = opencsv(f)
-        if  csvType(csvdict) == csvType(run=True, probe=True):
-            print(f)
     
+def getProbeList(csv_dir, run):
+    """ Returns a list of all of the probes associated with a given
+    run number
+    
+    Parameters
+    ----------
+        csv_dir: str
+            Path to directory that holds csv files
+        run: int
+            Run number to find probes for
+    Returns
+    -------
+       list [ (str,str)]
+       
+       List of tuples (probe name, probe type) associated with this run.
+       If no probe_type field is found, defaults to "unknown"
+    """
+    probelist = []
+    probetypes = {}
+    
+    #Load a list of all the CSV files in the dir
+    csvs = getCSVList(csv_dir)
+    
+    for csv_file in csvs:
+        csvdict = opencsv(csv_file)
+        
+        #If the CSV file is a probe_run file, add all the probes for the run
+        #to the probelist
+        if  csvType(csvdict) == csvType(run=True, probe=True):
+            #Get all the row indices coorespondng to this run
+            row = getRowInd(csvdict, run=run)
+            if row is not None:
+                for r in row:
+                    probelist.append(csvdict['probe'][r][0])
+                    
+                    #If probetypes are defined here in this file, add them to the
+                    #dictioanry
+                    if keyExists(csvdict, 'probe_type'):
+                        probetypes[csvdict['probe'][r][0]] = csvdict['probe_type'][r][0]
+
+        
+        #If the CSV file is a probe_constants file, figure out which type each
+        #probe is and store it in a dictioanry
+        elif csvType(csvdict) == csvType(run=None, probe=True):
+            if keyExists(csvdict, 'probe') and keyExists(csvdict, 'probe_type'):
+                probes = csvdict['probe']
+                for i,p in enumerate(probes):
+                    probetypes[p[0]] = csvdict['probe_type'][i][0]
+      
+    #Convert to a set and back to remove any duplicates         
+    probelist = list(set(probelist))
+    output = []
+    
+    #Go through the list and pair probe names with types.
+    #If any are not in the dictonary, label them as unknown
+    for p in probelist:
+        if p in probetypes.keys():
+            output.append(  (p, probetypes[p])  )
+        else:
+            output.append(   (p, 'unknown')   )
+
+    return output
 
 
+
+def getRunList(csv_dir):
+ #Load a list of all the CSV files in the dir
+    csvs = getCSVList(csv_dir)
+    
+    runlist = []
+    for csv_file in csvs:
+        csvdict = opencsv(csv_file)
+        if keyExists(csvdict, 'run'):
+            for entry in csvdict['run']:
+                x = fixType(entry[0])
+                if x is not np.nan:
+                    runlist.append( fixType(entry[0]) )
+    
+    #Convert to a set and back to remove duplicates
+    runlist = list(set(runlist))
+    
+    return runlist
 if __name__ == "__main__":
-    fname = r"F:/LAPD_Mar2018/METADATA/CSV/bdot_probes.csv"
+    fname = r"F:/LAPD_Mar2018/METADATA/CSV/langmuir_runs.csv"
     csv_dir = r"F:/LAPD_Mar2018/METADATA/"
 
     csvdict = opencsv(fname)
+    
+    #print( getRow(csvdict, run=102, probe=None) )
     
     #print( findValue( csvdict, 'probe', run=102, probe='PL11B'  ) )
     #v = keyExists(csvdict, 'probe_origin_zz' )
@@ -424,5 +512,9 @@ if __name__ == "__main__":
     #print( findCSV(csv_dir, run=None, probe=None) )
     
     
-    #print( getRunLevelAttrs(csv_dir, 107))
-    print( getProbeLevelAttrs(csv_dir,102, 'PL11B'))
+    #print( getRunLevelAttrs(csv_dir, 80))
+    #print( getProbeLevelAttrs(csv_dir,80, 'PL11B'))
+    
+    print(getProbeList(csv_dir, run=1))
+
+    #print( getRunList(csv_dir) )

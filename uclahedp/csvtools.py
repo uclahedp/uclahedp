@@ -138,6 +138,10 @@ def getRowInd(csvdict, run=None, probe=None):
         run = None
     if not keyExists(csvdict, 'probe'):
         probe = None
+    
+    #Deal with the case of the experiment constants file
+    if csvType(csvdict) == csvType(run=None, probe=None):
+        return [0]
 
     if run is not None and probe is None:
         rowind = [i for i, v in enumerate(csvdict['run']) if
@@ -163,7 +167,7 @@ def getRowInd(csvdict, run=None, probe=None):
     
 def getRow(csvdict, run=None, probe=None):
     rowind = getRowInd(csvdict, run=run, probe=probe)
-
+    
     if rowind is None:
         return None
     elif len(rowind) > 1:
@@ -335,6 +339,44 @@ def getProbeLevelAttrs(csv_dir, run, probe):
                       + str(run) +', probe= ' + str(probe))
      
      
+def getAllAttrs(csv_dir, run, probe):
+     """ Returns a dictionary of all attributes from a directory of CSV files
+     that coorespond to a particular probe and run. These include attributes
+     that describe the probe for that run, as well as constants about the
+     probe.
+    
+    Parameters
+    ----------
+        csv_dir: str
+            Path to directory that holds csv files
+        probe: str
+            Integer run number for the value you are searching for
+    Returns
+    -------
+       dict: combined attribute dictionary describing the run and probe
+    """
+     csvs = getCSVList(csv_dir)
+     attrs = {}
+
+     for csv_file in csvs:
+         csvdict = opencsv(csv_file)
+         csv_attrs = getRow( csvdict, run=run, probe=probe)
+         if csv_attrs is not None:
+             for key in csv_attrs.keys():
+                 attrs[key] = csv_attrs[key]
+             
+     #Validate that a matching line was actually found
+     #The main program depends on this function to throw an error
+     #if this is not the case
+     if 'run' in attrs.keys() and 'probe' in attrs.keys():
+             return attrs
+     raise ValueError("No spreadsheet found with row matching input: run=" 
+                      + str(run) +', probe= ' + str(probe))
+     
+     
+     
+     
+     
     
 def getProbeList(csv_dir, run):
     """ Returns a list of all of the probes associated with a given
@@ -438,7 +480,8 @@ if __name__ == "__main__":
     
     #print( getRunLevelAttrs(csv_dir, 80))
     #print( getProbeLevelAttrs(csv_dir,80, 'PL11B'))
+    #print( getAllAttrs(csv_dir,80, 'PL11B'))
     
-    print(getProbeList(csv_dir, run=1))
+    #print(getProbeList(csv_dir, run=1))
 
     #print( getRunList(csv_dir) )

@@ -104,12 +104,6 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             nti = nti - max_t0shift
 
         with h5py.File(dest.file, 'a') as df:
-            #Clear group if it already exists
-            try:
-                del(df[dest.group])
-            except KeyError:
-                pass
-            
             destgrp = df.require_group(dest.group)
             
             dest_run_grp = destgrp.parent
@@ -120,13 +114,13 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             for k in srcgrp.attrs.keys():
                 destgrp.attrs[k] = srcgrp.attrs[k]
             
-            destgrp.create_dataset('data', (nshots, nti, nchan))
+            destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=True)
             
             #Load the time vector
             time = srcgrp['time']
             #If a timing diode is being applied, correct the time vector here.
             if tdiode_hdf is not None:
-                time = time[0:nti-1] - time[min_t0ind]
+                time = time[0:nti] - time[min_t0ind]
 
             atten = np.array([kdict['xatten'][0],kdict['yatten'][0],kdict['zatten'][0]])
             # Create an array of calibration coefficents
@@ -210,15 +204,28 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             
             
             #Add the other axes and things we'd like in this file
-            destgrp.copy(srcgrp['pos'], 'pos' )
-            destgrp.copy(srcgrp['shots'], 'shots' )
-            destgrp.copy(srcgrp['chan'], 'chan' )
+            destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][:]
+            destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
+            destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
             
             
-            destgrp['time'] =  time
+            print(nti)
+            print(len(time))
+            print(time.shape)
+            
+            try:
+                destgrp.copy(srcgrp['time'], 'time')
+                destgrp['time'].resize( (nti,))
+            except ValueError:
+                destgrp['time'].resize( (nti,))
+                destgrp.require_dataset('time', (nti,), np.float32, chunks=True )
+        
+            destgrp['time'][:] = time
+            
+            #tset[:] = time
             destgrp['time'].attrs['units'] = 's'
 
-            
+           
             destgrp['data'].attrs['units'] = 'G'
             dimlabels = ['shots', 'time', 'chan']
             destgrp['data'].attrs['shape'] = [nshots, nti, nchan]
@@ -226,6 +233,7 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             
             
             del(bx,by,bz)
+            del(xcal,ycal,zcal,xpol,ypol,zpol)
             if motion == 'fixed_rotation':
                 del(x,y,z,rx,ry,rz,roll, pitch, yaw)
 

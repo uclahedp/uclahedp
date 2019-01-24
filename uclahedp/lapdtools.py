@@ -110,7 +110,7 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 shp = data['signal'].shape
                 nshots= shp[0]
                 nti = shp[1]
-                grp.require_dataset("data", tuple((nshots, nti, nchan)), np.float32 )
+                grp.require_dataset("data", (nshots, nti, nchan), np.float32, chunks=True )
                 
                 clock_rate = data.info['clock rate'].to(u.Hz)
                 dt =  (  1.0 / clock_rate  ).to(u.s)
@@ -143,11 +143,11 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
         grp['data'].attrs['shape'] = np.array([nshots, nti, nchan])
         
-        grp.require_dataset('shots', (nshots,), np.float32 )[:] = shots_axis
+        grp.require_dataset('shots', (nshots,), np.float32, chunks=True )[:] = shots_axis
         grp['shots'].attrs['unit'] = ''
-        grp.require_dataset('time', (nti,), np.float32)[:] = time.value
+        grp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = time.value
         grp['time'].attrs['unit'] =  str(time.unit)
-        grp.require_dataset('chan', (nchan,), np.float32)[:] = chan_axis
+        grp.require_dataset('chan', (nchan,), np.float32, chunks=True)[:] = chan_axis
         grp['chan'].attrs['unit'] = ''
         
     #Clear the LAPD HDF file from memory
@@ -166,10 +166,7 @@ def readRunProbe( run, probe, data_dir, dest):
     
     attrs = {**run_level_attrs,  **probe_level_attrs}
 
-    
-    
-    
-    
+
     req_keys = ['datafile', 'digitizer', 'adc']
     missing_keys = []
     for k in req_keys:

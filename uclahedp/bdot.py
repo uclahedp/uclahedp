@@ -46,7 +46,6 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
     # ******
     # Load data from the raw HDF file
     # ******
-    print(src.file)
     with h5py.File(src.file, 'r') as sf:
         
         kdict = {}
@@ -98,7 +97,6 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             #Get an array of all the good shots and badshots (indices)
             badshots, goodshots = tdiode.findBadShots(tdiode_hdf)
             #Replace any bad shots with a standin value for now
-            print(badshots)
             t0indarr[badshots] = int(np.median(t0indarr[goodshots]))
             
             min_t0ind = np.min(t0indarr[goodshots])
@@ -129,12 +127,7 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             #If a timing diode is being applied, correct the time vector here.
             if tdiode_hdf is not None:
                 time = time[0:nti-1] - time[min_t0ind]
-                
-                
-            print(time[0])
-            print(time[min_t0ind])
-            
-            
+
             atten = np.array([kdict['xatten'][0],kdict['yatten'][0],kdict['zatten'][0]])
             # Create an array of calibration coefficents
             if kdict['xatten'][1] == 'dB':

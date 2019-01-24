@@ -2,12 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 This program opens an LAPD HDF file (as well as metadata csvs)
-and creates an ndfFile object containing the data. 
 
 @author: peter
 """
 
-#TODO currently 'NI_XZ' isn't valid drive
 
 import numpy as np
 from astropy import units as u
@@ -19,7 +17,6 @@ import csvtools as csvtools
 import hdftools
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
-
 
 import h5py
 
@@ -34,10 +31,6 @@ import h5py
 
 
 def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
-    
-    
-
-
 
     if controls is not None:
         motion = True
@@ -117,7 +110,7 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 shp = data['signal'].shape
                 nshots= shp[0]
                 nti = shp[1]
-                grp.create_dataset("data", (nshots, nti, nchan) )
+                grp.require_dataset("data", tuple((nshots, nti, nchan)), np.float32 )
                 
                 clock_rate = data.info['clock rate'].to(u.Hz)
                 dt =  (  1.0 / clock_rate  ).to(u.s)
@@ -137,22 +130,24 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
         
         
         if motion:
-            grp['pos'] = pos
+            grp.require_dataset('pos', (nshots, 3), np.float32)[:] = pos
+
             del(pos)
             for k in motion_attrs:
                 grp['pos'].attrs[k] = motion_attrs[k]
                 grp.attrs['motion_format'] = motion_format
             del(motion_attrs)
+            
         
         dimlabels = ['shots', 'time', 'chan']
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
         grp['data'].attrs['shape'] = np.array([nshots, nti, nchan])
         
-        grp['shots'] = shots_axis
+        grp.require_dataset('shots', (nshots,), np.float32 )[:] = shots_axis
         grp['shots'].attrs['unit'] = ''
-        grp['time'] = time.value
+        grp.require_dataset('time', (nti,), np.float32)[:] = time.value
         grp['time'].attrs['unit'] =  str(time.unit)
-        grp['chan'] = chan_axis
+        grp.require_dataset('chan', (nchan,), np.float32)[:] = chan_axis
         grp['chan'].attrs['unit'] = ''
         
     #Clear the LAPD HDF file from memory
@@ -226,16 +221,12 @@ def readRunProbe( run, probe, data_dir, dest):
     #Write the attribute dictionaries into the file
     with h5py.File(dest.file, "a") as df:
         #Delete any existing group at this location
-        gpath = 'run' +str(int(run)) + '/' + probe
-        dest = hdftools.hdfPath( dest.file, gpath)
-        try:
-            del(df[gpath])
-        except KeyError:
-            pass
-        
+        grp = dest.group
+
         #Create the new group structure.
         run_group = df.require_group('run' +str(int(run)) )
         probe_group = run_group.require_group( probe )
+        dest.group = probe_group.name
         
 
         for k in run_level_attrs:
@@ -267,7 +258,7 @@ if __name__ == "__main__":
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')
-    x =  readRunProbe(102, 'tdiode', data_dir, dest)
+    x =  readRunProbe(102, 'PL11B', data_dir, dest)
 
     print('done')
     

@@ -14,3 +14,13 @@ def timeTest(t0=None):
         deltaT = time.time() - t0
         print('Execution time: '  + str( round(deltaT,3 )  ) + ' s' )
         return deltaT
+    
+def timeFormat(t):
+    sec = t % 60.0
+    minutes = round(t/60)
+    return "{:02.0f}:{:0.0f}".format(minutes, sec)
+
+
+
+if __name__ == "__main__":
+    print(timeFormat(92.123))

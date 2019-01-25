@@ -29,7 +29,7 @@ import h5py
 # eg. controls = [('6K Compumotor', receptacle)]
 # note that 'receptacle' here is the receptacle NUMBER, 1 - indexed!)
 # if no control is specified, the measurement is assumed to be stationary
-def readRunProbe( run, probe, data_dir, dest):
+def readRunProbe( run, probe, data_dir, dest, verbose=False):
 
     csv_dir = os.path.join(data_dir, c.metadata_dir)
     
@@ -128,10 +128,10 @@ def readRunProbe( run, probe, data_dir, dest):
      """
         
 
-    lapdReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls)
+    lapdReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls, verbose=verbose)
     
 
-def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
+def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None, verbose=False ):
 
     if controls is not None:
         motion = True
@@ -200,6 +200,8 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
        
         nchan = len(channel_arr)
         for i in range(nchan):
+            if verbose:
+                print("Reading channel: " + str(i+1) + '/' + str(nchan))
             channel = channel_arr[i]
             data = sf.read_data(channel[2], channel[3], digitizer =channel[0],
                                 adc = channel[1], add_controls=controls, 
@@ -277,7 +279,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(102, 'tdiode', data_dir, dest)
+    x =  readRunProbe(102, 'tdiode', data_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

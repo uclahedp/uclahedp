@@ -201,12 +201,11 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 #Update the time-per-shot time estimator
                 #Over time this should give more accurate run-time
                 #predictions
-                if i > 0:
-                    nowtime = time.time()
-                    tperstep.append(nowtime-tstart)
-                    tstart = nowtime
+                nowtime = time.time()
+                tperstep.append(nowtime-tstart)
+                tstart = nowtime
                     
-                if verbose and i % nstepsreport == 0:
+                if verbose and i % nstepsreport == 0 and i > 0:
                     tremain = np.mean(tperstep)*(nshots - i)
                     print(str(i) + '/' + str(nshots) + ' complete, ' + 
                           util.timeFormat(tremain) + ' remaining' )

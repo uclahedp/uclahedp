@@ -18,7 +18,7 @@ def timeTest(t0=None):
 def timeFormat(t):
     sec = t % 60.0
     minutes = round(t/60)
-    return "{:02.0f}:{:0.0f}".format(minutes, sec)
+    return "{:02.0f}:{:02.0f}".format(minutes, sec)
 
 
 

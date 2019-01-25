@@ -122,7 +122,8 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             nti = nti - max_t0shift
             
             
-            
+        if verbose:
+            print("Opening destination HDF file")
 
         with h5py.File(dest.file, 'a') as df:
             
@@ -164,8 +165,11 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
             atten = np.array([kdict['xatten'][0],kdict['yatten'][0],kdict['zatten'][0]])
             # Create an array of calibration coefficents
-            if kdict['xatten'][1] == 'dB':
-                print("Converting dB to x")
+            if kdict['xatten'][1].decode("utf-8") != 'dB':
+                print("ATTENUATION NOT SET IN dB - NO CORRECTION APPLIED!")
+                print(kdict['xatten'][1].decode("utf-8"))
+            else:
+                print("Converting attenuation dB to x")
                 atten = np.power([10,10,10], atten/20.0) # Convert from decibels
            
             # dt -> s

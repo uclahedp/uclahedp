@@ -51,7 +51,7 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
         kdict = {}
         srcgrp = sf[src.group]
         
-        src_run_grp = srcgrp.parent
+        #src_run_grp = srcgrp.parent
   
         
         #Check for keys always required by this function
@@ -104,17 +104,29 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
             nti = nti - max_t0shift
 
         with h5py.File(dest.file, 'a') as df:
-            destgrp = df.require_group(dest.group)
             
-            dest_run_grp = destgrp.parent
+            #Throw an error if this group already exists
+            if dest.group is not '/' and dest.group in df.keys():
+                raise hdftools.hdfGroupExists(dest)
+            
+            destgrp = df.require_group(dest.group)
+
             
             #Copy over attributes
+            """
             for k in src_run_grp.attrs.keys():
                 dest_run_grp.attrs[k] = src_run_grp.attrs[k]
             for k in srcgrp.attrs.keys():
                 destgrp.attrs[k] = srcgrp.attrs[k]
+            """
+            for k in srcgrp.attrs.keys():
+                destgrp.attrs[k] = srcgrp.attrs[k]
             
-            destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=True)
+            #Throw an error if this dataset already exists
+            if 'data' in destgrp.keys():
+                    raise hdftools.hdfDatasetExists(str(dest) + ' -> ' + "'data'")
+                    
+            destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, 20000, 1), compression='gzip')
             
             #Load the time vector
             time = srcgrp['time']
@@ -203,30 +215,32 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
                 destgrp['data'][i,:, 2] = bz                      
             
             
-            #Add the other axes and things we'd like in this file
-            destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][:]
+            if motion is not None:
+                #Add the other axes and things we'd like in this file
+                destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][:]
+                for k in srcgrp['pos'].attrs.keys():
+                    destgrp['pos'].attrs[k] = srcgrp['pos'].attrs[k]
+            
+            
             destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
+            destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
             destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
-            
-            
-            print(nti)
-            print(len(time))
-            print(time.shape)
+            destgrp['chan'].attrs['unit'] = srcgrp['chan'].attrs['unit']
+
             
             try:
-                destgrp.copy(srcgrp['time'], 'time')
-                destgrp['time'].resize( (nti,))
+                destgrp.require_dataset('time', (nti,), np.float32, chunks=True)
             except ValueError:
                 destgrp['time'].resize( (nti,))
-                destgrp.require_dataset('time', (nti,), np.float32, chunks=True )
+                #destgrp.require_dataset('time', (nti,), np.float32, chunks=(1, nti, 1) )
+                
+                
         
             destgrp['time'][:] = time
-            
-            #tset[:] = time
-            destgrp['time'].attrs['units'] = 's'
+            destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
 
            
-            destgrp['data'].attrs['units'] = 'G'
+            destgrp['data'].attrs['unit'] = 'G'
             dimlabels = ['shots', 'time', 'chan']
             destgrp['data'].attrs['shape'] = [nshots, nti, nchan]
             destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
@@ -242,11 +256,14 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None):
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save.hdf5"), 'run102/PL11B')
-    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save.hdf5"), 'run102/tdiode')
-    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save_full.hdf5"), 'run102/PL11B')
+    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B.hdf5") )
+    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode.hdf5") )
+    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save_full.hdf5") )
     
+    print('reading')
     util.mem()
+    tstart = util.timeTest()
     full_filepath = bdot_raw_to_full(src, dest, tdiode_hdf=tdiode_hdf)
+    util.timeTest(t0=tstart)
     util.mem()
-    print('Done')
+    print('done')

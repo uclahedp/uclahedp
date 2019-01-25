@@ -33,7 +33,25 @@ class hdfPath():
     def __init__(self, file, group=''):
         self.file = file
         self.group = group + '/'
+        
+    def __str__(self):
+        return str(self.file) + ' : ' + str(self.group)
 
+
+
+class hdfDatasetExists(Exception):
+    """A dataset by this name already exists in this group.\n 
+        Due to design limitations of the HDF5 format, deleting/overwriting datasets is not recommended. \n
+        Please either rename the dataset, or delete the entire hdf file and try again.\n
+    """
+    pass
+
+class hdfGroupExists(Exception):
+    """A group by this name already exists.\n 
+        Due to design limitations of the HDF5 format, deleting/overwriting groups is not recommended. \n
+        Please either rename the group, or delete the entire hdf file and try again.\n
+    """
+    pass
 
 
 

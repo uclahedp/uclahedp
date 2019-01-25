@@ -15,6 +15,7 @@ import os
 import hedpConstants as c
 import csvtools as csvtools
 import hdftools
+import util
 #bapsflib is available from pip. Run command 'pip papsflib' from terminal to install it
 from bapsflib import lapd
 
@@ -28,7 +29,107 @@ import h5py
 # eg. controls = [('6K Compumotor', receptacle)]
 # note that 'receptacle' here is the receptacle NUMBER, 1 - indexed!)
 # if no control is specified, the measurement is assumed to be stationary
+def readRunProbe( run, probe, data_dir, dest):
 
+    csv_dir = os.path.join(data_dir, c.metadata_dir)
+    
+    """
+    run_level_attrs = csvtools.getRunLevelAttrs(csv_dir, run)
+    probe_level_attrs =  csvtools.getProbeLevelAttrs(csv_dir, run, probe)
+    attrs = {**run_level_attrs,  **probe_level_attrs}
+    """
+    
+    attrs = csvtools.getAllAttrs(csv_dir, run, probe)
+  
+    req_keys = ['datafile', 'digitizer', 'adc']
+    missing_keys = []
+    for k in req_keys:
+        if not k in attrs.keys():
+            missing_keys.append(k)
+    if len(missing_keys) > 0:
+        raise ValueError("Missing columns in csv files! The following keys were not found, and are required: " + str(missing_keys))
+        
+    motion_keys = ['motion_controller', 'motion_receptacle']    
+    missing_keys = []
+    for k in motion_keys:
+        if not k in attrs.keys():
+            missing_keys.append(k)
+    if len(missing_keys) > 0:
+        print("Some motion keys not found: positon data will not be read out!")
+        motion = False
+    else:
+        motion = True
+
+
+    digitizer = attrs['digitizer'][0]
+    adc = attrs['adc'][0]
+    channel_arr = []
+    nchan = 1
+    #Loop through the file until there are no more channels specified
+    #Names must be "brd#" and "chan#"
+    while True:
+        brdstr = 'brd' + str(int(nchan))
+        chanstr = 'chan' + str(int(nchan))
+        if brdstr in attrs.keys() and chanstr in attrs.keys():
+            #CHeck to make sure channel has actual non-nan values
+            if not np.isnan(attrs[brdstr][0])  and not np.isnan(attrs[chanstr][0]):
+                #Append the channel to the list to be extracted
+                channel_arr.append( (digitizer, adc, attrs[brdstr][0], attrs[chanstr][0]) )
+            nchan = nchan + 1
+        else:
+            break
+
+    controls = None #Default value
+    if motion:
+        motion_controller = attrs['motion_controller'][0]
+        motion_receptacle = attrs['motion_receptacle'][0]
+        if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
+            controls = [(motion_controller, motion_receptacle)]
+
+
+    src =  os.path.join(data_dir, c.hdf_dir, attrs['datafile'][0] +  '.hdf5')
+    
+    #Write the attribute dictionaries into the file
+    with h5py.File(dest.file, "a") as df:
+
+        #Throw an error if this group already exists
+        if dest.group is not '/' and dest.group in df.keys():
+            raise hdftools.hdfGroupExists(dest)
+            
+        grp = df[dest.group]
+
+        #Create the new group structure.
+        for k in attrs:
+            if attrs[k] is not None:
+                val, unit =  attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                grp.attrs.create(k,  (val, unit) ) 
+        
+    """
+        run_group = df.require_group('run' +str(int(run)) )
+        probe_group = run_group.require_group( probe )
+        dest.group = probe_group.name
+        
+        
+        for k in run_level_attrs:
+            if run_level_attrs[k] is not None:
+                val, unit =  run_level_attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                run_group.attrs.create(k,  (val, unit) ) 
+                
+        for k in probe_level_attrs:
+            if probe_level_attrs[k] is not None:
+                val, unit =  probe_level_attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                probe_group.attrs.create(k,  (val, unit) ) 
+     """
+        
+
+    lapdReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls)
+    
 
 def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
 
@@ -88,12 +189,11 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 
     else:
         motion = False
-
-
     sf = lapd.File(src, silent=True)
     
 
     with h5py.File(dest.file, "a") as df:
+
         grp = df.require_group(dest.group)
         
          #If motor drive is not included in the LAPD package, process it separately.
@@ -110,7 +210,12 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
                 shp = data['signal'].shape
                 nshots= shp[0]
                 nti = shp[1]
-                grp.require_dataset("data", (nshots, nti, nchan), np.float32, chunks=True )
+                
+                #Throw an error if this dataset already exists
+                if 'data' in grp.keys():
+                    raise hdftools.hdfDatasetExists(str(dest) + ' -> ' + "'data'")
+                
+                grp.require_dataset("data", (nshots, nti, nchan), np.float32, chunks=(1, 20000, 1), compression='gzip')
                 
                 clock_rate = data.info['clock rate'].to(u.Hz)
                 dt =  (  1.0 / clock_rate  ).to(u.s)
@@ -157,92 +262,7 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None ):
     
 
 
-def readRunProbe( run, probe, data_dir, dest):
 
-    csv_dir = os.path.join(data_dir, c.metadata_dir)
-
-    run_level_attrs = csvtools.getRunLevelAttrs(csv_dir, run)
-    probe_level_attrs =  csvtools.getProbeLevelAttrs(csv_dir, run, probe)
-    
-    attrs = {**run_level_attrs,  **probe_level_attrs}
-
-
-    req_keys = ['datafile', 'digitizer', 'adc']
-    missing_keys = []
-    for k in req_keys:
-        if not k in attrs.keys():
-            missing_keys.append(k)
-    if len(missing_keys) > 0:
-        raise ValueError("Missing columns in csv files! The following keys were not found, and are required: " + str(missing_keys))
-        
-    motion_keys = ['motion_controller', 'motion_receptacle']    
-    missing_keys = []
-    for k in motion_keys:
-        if not k in attrs.keys():
-            missing_keys.append(k)
-    if len(missing_keys) > 0:
-        print("Some motion keys not found: positon data will not be read out!")
-        motion = False
-    else:
-        motion = True
-
-
-    digitizer = attrs['digitizer'][0]
-    adc = attrs['adc'][0]
-    channel_arr = []
-    nchan = 1
-    #Loop through the file until there are no more channels specified
-    #Names must be "brd#" and "chan#"
-    while True:
-        brdstr = 'brd' + str(int(nchan))
-        chanstr = 'chan' + str(int(nchan))
-        if brdstr in attrs.keys() and chanstr in attrs.keys():
-            #CHeck to make sure channel has actual non-nan values
-            if not np.isnan(attrs[brdstr][0])  and not np.isnan(attrs[chanstr][0]):
-                #Append the channel to the list to be extracted
-                channel_arr.append( (digitizer, adc, attrs[brdstr][0], attrs[chanstr][0]) )
-            nchan = nchan + 1
-        else:
-            break
-
-    controls = None #Default value
-    if motion:
-        motion_controller = attrs['motion_controller'][0]
-        motion_receptacle = attrs['motion_receptacle'][0]
-        if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
-            controls = [(motion_controller, motion_receptacle)]
-
-
-    src =  os.path.join(data_dir, c.hdf_dir, attrs['datafile'][0] +  '.hdf5')
-    
-    #Write the attribute dictionaries into the file
-    with h5py.File(dest.file, "a") as df:
-        #Delete any existing group at this location
-        grp = dest.group
-
-        #Create the new group structure.
-        run_group = df.require_group('run' +str(int(run)) )
-        probe_group = run_group.require_group( probe )
-        dest.group = probe_group.name
-        
-
-        for k in run_level_attrs:
-            if run_level_attrs[k] is not None:
-                val, unit =  run_level_attrs[k]
-                val = str(val).encode('utf-8')
-                unit = str(unit).encode('utf-8')
-                run_group.attrs.create(k,  (val, unit) ) 
-                
-        for k in probe_level_attrs:
-            if probe_level_attrs[k] is not None:
-                val, unit =  probe_level_attrs[k]
-                val = str(val).encode('utf-8')
-                unit = str(unit).encode('utf-8')
-                probe_group.attrs.create(k,  (val, unit) ) 
-     
-
-    lapdReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls)
-    
     
 
     
@@ -255,7 +275,10 @@ if __name__ == "__main__":
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')
-    x =  readRunProbe(102, 'PL11B', data_dir, dest)
-
+    util.mem()
+    tstart = util.timeTest()
+    x =  readRunProbe(102, 'tdiode', data_dir, dest)
+    util.timeTest(t0=tstart)
+    util.mem()
     print('done')
     

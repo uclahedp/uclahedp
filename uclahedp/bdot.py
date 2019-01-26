@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+@author: Peter Heuer
 bdot.py: BDOT analysis package
-
-Created on Wed Nov 28 13:37:21 2018
-
-@author: peter
+--> bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False)
+    Takes in a source HDF5 file, integrates and calibrates signal based on
+    metadata attributes of source HDF5. Optionally corrects for time offesets
+    between shots using a timing diode source. Optionally outputs position 
+    gridded data.
 """
 
 import csvtools
@@ -24,7 +26,7 @@ import time
 
 
 
-def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
+def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
     """ Integrates bdot data, calibrates output using information about the probe.
         Corrects for probe angle based on which drive is being used.
 
@@ -36,9 +38,8 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
         dest: hdfPath object
             Path string to location processed bdot data should be written out
 
-        tdiode:  hdfPath object
-            Path to a tdiode full hdf5 dataset containing diode t0 times and
-            an array of boolean 'bad shot' flags.
+        tdiode_hdf:  hdfPath object
+            Path to a raw hdf5 file containing tdiode data. T
             
         grid: Boolean
             If grid is true, output will be written in cartesian grid array
@@ -48,18 +49,18 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
     Returns
     -------
-       None
+       True (if executes to the end)
     """ 
     # ******
     # Load data from the raw HDF file
     # ******
     with h5py.File(src.file, 'r') as sf:
         
-        kdict = {}
+        #Get the datagroup
         srcgrp = sf[src.group]
         
-        #src_run_grp = srcgrp.parent
-  
+        #Create dictionary of attributes
+        attrs = hdftools.readAttrs(srcgrp)
         
         #Check for keys always required by this function
         req_keys = ['brd1','brd2','brd3', 'chan1','chan2', 'chan3', 
@@ -69,7 +70,7 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     'probe_origin_x', 'probe_origin_y', 'probe_origin_z',
                     'dt', 'nturns']
        
-        motion = None
+        
         if  'pos' in srcgrp:
             pos = srcgrp['pos'][:] #Read the entire array in
             req_keys = req_keys + ['motion_format']
@@ -78,35 +79,34 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
             else:
                 raise ValueError("Motion format unrecognized: " + str(srcgrp['pos'].attrs['motion_format']) )
-            motion = srcgrp.attrs['motion_format']
+            motion_format = srcgrp.attrs['motion_format']
         else:
             #If no position information is given, a single explicit position
             #is required. 
             req_keys = req_keys + ['xpos', 'ypos', 'zpos']
             grid = False #Can't grid data if there's no pos array!
+            motion_format = None
             
             
         #Process the required keys, throwing an error if any cannot be found
-        missing_keys = []
-        for k in req_keys:
-            if k in srcgrp.attrs:
-                kdict[k] = ( csvtools.fixType(srcgrp.attrs[k][0]), srcgrp.attrs[k][1])
-            else:
-                missing_keys.append(k)
-        if len(missing_keys) > 0:
-            raise ValueError("Missing required keys! ->" + str(missing_keys))
+        csvtools.missingKeys(attrs, req_keys, fatal_error=True)
         
 
+        #Extract the shape of the source data
         nshots, nti, nchan = srcgrp['data'].shape
         
         
-        #If keywords specify gridded output, run postools.grid 
+        #If keywords specify gridded output, run postools.grid
+        #shotgridind is a list of grid and repetition indices for each shot num
+        #that tells the program where to store each data trace in the array
         if grid:
             shotgridind, xaxes, yaxes, zaxes = postools.gridShotIndList(pos, precision=.1)
             nx,ny,nz = len(xaxes), len(yaxes), len(zaxes)
             nreps =int( np.floor(nshots/(nx*ny*nz)))
             
-
+        #If tdiode_hdf is set, run the tdiode processing routine
+        #TODO: Maybe have a separate keyword to pass an already-processed
+        #tdiode file here? Otherwise, this runs for each probe separaetly.
         if tdiode_hdf is not None:
             if verbose:
                 print("Loading tdiode array from file.")
@@ -114,17 +114,23 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             t0indarr = tdiode.calcT0ind(tdiode_hdf)
             #Get an array of all the good shots and badshots (indices)
             badshots, goodshots = tdiode.findBadShots(tdiode_hdf)
-            #Replace any bad shots with a standin value for now
+            #Replace any bad shots with a standin avg value
+            #(Later should overwrite bad shots with good neighboring shots)
             t0indarr[badshots] = int(np.median(t0indarr[goodshots]))
-            
+            #We will remove up to max_t0shift indices from each array such that
+            #the t0 indices all line up.
             min_t0ind = np.min(t0indarr[goodshots])
             max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
-            nti = nti - max_t0shift
+            #Compute new nti
+            nti = nti - max_t0shift 
             
             
         if verbose:
             print("Opening destination HDF file")
 
+        #Open the destination file
+        #This exists WITHIN the open statement for the source file, so the
+        #source file is open at the same time.
         with h5py.File(dest.file, 'a') as df:
             
             #Throw an error if this group already exists
@@ -135,15 +141,8 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
             
             #Copy over attributes
-            """
-            for k in src_run_grp.attrs.keys():
-                dest_run_grp.attrs[k] = src_run_grp.attrs[k]
-            for k in srcgrp.attrs.keys():
-                destgrp.attrs[k] = srcgrp.attrs[k]
-            """
-            for k in srcgrp.attrs.keys():
-                destgrp.attrs[k] = srcgrp.attrs[k]
-            
+            hdftools.copyAttrs(srcgrp, destgrp)
+
             #Throw an error if this dataset already exists
             if 'data' in destgrp.keys():
                     raise hdftools.hdfDatasetExists(str(dest) + ' -> ' + "'data'")
@@ -163,33 +162,38 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             if tdiode_hdf is not None:
                 t = t[0:nti] - t[min_t0ind]
 
-            atten = np.array([kdict['xatten'][0],kdict['yatten'][0],kdict['zatten'][0]])
-            # Create an array of calibration coefficents
-            if kdict['xatten'][1].decode("utf-8") != 'dB':
-                print("ATTENUATION NOT SET IN dB - NO CORRECTION APPLIED!")
-                print(kdict['xatten'][1].decode("utf-8"))
-            else:
-                print("Converting attenuation dB to x")
-                atten = np.power([10,10,10], atten/20.0) # Convert from decibels
+            
+            
+            atten = np.array([attrs['xatten'][0],attrs['yatten'][0],attrs['zatten'][0]])
+            #Atten is assumed to be in dB. We could use the units to check this,
+            #but it always is in dB and it's just a stupid source for errors.
+            #Print this warning message if the units are different, just in case
+            if attrs['xatten'][1].decode("utf-8") != 'dB':
+                print("WARNING: ATTEN UNITS DO NOT MATCH dB")
+                print(attrs['xatten'][1].decode("utf-8"))
+                print("CONVERTING ANYWAY: CHECK YOUR UNITS!")
+
+            #Convert atten to dB (if units set to dB)
+            atten = np.power([10,10,10], atten/20.0) # Convert from decibels   
            
             # dt -> s
-            dt = ( kdict['dt'][0]*u.Unit(kdict['dt'][1])).to(u.s).value
+            dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
 
             # area : mm^2 -> m^2
-            xarea = (kdict['xarea'][0]*u.Unit(kdict['xarea'][1])).to(u.m ** 2).value
-            yarea = (kdict['yarea'][0]*u.Unit(kdict['yarea'][1])).to(u.m ** 2).value
-            zarea = (kdict['zarea'][0]*u.Unit(kdict['zarea'][1])).to(u.m ** 2).value
+            xarea = (attrs['xarea'][0]*u.Unit(attrs['xarea'][1])).to(u.m ** 2).value
+            yarea = (attrs['yarea'][0]*u.Unit(attrs['yarea'][1])).to(u.m ** 2).value
+            zarea = (attrs['zarea'][0]*u.Unit(attrs['zarea'][1])).to(u.m ** 2).value
 
-            gain = kdict['gain'][0]
-            nturns = kdict['nturns'][0]
+            gain = attrs['gain'][0]
+            nturns = attrs['nturns'][0]
 
             xcal = 1.0e4*dt*atten[0]/gain/(nturns*xarea)
             ycal = 1.0e4*dt*atten[1]/gain/(nturns*yarea)
             zcal = 1.0e4*dt*atten[2]/gain/(nturns*zarea)
             
-            xpol = kdict['xpol'][0]
-            ypol = kdict['ypol'][0]
-            zpol = kdict['zpol'][0]
+            xpol = attrs['xpol'][0]
+            ypol = attrs['ypol'][0]
+            zpol = attrs['zpol'][0]
             
             
             #Initialize some variables to use in time-remaining printout
@@ -209,38 +213,45 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 tperstep.append(nowtime-tstart)
                 tstart = nowtime
                     
+                #Time remaining printout
                 if verbose and i % nstepsreport == 0 and i > 0:
                     tremain = np.mean(tperstep)*(nshots - i)
                     print(str(i) + '/' + str(nshots) + ' complete, ' + 
                           util.timeFormat(tremain) + ' remaining' )
-                
-                
 
-                #If a tdiode hdf was supplied, apply the correction here.
+
+                #If a tdiode hdf was supplied, calculate the index correction
+                #here
                 if tdiode_hdf is not None:
                     ta = t0indarr[i] - min_t0ind
                     tb = ta + nti
-                   # print('t0ind:' + str(t0indarr[i]) +  ' ta: ' + str(ta) + 
-                   #    ', tb: ' + str(tb) + ', nti: ' + str(nti) + 
-                   #    ', tb-ta: ' +  str(tb-ta))
                 else:
+                    #By default, read in the entire dataset
                     ta = 0
                     tb = -1
                 
-                    
+                #Read in the data from the source file
                 bx = srcgrp['data'][i,ta:tb, 0]
                 by = srcgrp['data'][i,ta:tb, 1]
                 bz = srcgrp['data'][i,ta:tb, 2]
                 
+                #Apply the calibration factors
                 bx = np.cumsum( detrend(bx) )*xcal*xpol
                 by = np.cumsum( detrend(by) )*ycal*ypol
                 bz = np.cumsum( detrend(bz) )*zcal*zpol
                 
-     
-                if motion == 'fixed_rotation':
+                #If a motion_format is set, apply the appropriate probe angle correction
+                if motion_format == 'fixed_rotation':
+                    #x,y,z is the probe's current position
                     x,y,z = srcgrp['pos'][i, :]
-                    rx, ry, rz = kdict['rot_center_x'][0],kdict['rot_center_y'][0],kdict['rot_center_z'][0]
-                    pitch = np.arctan( (y-ry) / (x-rx) ) 
+                    #rx, ry, rz is the location of the probe rotation point
+                    #i.e. the center of the ball valve.
+                    rx, ry, rz = attrs['rot_center_x'][0],attrs['rot_center_y'][0],attrs['rot_center_z'][0]
+                    #x-rx, y-ry, z-rz is a vector pointing along the probe
+                    #shaft towards the probe tip
+                    #pitch is the angle of the probe shaft to the xz plane
+                    pitch = np.arctan( (y-ry) / (x-rx) )
+                    #yaw is the angle of the probe shaft to the xy plane
                     yaw = np.arctan( (z-rz) / (x-rx) ) 
                     
                     #If the probe is coming from the +X direction, its calibrated Z axis is already off by 180 degrees.
@@ -248,7 +259,12 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     if (x-rx < 0.0):
                         yaw = yaw + np.pi
                     
-                    roll, unit = kdict['roll']
+                    #Roll is rotation of the probe about its axis, with
+                    #y+ oriented up as roll=0
+                    #This should be zero, unless a probe was later discovered
+                    #to be incorrectly calibrated, so that the +Y mark was
+                    #wrong
+                    roll, unit = attrs['roll']
                     if unit != 'rad':
                         np.radians(roll)
               
@@ -269,16 +285,17 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                            (np.cos(roll)*np.cos(yaw) + np.sin(roll)*np.sin(pitch)*np.sin(yaw))*bz)
                     
                 if grid:
-
+                    #Get location to write this datapoint from the shotgridind
                     xi = shotgridind[i, 0]
                     yi = shotgridind[i, 1]
                     zi = shotgridind[i, 2]
                     repi = shotgridind[i, 3]
-
+                    #Write data
                     destgrp['data'][:, xi, yi, zi, repi, 0] = bx
                     destgrp['data'][:, xi, yi, zi, repi, 1] = by
                     destgrp['data'][:, xi, yi, zi, repi, 2] = bz
                 else:
+                    #Write data
                     destgrp['data'][i,:, 0] = bx
                     destgrp['data'][i,:, 1] = by 
                     destgrp['data'][i,:, 2] = bz                      
@@ -289,13 +306,18 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             if verbose:
                 print("Writing axes to destination file")
             
-            if motion is not None:
+            
+            #Write the axes as required by the format of the data written
+            if motion_format is not None:
                 #Add the other axes and things we'd like in this file
                 destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][:]
                 for k in srcgrp['pos'].attrs.keys():
                     destgrp['pos'].attrs[k] = srcgrp['pos'].attrs[k]
 
             if grid:
+                dimlabels = ['time', 'xaxes', 'yaxes', 'zaxes', 'reps', 'chan']
+                destgrp['data'].attrs['shape'] = [nti, nx, ny, nz, nreps, nchan]
+                
                 destgrp.require_dataset('xaxes', (nx,), np.float32, chunks=True)[:] = xaxes
                 destgrp['xaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
                 
@@ -304,29 +326,18 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 
                 destgrp.require_dataset('zaxes', (nz,), np.float32, chunks=True)[:] = zaxes
                 destgrp['zaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
-                
-                dimlabels = ['time', 'xaxes', 'yaxes', 'zaxes', 'reps', 'chan']
-                destgrp['data'].attrs['shape'] = [nti, nx, ny, nz, nreps, nchan]
+
             else:
-                destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
-                destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
                 dimlabels = ['shots', 'time', 'chan']
                 destgrp['data'].attrs['shape'] = [nshots, nti, nchan]
-            
-            
+                destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
+                destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
+                
             
             destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
             destgrp['chan'].attrs['unit'] = srcgrp['chan'].attrs['unit']
-
             
-            try:
-                destgrp.require_dataset('time', (nti,), np.float32, chunks=True)
-            except ValueError:
-                destgrp['time'].resize( (nti,))
-                #destgrp.require_dataset('time', (nti,), np.float32, chunks=(1, nti, 1) )
-                
-                
-        
+            destgrp.require_dataset('time', (nti,), np.float32, chunks=True)
             destgrp['time'][:] = t
             destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
 
@@ -337,25 +348,25 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             
             del(bx,by,bz)
             del(xcal,ycal,zcal,xpol,ypol,zpol)
-            if motion == 'fixed_rotation':
-                del(x,y,z,rx,ry,rz,roll, pitch, yaw)
-                
+
             if verbose:
                 print("End of BDOT routine!")
+                
+            return True
 
 
 
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B.hdf5") )
+    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_LAPD1.hdf5") )
     tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode.hdf5") )
     dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save_full.hdf5") )
     
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    full_filepath = bdot_raw_to_full(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
+    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

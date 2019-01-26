@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This program opens an LAPD HDF file (as well as metadata csvs)
-
-@author: peter
+@author: Peter Heuer
+lapdtools.py: LAPD HDF5 analysis programs
+ --> readRunPobe(run, probe, data_dir, dest, verbose=False)
+     Reads LAPD HDF5 dataset into a new HDF5 file w/ metadata,
+     calls lapdReadHDF with options chosen from metadata csvs.
+        
+--> lapdReadHDF(src=None, dest=None, channel_arr = None, 
+         controls = None, verbose=False )
+    Wrapper on bapsflib file.read_data which reads data from an LAPD HDF5 file
+    and writes it out to an output HDF5 file.
 """
-
 
 import numpy as np
 from astropy import units as u
@@ -23,6 +29,35 @@ import h5py
 
 
 def readRunProbe( run, probe, data_dir, dest, verbose=False):
+    """ Retreives the appropriate metadata for a run and probe in a given data
+    directory, then reads in the data using the bapsflib module and saves
+    it in a new hdf5 file.
+    
+    Parameters
+    ----------
+        run: int
+            Run number
+        
+        probe: str
+            Probe name
+            
+        data_dir: str (path)
+            Path to the data directory. Directory should have /HDF folder with 
+            hdf files and /METADATA folder with CSV metadata files
+    
+
+        dest: hdfPath object
+            Path string to location data should be written out
+
+        verbose: boolean
+            Set this flag to true to enable print statements throughout the
+            code, including a runtime-until-completion estimate during the
+            data reading loop.
+
+    Returns
+    -------
+       True, if execution is successful 
+    """ 
 
     #Create a dictionary of attributes from the entire directory of CSV
     #files that applies to this probe and run
@@ -96,7 +131,7 @@ def readRunProbe( run, probe, data_dir, dest, verbose=False):
         grp = df[dest.group]
 
         #Write the attrs dictioanry into attributes of the new data group
-        csvtools.writeAttrs(attrs, grp)
+        hdftools.writeAttrs(attrs, grp)
 
     #Call lapdReadHDF to actually copy over the data
     lapdReadHDF(src=src, dest = dest, channel_arr = channel_arr, controls = controls, verbose=verbose)
@@ -104,6 +139,44 @@ def readRunProbe( run, probe, data_dir, dest, verbose=False):
 
 
 def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None, verbose=False ):
+    """ 
+    Wrapper on the LAPD's bapsflib package that choses parametesr based on
+    the metadata dictonary, manually handles several drives that aren't included
+    in the bapsflib software, and writes out data in the standard HEDP
+    HDF format
+    
+    Parameters
+    ----------
+        src: hdfPath object
+            Path string to source hdf file (will be opend by bapsflib)
+    
+
+        dest: hdfPath object
+            Path string to location data should be written out
+            
+        channel_arr: Array of tuples
+            Array of channels formatted for input to the bapsflib package. 
+            channel_arr = array of tuples of form:
+                (digitizer, adc, board#, channel#)
+            eg. channel_arr = ('SIS crate', 'SIS 3305', 2, 1)
+            
+            
+        controls: Array of lists
+            Array of motion controls formatted for input to the bapsflib 
+            package. control = array of tuples of form:
+            (motion control, receptacle)
+            eg. controls = [('6K Compumotor', receptacle)]
+            
+
+        verbose: boolean
+            Set this flag to true to enable print statements throughout the
+            code, including a runtime-until-completion estimate during the
+            data reading loop.
+
+    Returns
+    -------
+       True, if execution is successful 
+    """ 
 
     #This ugly initial code block extracts position information for drives
     #that are as-yet unsupported by bapsflib.
@@ -329,7 +402,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(102, 'LAPD1', data_dir, dest, verbose=True)
+    x =  readRunProbe(102, 'tdiode', data_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

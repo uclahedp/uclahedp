@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import h5py
-
+import csvtools
 
 def valid_dataset(dataset):
     
@@ -24,6 +24,28 @@ def valid_dataset(dataset):
             raise ValueError("Dimensionsionality conflict")
     
     
+    return True
+
+
+
+def writeAttrs(attrs, group):
+    for k in attrs:
+            if attrs[k] is not None:
+                val, unit =  attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                group.attrs.create(k,  (val, unit) )
+                
+def readAttrs(obj):
+    attrs = {}
+    for k in obj.attrs.keys():
+        attrs[k] = ( csvtools.fixType(obj.attrs[k][0]), obj.attrs[k][1])
+    return attrs
+
+
+def copyAttrs(srcobj, destobj):
+    for k in srcobj.attrs.keys():
+                destobj.attrs[k] = srcobj.attrs[k]
     return True
 
 

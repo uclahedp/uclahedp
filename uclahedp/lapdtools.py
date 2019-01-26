@@ -18,7 +18,6 @@ from astropy import units as u
 import time
 import os
 
-import hedpConstants as c
 import csvtools as csvtools
 import hdftools
 import util
@@ -28,7 +27,7 @@ from bapsflib import lapd
 import h5py
 
 
-def readRunProbe( run, probe, data_dir, dest, verbose=False):
+def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     """ Retreives the appropriate metadata for a run and probe in a given data
     directory, then reads in the data using the bapsflib module and saves
     it in a new hdf5 file.
@@ -41,9 +40,11 @@ def readRunProbe( run, probe, data_dir, dest, verbose=False):
         probe: str
             Probe name
             
-        data_dir: str (path)
-            Path to the data directory. Directory should have /HDF folder with 
-            hdf files and /METADATA folder with CSV metadata files
+        hdf_dir: str (path)
+            Path to the directory where HDF files are stored
+            
+        csv_dir: str(path)
+            Path to the directory where metadata CSV's are stored
     
 
         dest: hdfPath object
@@ -61,7 +62,6 @@ def readRunProbe( run, probe, data_dir, dest, verbose=False):
 
     #Create a dictionary of attributes from the entire directory of CSV
     #files that applies to this probe and run
-    csv_dir = os.path.join(data_dir, c.metadata_dir)
     attrs = csvtools.getAllAttrs(csv_dir, run, probe)
   
     #Check that some required keys are present, throw a fatal error if not
@@ -74,7 +74,7 @@ def readRunProbe( run, probe, data_dir, dest, verbose=False):
     #TODO: Should this file take a data_dir and determine the filename
     #automatically, or should a source hdf file be given, leaving the program
     #that calls this one to determine the HDF file name?
-    src =  os.path.join(data_dir, c.hdf_dir, attrs['datafile'][0] +  '.hdf5')
+    src =  os.path.join(hdf_dir,  attrs['datafile'][0] +  '.hdf5')
     
     #Create an array of channels (required input for bapsflib read_data)
     # channel_arr = array of tuples of form: (digitizer, adc, board#, channel#)
@@ -394,14 +394,15 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None, verbos
 #Simple test program
 if __name__ == "__main__":
 
-    data_dir = os.path.join("F:", "/LAPD_Mar2018/")
+    hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
+    csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
 
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(102, 'tdiode', data_dir, dest, verbose=True)
+    x =  readRunProbe(102, 'tdiode', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

@@ -317,7 +317,6 @@ def lapdReadHDF(src=None, dest=None, channel_arr = None, controls = None, verbos
                      in [str(dt.value), str(dt.unit)] ]
             dimlabels = ['shots', 'time', 'chan']
             grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
-            grp['data'].attrs['shape'] = np.array([nshots, nti, nchan])
             
             
         

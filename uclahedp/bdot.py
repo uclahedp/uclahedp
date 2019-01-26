@@ -316,7 +316,6 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
             if grid:
                 dimlabels = ['time', 'xaxes', 'yaxes', 'zaxes', 'reps', 'chan']
-                destgrp['data'].attrs['shape'] = [nti, nx, ny, nz, nreps, nchan]
                 
                 destgrp.require_dataset('xaxes', (nx,), np.float32, chunks=True)[:] = xaxes
                 destgrp['xaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
@@ -329,7 +328,6 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
             else:
                 dimlabels = ['shots', 'time', 'chan']
-                destgrp['data'].attrs['shape'] = [nshots, nti, nchan]
                 destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
                 destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
                 

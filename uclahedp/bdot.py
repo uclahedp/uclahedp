@@ -243,6 +243,11 @@ def bdot_raw_to_full(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     pitch = np.arctan( (y-ry) / (x-rx) ) 
                     yaw = np.arctan( (z-rz) / (x-rx) ) 
                     
+                    #If the probe is coming from the +X direction, its calibrated Z axis is already off by 180 degrees.
+                    #This corrects for that, so the probes can be oriented wth Y+ up on both sides of LAPD
+                    if (x-rx < 0.0):
+                        yaw = yaw + np.pi
+                    
                     roll, unit = kdict['roll']
                     if unit != 'rad':
                         np.radians(roll)

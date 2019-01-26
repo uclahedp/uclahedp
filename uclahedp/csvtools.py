@@ -459,7 +459,30 @@ def getRunList(csv_dir):
     #Convert to a set and back to remove duplicates
     runlist = list(set(runlist))
     
-    return runlist
+    
+    
+def missingKeys(attrs, req_keys, fatal_error=True, missing_keys = []):
+    for k in req_keys:
+        if not k in attrs.keys():
+            missing_keys.append(k)
+    if len(missing_keys) > 0:
+        if fatal_error:
+            raise ValueError("Missing columns in metadata attributes! The following keys were not found, and are required: " + str(missing_keys))
+        else:
+            return True
+    else:
+        return False
+    
+    
+    
+def writeAttrs(attrs, group):
+    for k in attrs:
+            if attrs[k] is not None:
+                val, unit =  attrs[k]
+                val = str(val).encode('utf-8')
+                unit = str(unit).encode('utf-8')
+                group.attrs.create(k,  (val, unit) ) 
+
 if __name__ == "__main__":
     fname = r"F:/LAPD_Mar2018/METADATA/CSV/langmuir_runs.csv"
     csv_dir = r"F:/LAPD_Mar2018/METADATA/"

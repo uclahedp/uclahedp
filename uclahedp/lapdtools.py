@@ -402,7 +402,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(102, 'tdiode', hdf_dir, csv_dir, dest, verbose=True)
+    x =  readRunProbe(102, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

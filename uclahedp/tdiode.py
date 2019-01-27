@@ -2,7 +2,10 @@ import h5py
 import numpy as np
 
 import os
+import hdftools
 
+#TODO: Write a tdiode raw_to_full program so other probes don't have to regen
+#this info for each probe
 
 
 

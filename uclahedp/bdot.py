@@ -254,9 +254,9 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     #yaw is the angle of the probe shaft to the xy plane
                     yaw = np.arctan( (z-rz) / (x-rx) ) 
                     
-                    #If the probe is coming from the +X direction, its calibrated Z axis is already off by 180 degrees.
-                    #This corrects for that, so the probes can be oriented wth Y+ up on both sides of LAPD
-                    if (x-rx < 0.0):
+                    #If the probe is coming from the -X direction, its calibrated Z axis is already off by 180 degrees.
+                    #This is because the probes are calibrated to match the East side of LAPD
+                    if ((x-rx) > 0.0):
                         yaw = yaw + np.pi
                     
                     #Roll is rotation of the probe about its axis, with
@@ -357,9 +357,9 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_LAPD1.hdf5") )
-    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode.hdf5") )
-    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_save_full.hdf5") )
+    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_raw.hdf5") )
+    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5") )
+    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_full.hdf5") )
     
     print('reading')
     util.mem()

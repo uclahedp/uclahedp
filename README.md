@@ -1,2 +1,0 @@
-# uclahedp
-UCLA HEDP Code

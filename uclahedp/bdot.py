@@ -330,7 +330,9 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 dimlabels = ['shots', 'time', 'chan']
                 destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
                 destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
-                
+            
+            destgrp.require_dataset('reps', (nchan,), np.int32, chunks=True)[:] = srcgrp['reps'][:]
+            destgrp['reps'].attrs['unit'] = srcgrp['reps'].attrs['unit']
             
             destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
             destgrp['chan'].attrs['unit'] = srcgrp['chan'].attrs['unit']

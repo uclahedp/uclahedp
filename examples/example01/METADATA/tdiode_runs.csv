@@ -1,0 +1,100 @@
+run,date,nreps,index,probe,drive,fast,daq,digitizer,adc,brd1,chan1,datafile,notes
+,,,,,,Daq,,,,,,,
+Experiment Shot #,Date (m/d/y),Nreps,Index,Probe,Motor drive,Daq fast or slow?,Daq code,Digitizer name,ADC name,Board,Channel,HDF5 File,Notes
+1,3/27/2018,1,1,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor001_mar27,
+2,3/27/2018,1,2,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor002_mar27,
+3,3/27/2018,1,3,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor003_mar27,
+4,3/27/2018,1,4,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor004_mar27,
+5,3/27/2018,1,5,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor005_mar27,
+6,3/28/2018,1,6,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor006_mar28,
+7,3/28/2018,1,7,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor007_mar28,
+8,3/28/2018,1,8,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor008_mar28,
+9,3/28/2018,1,9,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor009_mar28,
+10,3/28/2018,1,10,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor010_mar28,
+11,3/28/2018,1,11,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor011_mar28,
+12,3/28/2018,10,12,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening012_mar28,Bad tdiode: use t0=0.3
+13,3/29/2018,10,13,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening013_mar29,
+14,3/29/2018,100,14,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening014_mar29,
+15,3/29/2018,10,15,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening015_mar29,
+16,3/29/2018,100,16,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening016_mar29,
+17,3/29/2018,10,17,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening017_mar29,
+18,3/29/2018,10,18,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening018_mar29,
+19,3/29/2018,10,19,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening019_mar29,
+20,3/29/2018,10,20,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening020_mar29,
+21,3/29/2018,10,21,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening021_mar29,
+22,3/29/2018,10,22,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening022_mar29,
+23,3/29/2018,10,23,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening023_mar29,
+24,3/29/2018,10,24,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening024_mar29,
+25,3/29/2018,10,25,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening025_mar29,
+26,3/30/2018,10,26,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening026_mar30,
+27,3/30/2018,10,27,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening027_mar30,
+28,3/31/2018,10,28,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening028_mar31,
+29,3/31/2018,10,29,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening029_mar31,
+30,3/31/2018,10,30,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening030_mar31,
+31,3/31/2018,10,31,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening031_mar31,
+35,4/2/2018,1,35,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor035_apr02,
+36,4/2/2018,1,36,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor036_apr02,
+38,4/2/2018,1,38,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor038_apr02,
+39,4/2/2018,1,39,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor039_apr02,
+40,4/2/2018,1,40,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor040_apr02,
+41,4/3/2018,1,41,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor041_apr03,Low amplitude tdiode signal: registers as a bad shot but was fine.
+42,4/3/2018,1,42,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor042_apr03,
+44,4/3/2018,1,44,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor044_apr03,Bad shot: use t0 = 0.3
+45,4/3/2018,1,45,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor045_apr03,Bad shot: use t0 = 0.3
+46,4/3/2018,1,46,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor046_apr03,
+47,4/3/2018,1,47,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor047_apr03,
+48,4/3/2018,1,48,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor048_apr03,
+50,4/4/2018,1,50,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor050_apr04,
+51,4/4/2018,1,51,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor051_apr04,
+52,4/4/2018,1,52,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor052_apr04,
+53,4/4/2018,1,53,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor053_apr04,
+54,4/4/2018,1,54,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor054_apr04,
+55,4/5/2018,10,55,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening055_apr05,
+56,4/5/2018,10,56,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening056_apr05,
+57,4/5/2018,10,57,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening057_apr05,
+58,4/5/2018,10,58,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening058_apr05,
+59,4/5/2018,10,59,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening059_apr05,
+60,4/5/2018,10,60,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening060_apr05,
+61,4/5/2018,5,61,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening061_apr05,
+62,4/6/2018,10,62,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening062_apr06,Used 'early trigger' that jitters a lot: seems to have caused some problems in analysis
+63,4/6/2018,10,63,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening063_apr06,Used 'early trigger' that jitters a lot: seems to have caused some problems in analysis
+64,4/6/2018,10,64,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening064_apr06,Used 'early trigger' that jitters a lot: seems to have caused some problems in analysis
+65,4/6/2018,5,65,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening065_apr06,Used 'early trigger' that jitters a lot: seems to have caused some problems in analysis
+66,4/9/2018,1,66,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor066_apr09,Back to regular laser trigger
+67,4/9/2018,1,67,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor067_apr09,Lowered attenuation to 20dB from 30 dB at DAQ
+68,4/9/2018,1,68,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor068_apr09,
+69,4/9/2018,1,69,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor069_apr09,
+70,4/9/2018,1,70,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor070_apr09,
+71,4/9/2018,1,71,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor071_apr09,
+72,4/9/2018,1,72,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor072_apr09,
+73,4/9/2018,1,73,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor073_apr09,
+74,4/9/2018,10,74,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening074_apr09,
+75,4/9/2018,10,75,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening075_apr09,
+76,4/9/2018,5,76,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening076_apr09,
+77,4/10/2018,1,77,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor077_apr10,Replaced 30 dB with 20 dB attenuator
+78,4/10/2018,1,78,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor078_apr10,BAD: use t0=0.3
+79,4/10/2018,1,79,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor079_apr10,Removed attenuators: 0 dB now on
+80,4/10/2018,1,80,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor080_apr10,Added back 10dB of attenuation. This shot uses the pre-trigger BAD use t0= 0.3?? with pretrigger we don't know when it really is...
+81,4/10/2018,1,81,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor081_apr10,Removed all attenuators
+82,4/10/2018,1,82,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor082_apr10,Changed diode to a different one
+83,4/10/2018,1,83,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor083_apr10,Added more ND to the diode
+84,4/10/2018,1,84,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor084_apr10,
+85,4/10/2018,10,85,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening085_apr10,
+86,4/10/2018,5,86,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening086_apr10,
+87,4/11/2018,1,87,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor087_apr11,
+88,4/11/2018,1,88,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor088_apr11,
+89,4/11/2018,1,89,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor089_apr11,
+90,4/11/2018,1,90,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor090_apr11,
+91,4/11/2018,1,91,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor091_apr11,
+92,4/11/2018,1,92,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor092_apr11,
+93,4/11/2018,1,93,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor093_apr11,
+94,4/11/2018,10,94,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening094_apr11,
+95,4/11/2018,10,95,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening095_apr11,
+96,4/11/2018,5,96,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening096_apr11,
+97,4/12/2018,1,97,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor097_apr12,
+98,4/12/2018,1,98,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor098_apr12,
+99,4/12/2018,1,99,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor099_apr12,
+100,4/12/2018,1,100,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,raptor100_apr12,
+101,4/12/2018,1,101,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening101_apr12,
+102,4/12/2018,5,102,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening102_apr12,
+103,4/12/2018,5,103,tdiode,none,1,fast,SIS crate,SIS 3305,1,8,peening103_apr12,

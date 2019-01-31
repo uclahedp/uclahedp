@@ -1,0 +1,80 @@
+/*
+GOOD REFERENCE -> http://doc.qt.io/qt-5/stylesheet-reference.html
+QWidget
+Base properties that will be overridden later in the file by child class attributes
+*/
+QWidget{
+    background-color: rgb(160, 160, 160);
+}
+/*
+QMenuBar
+*/
+QMenuBar{
+    background-color: rgb(160, 160, 160);
+}
+
+QMenuBar::item {
+    spacing: 3px; /* spacing between menu bar items */
+    padding: 1px 4px;
+    background: transparent;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected { /* when selected using mouse or keyboard */
+    background: #a8a8a8;
+}
+
+QMenuBar::item:pressed {
+    background: #888888;
+}
+/*
+QComboBox
+*/
+QComboBox {
+    border: 1px solid gray;
+    border-radius: 3px;
+    padding: 1px 18px 1px 3px;
+    min-width: 6em;
+}
+
+/* Describes an editable combobox */
+QComboBox:editable {
+    background: white;
+}
+/* Describes a non-editable combo box, no dropdown */
+QComboBox:!editable, QComboBox::drop-down:editable {
+     background: yellow
+}
+
+/* QComboBox gets the "on" state when the popup is open */
+/* Describes a non-editable combo box, dropdown selected item */
+QComboBox:!editable:on, QComboBox::drop-down:editable:on {
+    background: red
+}
+
+QComboBox:on { /* shift the text when the popup opens */
+    padding-top: 3px;
+    padding-left: 4px;
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 15px;
+    background: pink
+
+    border-left-width: 1px;
+    border-left-color: darkgray;
+    border-left-style: solid; /* just a single line */
+    border-top-right-radius: 3px; /* same radius as the QComboBox */
+    border-bottom-right-radius: 3px;
+}
+
+QComboBox::down-arrow {
+    image: url(/usr/share/icons/crystalsvg/16x16/actions/1downarrow.png);
+}
+
+QComboBox::down-arrow:on { /* shift the arrow when popup is open */
+    top: 1px;
+    left: 1px;
+}

@@ -396,7 +396,6 @@ if __name__ == "__main__":
 
     hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
     csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
-
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/test_save.hdf5")
 
     print('reading')

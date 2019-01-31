@@ -27,6 +27,11 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self._main = QtWidgets.QWidget()
         self.setCentralWidget(self._main)
         
+
+
+        #self.setStyleSheet(open('stylesheet.css').read())
+        
+        
         self.dir = os.path.dirname(os.path.realpath(__file__))
 
         iconfile = os.path.join(self.dir,'program_icon.png' )

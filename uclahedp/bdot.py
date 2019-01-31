@@ -300,9 +300,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     destgrp['data'][i,:, 1] = by 
                     destgrp['data'][i,:, 2] = bz                      
             
-            
-            
-            
+
             if verbose:
                 print("Writing axes to destination file")
             
@@ -325,14 +323,17 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 
                 destgrp.require_dataset('zaxes', (nz,), np.float32, chunks=True)[:] = zaxes
                 destgrp['zaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                
+                destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
+                destgrp['reps'].attrs['unit'] = ''
 
             else:
                 dimlabels = ['shots', 'time', 'chan']
+                
                 destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
                 destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
             
-            destgrp.require_dataset('reps', (nchan,), np.int32, chunks=True)[:] = srcgrp['reps'][:]
-            destgrp['reps'].attrs['unit'] = srcgrp['reps'].attrs['unit']
+            
             
             destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
             destgrp['chan'].attrs['unit'] = srcgrp['chan'].attrs['unit']
@@ -359,9 +360,13 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_raw.hdf5") )
-    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5") )
-    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_full.hdf5") )
+    #src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_raw.hdf5") )
+    #tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5") )
+    #dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_full.hdf5") )
+    
+    src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_raw.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_tdiode_raw.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_full.hdf5')
     
     print('reading')
     util.mem()

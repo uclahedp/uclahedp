@@ -195,29 +195,18 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             zpol = attrs['zpol'][0]
             
             
-            #Initialize some variables to use in time-remaining printout
-            tstart  = time.time()
-            tperstep = []
-            nstepsreport = int(nshots/100.0) + 1
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(nshots)
             
             if verbose:
                 print("Beginning processing data shot-by-shot.")
             
             #Chunking data processing loop limits memory usage
             for i in range(nshots):
-                #Update the time-per-shot time estimator
-                #Over time this should give more accurate run-time
-                #predictions
-                nowtime = time.time()
-                tperstep.append(nowtime-tstart)
-                tstart = nowtime
-                    
-                #Time remaining printout
-                if verbose and i % nstepsreport == 0 and i > 0:
-                    tremain = np.mean(tperstep)*(nshots - i)
-                    print(str(i) + '/' + str(nshots) + ' complete, ' + 
-                          util.timeFormat(tremain) + ' remaining' )
-
+                
+                #Update time remaining
+                if verbose:
+                        tr.updateTimeRemaining(i)
 
                 #If a tdiode hdf was supplied, calculate the index correction
                 #here

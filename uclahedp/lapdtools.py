@@ -168,10 +168,8 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
                 
 
-            #Initialize some variables to use in time-remaining printout
-            tstart  = time.time()
-            tperstep = []
-            nstepsreport = int(nshots*nchan/25.0) + 1
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(nchan*nshots)
             
             #Loop through the channels and shots, reading one-by-one into the
             #output dataset
@@ -181,17 +179,9 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                     print("Reading channel: " + str(chan+1) + '/' + str(nchan))
 
                 for shot in range(nshots):
-                    #Update the time-per-shot time estimator
-                    #Over time this should give more accurate run-time
-                    #predictions
-                    nowtime = time.time()
-                    tperstep.append(nowtime-tstart)
-                    tstart = nowtime
-                    i = nshots*chan + shot
-                    if verbose and i % nstepsreport == 0 and i > 0:
-                        tremain = np.mean(tperstep)*(nshots*nchan - i)
-                        print(str(i) + '/' + str(nshots*nchan) + ' samples read, ' + 
-                              util.timeFormat(tremain) + ' remaining' )
+                    
+                    if verbose:
+                        tr.updateTimeRemaining(nshots*chan + shot)
                     
                     #Read the data through bapsflib
                     data = sf.read_data(channel[2], channel[3], digitizer =channel[0],
@@ -314,7 +304,7 @@ if __name__ == "__main__":
 
     hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
     csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
-    dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run103_PL11B_raw.hdf5")
+    dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
     
     #hdf_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/HDF/'
     #csv_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/'
@@ -323,7 +313,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(103, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
+    x =  readRunProbe(102, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

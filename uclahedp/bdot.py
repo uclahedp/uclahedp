@@ -70,23 +70,22 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     'probe_origin_x', 'probe_origin_y', 'probe_origin_z',
                     'dt', 'nturns']
        
-        
+
         if  'pos' in srcgrp:
             pos = srcgrp['pos'][:] #Read the entire array in
-            req_keys = req_keys + ['motion_format']
             #If pos array exists, there are keywords required for that too.
-            if srcgrp.attrs['motion_format'] == 'fixed_rotation':
+            motion_format = srcgrp['pos'].attrs['motion_format']
+            if motion_format == 'fixed_rotation':
                 req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
             else:
                 raise ValueError("Motion format unrecognized: " + str(srcgrp['pos'].attrs['motion_format']) )
-            motion_format = srcgrp.attrs['motion_format']
+            
         else:
             #If no position information is given, a single explicit position
             #is required. 
             req_keys = req_keys + ['xpos', 'ypos', 'zpos']
             grid = False #Can't grid data if there's no pos array!
             motion_format = None
-            
             
         #Process the required keys, throwing an error if any cannot be found
         csvtools.missingKeys(attrs, req_keys, fatal_error=True)
@@ -152,9 +151,9 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             if verbose:
                 print("Creating 'data' group in destination file")
             if grid:
-                destgrp.require_dataset('data', (nti, nx, ny, nz, nreps, nchan), np.float32, chunks=(20000,1,1,1,1,1), compression='gzip')
+                destgrp.require_dataset('data', (nti, nx, ny, nz, nreps, nchan), np.float32, chunks=(np.min([nti, 20000]),1,1,1,1,1), compression='gzip')
             else:
-                destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, 20000, 1), compression='gzip')
+                destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, np.min([nti, 20000]), 1), compression='gzip')
             
             #Load the time vector
             t = srcgrp['time']
@@ -199,7 +198,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             #Initialize some variables to use in time-remaining printout
             tstart  = time.time()
             tperstep = []
-            nstepsreport = int(nshots/100.0)
+            nstepsreport = int(nshots/100.0) + 1
             
             if verbose:
                 print("Beginning processing data shot-by-shot.")
@@ -360,13 +359,13 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
 
 
 if __name__ == "__main__":
-    #src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_raw.hdf5") )
-    #tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5") )
-    #dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B_full.hdf5") )
+    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_raw.hdf5") )
+    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_tdiode_raw.hdf5") )
+    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
     
-    src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_raw.hdf5')
-    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_tdiode_raw.hdf5')
-    dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_full.hdf5')
+    #src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_raw.hdf5')
+    #tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_tdiode_raw.hdf5')
+    #dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_full.hdf5')
     
     print('reading')
     util.mem()

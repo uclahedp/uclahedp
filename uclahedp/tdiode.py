@@ -14,7 +14,7 @@ def calcT0ind(src):
         grp = sf[src.group]
 
         try:
-            nshots, nti, nchan = grp['data'].attrs['shape']
+            nshots, nti, nchan = grp['data'].shape
         except KeyError:
             raise KeyError("tdiode.calcT0ind requires the data array to have an attribute 'shape'!")
             
@@ -42,7 +42,7 @@ def findBadShots(src):
     with h5py.File(src.file, 'r') as sf:
         grp = sf[src.group]
         try:
-            nshots, nti, nchan = grp['data'].attrs['shape']
+            nshots, nti, nchan = grp['data'].shape
         except KeyError:
             raise KeyError("tdiode.findBadShots requires the data array to have an attribute 'shape'!")
         

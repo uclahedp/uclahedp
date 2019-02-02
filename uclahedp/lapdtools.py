@@ -98,7 +98,6 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         
     #Read some variables from the src file
     with lapd.File(src, silent=True)  as sf:
-        src_controls = sf.controls
         src_digitizers = sf.digitizers
 
         digi = src_digitizers['SIS crate'] #Assume this id the digitizer: it is the only one
@@ -129,33 +128,26 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         #Check to see if the motion controller reported actually exists in the
         #hdf file. If not, assume the probe was stationary (motion=None)
         #If motion_controller isn't in this list, lapdReadHDF can't handle it
-        print(motion_controller)
-        print(src_controls.keys())
-        #TODO
-        #THIS ONLY WORKS FOR 6K COMPUMOTOR
-        #FIRST CHECK FOR OTHER DRIVE TYPES!!!!!
-        if motion_controller in src_controls.keys():
-            
-            pos = readPosArray(src, controls)
+        #If motion controller is supported by this code, get the position array
+        if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
+            pos, controls, motion_attrs = readPosArray(src, controls)
         else:
             controls = None
-
+            pos, motion_attrs = None, None, None
+            
 
     #Create the destination file
     with h5py.File(dest.file, "a") as df:
 
-        #Throw an error if this group already exists
+        #Create the dest group, throw error if it exists
         if dest.group is not '/' and dest.group in df.keys():
             raise hdftools.hdfGroupExists(dest)
-            
-        #Create the group
         grp = df[dest.group]
-
+        
         #Write the attrs dictioanry into attributes of the new data group
         hdftools.writeAttrs(attrs, grp)
 
-
-   
+        #Open the LAPD file and copy the data over
         with lapd.File(src, silent=True) as sf:
             
             #Initialize the output data array
@@ -167,9 +159,12 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                                 chunks=(1, np.min([nti, 20000]), 1), 
                                 compression='gzip')
             grp['data'].attrs['unit'] = 'V'
+            
             grp.attrs['dt'] = [s.encode('utf-8') for s 
                      in [str(dt.value), str(dt.unit)] ]
+            
             dimlabels = ['shots', 'time', 'chan']
+            
             grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
                 
 
@@ -184,8 +179,7 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                 channel = channel_arr[chan]
                 if verbose:
                     print("Reading channel: " + str(chan+1) + '/' + str(nchan))
-                
-    
+
                 for shot in range(nshots):
                     #Update the time-per-shot time estimator
                     #Over time this should give more accurate run-time
@@ -208,15 +202,13 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     
                 
 
-        #If controls is not None, there should be a pos array, so write it to the file
+        #If applicable, write the pos array to file
         if controls is not None:
             grp.require_dataset('pos', (nshots, 3), np.float32)[:] = pos
-            del(pos)
             #Write any motion attributes to the pos array too
             for k in motion_attrs:
                 grp['pos'].attrs[k] = motion_attrs[k]
-                grp.attrs['motion_format'] = motion_format
-            del(motion_attrs)
+            del(pos, motion_attrs)
             
         
         #Create the axes
@@ -237,28 +229,26 @@ def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     return dest
     
 
-def readPosArray(src, controls):
+def readPosArray(src, controls,):
      
     #This ugly initial code block extracts position information for drives
     #that are as-yet unsupported by bapsflib.
-    #If the drive is unsupported, controls -> None so basflib doesn't look for it
     #bool(motion) keeps track of whether there WAS motion for later
     #Currently, this assumes only ONE XZ or XYZ drive is being used.
     #Not a problem for now, but just FYI
-
-    motion_attrs = {'unit':'cm'} #Units are assumed to be cm
-    
+    motion_attrs = {'unit':'cm'}
 
     if controls[0][0] == '6K Compumotor':
         motion_format = 'fixed_rotation'  
         with lapd.File(src, silent=True)  as sf: 
-            pos = sf.read_controls(controls)
-            print(pos)
-            return pos
-    
+            src_controls = sf.controls
+            if controls[0][0] in src_controls.keys():
+                pos = sf.read_controls(controls)['xyz']
+            else:
+                pos, controls = None, None
+
     #If the controlling drive is the NI_XZ drive...
     elif controls[0][0] == 'NI_XZ':
-        controls = None
         motion_format = 'fixed_rotation' #Defines how to correct angles
         with h5py.File(src, "r") as sf:
             motion_group = sf['Raw data + config/NI_XZ']
@@ -271,6 +261,7 @@ def readPosArray(src, controls):
                         motion_attrs[k] = motion_group.attrs[k]
                     for k in motion_group[config_name].attrs.keys():
                         motion_attrs[k] = motion_group[config_name].attrs[k]
+            
             runtimelist = sf['Raw data + config/NI_XZ/Run time list']
             xpos =   runtimelist['x']
             zpos =   runtimelist['z']
@@ -281,14 +272,16 @@ def readPosArray(src, controls):
             pos[:,1] = ypos
             pos[:,2] = zpos
             del(xpos, ypos, zpos)
-            return pos
+
             
     #If the controlling drive is the NI_XYZ drive (Krishna's)...
     elif controls[0][0] == 'NI_XYZ':
         motion_format = 'fixed_rotation'
-        controls = None
         with h5py.File(src, "r") as sf:
-            motion_group = sf['Raw data + config/NI_XYZ']
+            try:
+                motion_group = sf['Raw data + config/NI_XYZ']
+            except KeyError:
+                return None
             for item in motion_group.items():
                 #Find the group, which will be the motion group, and 
                 #copy over its attributes for future reference
@@ -308,7 +301,9 @@ def readPosArray(src, controls):
             pos[:,1] = ypos
             pos[:,2] = zpos
             del(xpos, ypos, zpos)
-            return pos
+    
+    motion_attrs['motion_format'] = motion_format
+    return pos, controls, motion_attrs
 
     
 
@@ -319,16 +314,16 @@ if __name__ == "__main__":
 
     hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
     csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
-    dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run40_LAPD7_raw.hdf5")
+    dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run103_PL11B_raw.hdf5")
     
-    hdf_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/HDF/'
-    csv_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/'
-    dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
+    #hdf_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/HDF/'
+    #csv_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/'
+    #dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
 
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(102, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
+    x =  readRunProbe(103, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

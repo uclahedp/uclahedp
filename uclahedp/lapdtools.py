@@ -14,9 +14,8 @@ from astropy import units as u
 import time
 import os
 
-import csvtools as csvtools
-import hdftools
-import util
+from uclahedp import csvtools, hdftools, util
+
 # bapsflib is available from pip. Run command 'pip bapsflib' from terminal to
 # install it
 from bapsflib import lapd
@@ -133,7 +132,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             pos, controls, motion_attrs = readPosArray(src, controls)
         else:
             controls = None
-            pos, motion_attrs = None, None, None
+            pos, motion_attrs = None, None
             
 
     #Create the destination file

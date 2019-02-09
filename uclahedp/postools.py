@@ -1,9 +1,9 @@
 import numpy as np
 import h5py
-import hdftools
+
 import os
 
-
+from uclahedp import hdftools
 
 def shotClosestTo(pos, point=(0,0,0) ):
     dist = np.sqrt( (pos[:,0] - point[0])**2 + 

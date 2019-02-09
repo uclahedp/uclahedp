@@ -370,12 +370,16 @@ def getRunList(csv_dir):
         if keyExists(csvdict, 'run'):
             for entry in csvdict['run']:
                 x = fixType(entry[0])
-                if x is not np.nan:
-                    runlist.append( fixType(entry[0]) )
-    
+                #If the entry is a valid integer, add it to the list
+                #otherwise, pass it over
+                try:
+                   runlist.append( int(x) )
+                except ValueError:
+                    pass
+                    
     #Convert to a set and back to remove duplicates
     runlist = list(set(runlist))
-    
+    return runlist
     
     
 def missingKeys(attrs, req_keys, fatal_error=True, missing_keys = []):

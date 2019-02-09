@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import h5py
-import csvtools
-import hdftools
 import os
+
+from uclahedp import csvtools, hdftools
+
+
 
 def validDataset(grp):
     """

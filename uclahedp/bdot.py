@@ -9,20 +9,13 @@ bdot.py: BDOT analysis package
     between shots using a timing diode source. Optionally outputs position 
     gridded data.
 """
-
-import csvtools
-import hdftools
-import util
-import tdiode
-import postools
-
 import numpy as np
 import os
 import h5py
 from scipy.signal import detrend as detrend
 import astropy.units as u
 
-
+from uclahedp import csvtools, hdftools, util, postools
 
 
 
@@ -103,14 +96,14 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             nx,ny,nz = len(xaxes), len(yaxes), len(zaxes)
             nreps =int( np.floor(nshots/(nx*ny*nz)))
             
-        #If tdiode_hdf is set, run the tdiode processing routine
-        #TODO: Maybe have a separate keyword to pass an already-processed
-        #tdiode file here? Otherwise, this runs for each probe separaetly.
+        #If tdiode_hdf is set, load the pre-processed tdiode data
         if tdiode_hdf is not None:
             if verbose:
                 print("Loading tdiode array from file.")
-            
-
+            with h5py.File(tdiode_hdf.file, 'r') as sf:
+                grp = sf[tdiode_hdf.group]
+                t0indarr = grp['t0indarr'][:]
+                goodshots = grp['goodshots'][:]
             #We will remove up to max_t0shift indices from each array such that
             #the t0 indices all line up.
             min_t0ind = np.min(t0indarr[goodshots])

@@ -150,39 +150,11 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 t = t[0:nti] - t[min_t0ind]
 
             
-            
-            atten = np.array([attrs['xatten'][0],attrs['yatten'][0],attrs['zatten'][0]])
-            #Atten is assumed to be in dB. We could use the units to check this,
-            #but it always is in dB and it's just a stupid source for errors.
-            #Print this warning message if the units are different, just in case
-            if attrs['xatten'][1].decode("utf-8") != 'dB':
-                print("WARNING: ATTEN UNITS DO NOT MATCH dB")
-                print(attrs['xatten'][1].decode("utf-8"))
-                print("CONVERTING ANYWAY: CHECK YOUR UNITS!")
-
-            #Convert atten to dB (if units set to dB)
-            atten = np.power([10,10,10], atten/20.0) # Convert from decibels   
-           
-            # dt -> s
-            dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
-
-            # area : mm^2 -> m^2
-            xarea = (attrs['xarea'][0]*u.Unit(attrs['xarea'][1])).to(u.m ** 2).value
-            yarea = (attrs['yarea'][0]*u.Unit(attrs['yarea'][1])).to(u.m ** 2).value
-            zarea = (attrs['zarea'][0]*u.Unit(attrs['zarea'][1])).to(u.m ** 2).value
-
-            gain = attrs['gain'][0]
-            nturns = attrs['nturns'][0]
-
-            xcal = 1.0e4*dt*atten[0]/gain/(nturns*xarea)
-            ycal = 1.0e4*dt*atten[1]/gain/(nturns*yarea)
-            zcal = 1.0e4*dt*atten[2]/gain/(nturns*zarea)
-            
-            xpol = attrs['xpol'][0]
-            ypol = attrs['ypol'][0]
-            zpol = attrs['zpol'][0]
+            #Asssemble the array of calibration factors from the attrs dict
+            cal = calibrationFactor(attrs)
             
             
+
             #Initialize time-remaining printout
             tr = util.timeRemaining(nshots)
             
@@ -212,9 +184,9 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 bz = srcgrp['data'][i,ta:tb, 2]
                 
                 #Apply the calibration factors
-                bx = np.cumsum( detrend(bx) )*xcal*xpol
-                by = np.cumsum( detrend(by) )*ycal*ypol
-                bz = np.cumsum( detrend(bz) )*zcal*zpol
+                bx = np.cumsum( detrend(bx) )*cal[0]
+                by = np.cumsum( detrend(by) )*cal[1]
+                bz = np.cumsum( detrend(bz) )*cal[2]
                 
                 #If a motion_format is set, apply the appropriate probe angle correction
                 if motion_format == 'fixed_rotation':
@@ -330,7 +302,43 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 print("End of BDOT routine!")
                 
             return True
+        
+        
+def calibrationFactor(attrs):
+    atten = np.array([attrs['xatten'][0],attrs['yatten'][0],attrs['zatten'][0]])
+    #Atten is assumed to be in dB. We could use the units to check this,
+    #but it always is in dB and it's just a stupid source for errors.
+    #Print this warning message if the units are different, just in case
+    if attrs['xatten'][1].decode("utf-8") != 'dB':
+        print("WARNING: ATTEN UNITS DO NOT MATCH dB")
+        print(attrs['xatten'][1].decode("utf-8"))
+        print("CONVERTING ANYWAY: CHECK YOUR UNITS!")
 
+    #Convert atten to dB (if units set to dB)
+    atten = np.power([10,10,10], atten/20.0) # Convert from decibels   
+   
+    # dt -> s
+    dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
+
+    # area : mm^2 -> m^2
+    xarea = (attrs['xarea'][0]*u.Unit(attrs['xarea'][1])).to(u.m ** 2).value
+    yarea = (attrs['yarea'][0]*u.Unit(attrs['yarea'][1])).to(u.m ** 2).value
+    zarea = (attrs['zarea'][0]*u.Unit(attrs['zarea'][1])).to(u.m ** 2).value
+
+    gain = attrs['gain'][0]
+    nturns = attrs['nturns'][0]
+    
+    xpol = attrs['xpol'][0]
+    ypol = attrs['ypol'][0]
+    zpol = attrs['zpol'][0]
+
+    xcal = 1.0e4*dt*atten[0]/gain/(nturns*xarea)*xpol
+    ycal = 1.0e4*dt*atten[1]/gain/(nturns*yarea)*ypol
+    zcal = 1.0e4*dt*atten[2]/gain/(nturns*zarea)*zpol
+    
+    cal = [xcal, ycal, zcal]
+    
+    return cal
 
 
 

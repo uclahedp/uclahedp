@@ -24,7 +24,7 @@ from bapsflib import lapd
 import h5py
 
 
-def readRunProbe( run, probe, hdf_dir, csv_dir, dest, verbose=False):
+def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     """ Retreives the appropriate metadata for a run and probe in a given data
     directory, then reads in the data using the bapsflib module and saves
     it in a new hdf5 file.
@@ -313,7 +313,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  readRunProbe(102, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
+    x =  lapdToRaw(102, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

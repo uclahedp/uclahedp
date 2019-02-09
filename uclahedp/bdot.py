@@ -21,7 +21,7 @@ import os
 import h5py
 from scipy.signal import detrend as detrend
 import astropy.units as u
-import time
+
 
 
 
@@ -109,13 +109,8 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
         if tdiode_hdf is not None:
             if verbose:
                 print("Loading tdiode array from file.")
-            #Get an array of all the t0 indices
-            t0indarr = tdiode.calcT0ind(tdiode_hdf)
-            #Get an array of all the good shots and badshots (indices)
-            badshots, goodshots = tdiode.findBadShots(tdiode_hdf)
-            #Replace any bad shots with a standin avg value
-            #(Later should overwrite bad shots with good neighboring shots)
-            t0indarr[badshots] = int(np.median(t0indarr[goodshots]))
+            
+
             #We will remove up to max_t0shift indices from each array such that
             #the t0 indices all line up.
             min_t0ind = np.min(t0indarr[goodshots])

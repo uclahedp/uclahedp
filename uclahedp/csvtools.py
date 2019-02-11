@@ -405,17 +405,20 @@ def missingKeys(attrs, required_keys, fatal_error=True, missing_keys = []):
 
 
 if __name__ == "__main__":
-    fname = r"F:/LAPD_Mar2018/METADATA/CSV/langmuir_runs.csv"
-    csv_dir = r"F:/LAPD_Mar2018/METADATA/"
+    #Windows
+    #fname = r"F:/LAPD_Mar2018/METADATA/CSV/langmuir_runs.csv"
+    #csv_dir = r"F:/LAPD_Mar2018/METADATA/"
+    
+    #OSX
+    fname = r"/Volumes/PVH_DATA/LAPD_Jan2019/METADATA/bdot_runs.csv"
+    csv_dir = r"/Volumes/PVH_DATA/LAPD_Jan2019/METADATA/"
 
     csvdict = opencsv(fname)
     
     #print( getRow(csvdict, run=102, probe=None) )
     
-    #print( findValue( csvdict, 'probe', run=102, probe='PL11B'  ) )
     #v = keyExists(csvdict, 'probe_origin_zz' )
-    #print(getAttrs( csvdict,  run=None, probe='PL11B'  ))
-    
+
     #print(rowExists(csvdict, run=50, probe = "LAPD1")  )
 
     
@@ -424,8 +427,8 @@ if __name__ == "__main__":
     
     #print( getRunLevelAttrs(csv_dir, 80))
     #print( getProbeLevelAttrs(csv_dir,80, 'PL11B'))
-    #print( getAllAttrs(csv_dir,80, 'PL11B'))
+    #print( getAllAttrs(csv_dir,8, 'PL11B'))
     
-    #print(getProbeList(csv_dir, run=1))
+    print(getProbeList(csv_dir, run=1))
 
     #print( getRunList(csv_dir) )

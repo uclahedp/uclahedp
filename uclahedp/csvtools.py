@@ -383,7 +383,6 @@ def getRunList(csv_dir):
     
     
 def missingKeys(attrs, required_keys, fatal_error=True, missing_keys = []):
-    print(required_keys)
     for k in required_keys:
         if not k in attrs.keys():
             missing_keys.append(k)

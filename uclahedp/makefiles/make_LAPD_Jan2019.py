@@ -77,7 +77,7 @@ for run in runlist:
             print("Running lapdToRaw")
             rawfile =  lapdtools.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
         else:
-            print("Raw file exist: skipping")
+            print("Raw file exists: skipping")
             
             
             
@@ -95,6 +95,6 @@ for run in runlist:
             else:
                 print("NO MATCHING PROBE TYPE ROUTINE EXISTS: SKIPPING!")
         else:
-            print("Full file exist: skipping")
+            print("Full file exists: skipping")
                 
 

@@ -296,7 +296,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             
             
             del(bx,by,bz)
-            del(xcal,ycal,zcal,xpol,ypol,zpol)
+            del(xpol,ypol,zpol)
 
             if verbose:
                 print("End of BDOT routine!")

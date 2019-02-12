@@ -116,8 +116,8 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     # control = array of tuples of form (motion control, receptacle)
     # eg. controls = [('6K Compumotor', receptacle)]
     # note that 'receptacle' here is the receptacle NUMBER, 1 - indexed!)
-    motion_keys = ['motion_controller', 'motion_receptacle']    
-    if csvtools.missingKeys(attrs, motion_keys, fatal_error = False):
+    req_keys = ['motion_controller', 'motion_receptacle']    
+    if csvtools.missingKeys(attrs, req_keys, fatal_error = False):
         print("Some motion keys not found: positon data will not be read out!")
         controls = None
     else:

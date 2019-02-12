@@ -33,7 +33,7 @@ def gridShotIndGrid(pos, precision=.1):
     xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     nshots = len(xpos)
     nx, ny, nz  = len(xaxes), len(yaxes), len(zaxes)
-    nreps = int(np.floor(nshots/(nx*ny*nz)))
+    nreps = np.round(nshots/(nx*ny*nz))
     
     gridind = np.zeros([nx, ny, nz, nreps],  dtype=np.int32)
     
@@ -64,7 +64,6 @@ def gridShotIndList(pos, precision=.1):
     
     xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     nx, ny, nz  = len(xaxes), len(yaxes), len(zaxes)
-    nreps = int(np.floor(nshots/(nx*ny*nz)))
     
     #This array will be used to count the number of reps we've found in each place
     #that will make sure each one gets a unique rep number

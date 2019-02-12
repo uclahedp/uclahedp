@@ -94,7 +94,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
         if grid:
             shotgridind, xaxes, yaxes, zaxes = postools.gridShotIndList(pos, precision=.1)
             nx,ny,nz = len(xaxes), len(yaxes), len(zaxes)
-            nreps =int( np.floor(nshots/(nx*ny*nz)))
+            nreps =np.round(nshots/(nx*ny*nz))
             
         #If tdiode_hdf is set, load the pre-processed tdiode data
         if tdiode_hdf is not None:

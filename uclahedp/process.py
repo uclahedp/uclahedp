@@ -113,5 +113,5 @@ if __name__ == "__main__":
     data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     
 
-    processMany(data_dir, overwrite=False, runs=[18], probes=['tdiode']) 
+    processMany(data_dir, overwrite=True, runs=[18], probes=['tdiode']) 
     

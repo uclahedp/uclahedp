@@ -23,7 +23,9 @@ def makeAxes(pos, precision=.1):
     xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     return xaxes, yaxes, zaxes
 
-
+"""
+# Depreciated early routine: maybe delete?
+# Replaced by gridShotIndList
 def gridShotIndGrid(pos, precision=.1):
     
     xpos = np.round(pos[:,0]/precision, 0)*precision + 0.0
@@ -51,7 +53,7 @@ def gridShotIndGrid(pos, precision=.1):
                 
     
     return gridind, xaxes, yaxes, zaxes
-
+"""
 
 def gridShotIndList(pos, precision=.1):
     #Round to within the precision given
@@ -65,6 +67,8 @@ def gridShotIndList(pos, precision=.1):
     xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     nx, ny, nz  = len(xaxes), len(yaxes), len(zaxes)
     
+    nreps =np.floor(nshots/(nx*ny*nz))
+    
     #This array will be used to count the number of reps we've found in each place
     #that will make sure each one gets a unique rep number
     countgrid = np.zeros( (nx,ny,nz) )
@@ -77,8 +81,12 @@ def gridShotIndList(pos, precision=.1):
         yi = np.argmin( np.abs(yaxes - ypos[i]) )
         zi = np.argmin( np.abs(zaxes - zpos[i]) )
         irep = countgrid[xi,yi,zi]
-        shotind[i,:] = np.array( (xi,yi,zi, irep )   )
-        countgrid[xi,yi,zi] = countgrid[xi,yi,zi] + 1
+        
+        # Only add up to nreps at each spot.
+        # After that, shots will just be thrown away
+        if irep < nreps:
+            shotind[i,:] = np.array( (xi,yi,zi, irep )   )
+            countgrid[xi,yi,zi] = countgrid[xi,yi,zi] + 1
 
     return shotind, xaxes, yaxes, zaxes
 

@@ -16,7 +16,7 @@ from scipy.signal import detrend as detrend
 import astropy.units as u
 
 
-from uclahedp import csvtools, hdftools, util, postools
+from uclahedp import csvtools, hdftools, util, postools, math
 
 
 
@@ -95,7 +95,12 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
         if grid:
             shotgridind, xaxes, yaxes, zaxes = postools.gridShotIndList(pos, precision=.1)
             nx,ny,nz = len(xaxes), len(yaxes), len(zaxes)
-            nreps =np.round(nshots/(nx*ny*nz))
+            nreps =np.floor(nshots/(nx*ny*nz))
+            
+            #print('nshots: ' + str(nshots))
+            #print('nx, ny, nz: ' + str( (nx, ny, nz)  ) )
+            #print(nshots/(nx*ny*nz))
+            #print(nreps)
             
         #If tdiode_hdf is set, load the pre-processed tdiode data
         if tdiode_hdf is not None:
@@ -240,9 +245,16 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     zi = shotgridind[i, 2]
                     repi = shotgridind[i, 3]
                     #Write data
-                    destgrp['data'][:, xi, yi, zi, repi, 0] = bx
-                    destgrp['data'][:, xi, yi, zi, repi, 1] = by
-                    destgrp['data'][:, xi, yi, zi, repi, 2] = bz
+                    try:
+                        destgrp['data'][:, xi, yi, zi, repi, 0] = bx
+                        destgrp['data'][:, xi, yi, zi, repi, 1] = by
+                        destgrp['data'][:, xi, yi, zi, repi, 2] = bz
+                    except ValueError as e:
+                        print("ERROR!")
+                        print(destgrp['data'].shape)
+                        print(bx.shape)
+                        print([xi, yi, zi, repi])
+                        raise(e)
                 else:
                     #Write data
                     destgrp['data'][i,:, 0] = bx
@@ -343,26 +355,37 @@ def calibrationFactor(attrs):
 
 
 
-def fullToCurrent(src, dest):
+def fullToCurrent(src, dest, verbose=False):
     with h5py.File(src.file, 'r') as sf:
         srcgrp = sf[src.group]
         try:
-            dimlabels = srcgrp['data'].attrs['dimensions']
-            shape =  srcgrp['data'].attrs['shape']
+            dimlabels = srcgrp['data'].attrs['dimensions'].tolist()
+            shape =  srcgrp['data'].shape
         except KeyError: 
-            raise KeyError("bdot.fullToCurrent requires the data array to have an attribute 'dimlabels' and 'shape'")
+            raise KeyError("bdot.fullToCurrent requires the data array to have an attribute 'dimensions' and 'shape'")
             
         #We will duplicate the chunking on the new array
         chunks = srcgrp['data'].chunks
+        
+        #Convert dimlabels to list of strings
+        dimlabels = [x.decode('utf-8') for x in dimlabels]
 
         try:
+            xax = dimlabels.index("xaxis") 
+            yax = dimlabels.index("yaxis") 
+            zax = dimlabels.index("zaxis") 
+            
+            xaxis = srcgrp['xaxis']
+            yaxis = srcgrp['yaxis']
+            zaxis = srcgrp['zaxis']
+            
             nti = shape[ dimlabels.index("time")  ]
-            nx = shape[ dimlabels.index("xaxis")  ]
-            ny = shape[ dimlabels.index("yaxis")  ]
-            nz = shape[ dimlabels.index("zaxis")  ]
+            nx = shape[xax]
+            ny = shape[yax]
+            nz = shape[zax]
+            
         except KeyError:
             raise KeyError("bdot.fullToCurrent requires dimensions 'time', 'xaxis', 'yaxis', 'zaxis'")
-
 
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
@@ -373,26 +396,50 @@ def fullToCurrent(src, dest):
             
             #Copy the axes over
             for ax in dimlabels:
-                sf.copy(srcgrp[ax], destgrp[ax])
-        
+                srcgrp.copy(ax, destgrp)
+                
+                
+            chunksize = 100
+            nchunks = int(np.ceil(nti/chunksize))
+            
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(nchunks)
+            
+            for i in range(nchunks):
+                #Update time remaining
+                if verbose:
+                        tr.updateTimeRemaining(i)
+
+                a = i*chunksize
+                if i == nchunks-1:
+                    b = -1
+                else:
+                    b = (i+1)*chunksize
+
+                destgrp['data'][a:b, ...] = math.curl(srcgrp['data'][a:b, ...], 
+                    xax, yax, zax, xaxis, yaxis, zaxis)
+
     
 
 
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_raw.hdf5") )
-    tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_tdiode_raw.hdf5") )
-    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
+    #raw = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_raw.hdf5") )
+    #tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_tdiode_raw.hdf5") )
+    #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
+    #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
-    #src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_raw.hdf5')
-    #tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_tdiode_raw.hdf5')
-    #dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/test_PL11B_full.hdf5')
+    raw = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_raw.hdf5.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_tdiode_raw.hdf5')
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_full.hdf5')
+    current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_current.hdf5')
     
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
+    #full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
+    cur_filepath = fullToCurrent(full, current, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

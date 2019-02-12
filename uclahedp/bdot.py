@@ -386,6 +386,11 @@ def fullToCurrent(src, dest, verbose=False):
             
         except KeyError:
             raise KeyError("bdot.fullToCurrent requires dimensions 'time', 'xaxis', 'yaxis', 'zaxis'")
+            
+            
+        if nti > 1000:
+            print("WARNING: NTI IS LARGE! CURRENT CALCULATION WILL TAKE A VERY LONG TIME!")
+            print("If you have better things to do with your CPU hours, try thinning the data first.")
 
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
@@ -415,9 +420,14 @@ def fullToCurrent(src, dest, verbose=False):
                     b = -1
                 else:
                     b = (i+1)*chunksize
-
-                destgrp['data'][a:b, ...] = math.curl(srcgrp['data'][a:b, ...], 
+                
+                #Constant is (c/4pi) * (conversion CGS -> A/m^2)*(conversion A/m^2 -> A/cm^2)
+                #(2.99e10/4pi)*(3.0e5)*(1e-4)
+                #3e5 is from the NRL formulary
+                destgrp['data'][a:b, ...] = (7.138e10)*math.curl(srcgrp['data'][a:b, ...], 
                     xax, yax, zax, xaxis, yaxis, zaxis)
+                
+        return dest
 
     
 

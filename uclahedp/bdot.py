@@ -15,6 +15,7 @@ import h5py
 from scipy.signal import detrend as detrend
 import astropy.units as u
 
+
 from uclahedp import csvtools, hdftools, util, postools
 
 
@@ -261,16 +262,16 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     destgrp['pos'].attrs[k] = srcgrp['pos'].attrs[k]
 
             if grid:
-                dimlabels = ['time', 'xaxes', 'yaxes', 'zaxes', 'reps', 'chan']
+                dimlabels = ['time', 'xaxis', 'yaxis', 'zaxis', 'reps', 'chan']
                 
-                destgrp.require_dataset('xaxes', (nx,), np.float32, chunks=True)[:] = xaxes
-                destgrp['xaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxes
+                destgrp['xaxis'].attrs['unit'] = srcgrp['pos'].attrs['unit']
                 
-                destgrp.require_dataset('yaxes', (ny,), np.float32, chunks=True)[:] = yaxes
-                destgrp['yaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxes
+                destgrp['yaxis'].attrs['unit'] = srcgrp['pos'].attrs['unit']
                 
-                destgrp.require_dataset('zaxes', (nz,), np.float32, chunks=True)[:] = zaxes
-                destgrp['zaxes'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxes
+                destgrp['zaxis'].attrs['unit'] = srcgrp['pos'].attrs['unit']
                 
                 destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
                 destgrp['reps'].attrs['unit'] = ''
@@ -338,6 +339,43 @@ def calibrationFactor(attrs):
     cal = [xcal, ycal, zcal]
     
     return cal
+
+
+
+
+def fullToCurrent(src, dest):
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        try:
+            dimlabels = srcgrp['data'].attrs['dimensions']
+            shape =  srcgrp['data'].attrs['shape']
+        except KeyError: 
+            raise KeyError("bdot.fullToCurrent requires the data array to have an attribute 'dimlabels' and 'shape'")
+            
+        #We will duplicate the chunking on the new array
+        chunks = srcgrp['data'].chunks
+
+        try:
+            nti = shape[ dimlabels.index("time")  ]
+            nx = shape[ dimlabels.index("xaxis")  ]
+            ny = shape[ dimlabels.index("yaxis")  ]
+            nz = shape[ dimlabels.index("zaxis")  ]
+        except KeyError:
+            raise KeyError("bdot.fullToCurrent requires dimensions 'time', 'xaxis', 'yaxis', 'zaxis'")
+
+
+        with h5py.File(dest.file, 'w') as df:
+            destgrp = df[dest.group]
+            
+            destgrp.require_dataset('data', shape, np.float32, chunks=chunks, compression='gzip')
+            destgrp['data'].attrs['unit'] = 'A'
+            destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+            
+            #Copy the axes over
+            for ax in dimlabels:
+                sf.copy(srcgrp[ax], destgrp[ax])
+        
+    
 
 
 

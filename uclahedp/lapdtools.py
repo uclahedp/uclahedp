@@ -101,9 +101,15 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
 
         digi = src_digitizers['SIS crate'] #Assume this id the digitizer: it is the only one
         #Assume the adc, nti, etc. are all the same on all the channels.
+        
+        #This line assumes that only one configuration is being used
+        #This is usually the case: if it is not, changes need to be made
+        daq_config = digi.active_configs[0]
+        
         name, info = digi.construct_dataset_name(channel_arr[0][2], 
                                                  channel_arr[0][3], 
-                                                 adc=channel_arr[0][1], 
+                                                 adc=channel_arr[0][1],
+                                                 config_name = daq_config,
                                                  return_info=True)
         #Read out some digitizer parameters
         nshots = info['nshotnum']
@@ -184,7 +190,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                     
                     #Read the data through bapsflib
                     data = sf.read_data(channel[2], channel[3], digitizer =channel[0],
-                                        adc = channel[1], 
+                                        adc = channel[1], config_name = daq_config, 
                                         silent=True, shotnum=shot+1)
                     
                     grp['data'][shot,:,chan] = data['signal']

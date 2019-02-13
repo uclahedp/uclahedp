@@ -359,7 +359,7 @@ def fullToCurrent(src, dest, verbose=False):
     with h5py.File(src.file, 'r') as sf:
         srcgrp = sf[src.group]
         try:
-            dimlabels = srcgrp['data'].attrs['dimensions'].tolist()
+            dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
             shape =  srcgrp['data'].shape
         except KeyError: 
             raise KeyError("bdot.fullToCurrent requires the data array to have an attribute 'dimensions' and 'shape'")
@@ -367,8 +367,6 @@ def fullToCurrent(src, dest, verbose=False):
         #We will duplicate the chunking on the new array
         chunks = srcgrp['data'].chunks
         
-        #Convert dimlabels to list of strings
-        dimlabels = [x.decode('utf-8') for x in dimlabels]
 
         try:
             xax = dimlabels.index("xaxis") 
@@ -388,7 +386,7 @@ def fullToCurrent(src, dest, verbose=False):
             raise KeyError("bdot.fullToCurrent requires dimensions 'time', 'xaxis', 'yaxis', 'zaxis'")
             
             
-        if nti > 1000:
+        if nti > 10000:
             print("WARNING: NTI IS LARGE! CURRENT CALCULATION WILL TAKE A VERY LONG TIME!")
             print("If you have better things to do with your CPU hours, try thinning the data first.")
 
@@ -396,8 +394,8 @@ def fullToCurrent(src, dest, verbose=False):
             destgrp = df[dest.group]
             
             destgrp.require_dataset('data', shape, np.float32, chunks=chunks, compression='gzip')
-            destgrp['data'].attrs['unit'] = 'A'
-            destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+            destgrp['data'].attrs['unit'] = 'A/cm^2'
+            destgrp['data'].attrs['dimensions'] = hdftools.strListToArr(dimlabels)
             
             #Copy the axes over
             for ax in dimlabels:
@@ -417,7 +415,7 @@ def fullToCurrent(src, dest, verbose=False):
 
                 a = i*chunksize
                 if i == nchunks-1:
-                    b = -1
+                    b = None
                 else:
                     b = (i+1)*chunksize
                 
@@ -442,7 +440,7 @@ if __name__ == "__main__":
     
     raw = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_raw.hdf5.hdf5')
     tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_tdiode_raw.hdf5')
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_full.hdf5')
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_full_thinned.hdf5')
     current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_current.hdf5')
     
     print('reading')

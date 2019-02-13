@@ -2,56 +2,13 @@
 # -*- coding: utf-8 -*-
 import h5py
 import os
+import numpy as np
 
 from uclahedp import csvtools, hdftools
 
 
 
-def validDataset(grp):
-    """
-    Determines whether a given HDF5 dataset group conforms to the HEDP group's 
-    standard (as explained in comments below)
-    """
-  
-    #The dataset group must be a valid HDF5 group
-    if not isinstance(grp, h5py.Group ):
-        raise hdfDatasetFormatError("Group is not a valid HDF5 Group!"
-                                    + str(grp))
-    
-    #Group must have a dataset named 'data'
-    if 'data' not in grp:
-        raise hdfDatasetFormatError("Group must have member dataset 'data'!")
-    
-    #These attributes must exist on the 'data' dataset
-    req_keys = ['dimensions', 'unit']
-    for k in req_keys:
-        if k not in grp['data'].attrs.keys():
-            raise hdfDatasetFormatError("'data' must have attribute: " 
-                                    + str(k) + "!")
-            
-    dims = grp['data'].attrs['dimensions']
-    shape = grp['data'].shape
-    
-    for i in range(len(shape)):
-        #Each dimension of the dataset must have an axes dataset
-        if not dims[i] in grp:
-            raise hdfDatasetFormatError("Group must have an axis for each " +
-                                        "dimension, and is missing: " + 
-                                        str(dims[i]) + "!")
-        axis = grp[dims[i]]
-        
-        #Axes must have the same length as the associated dataset dimension
-        if not len(axis) == shape[i]:
-            raise hdfDatasetFormatError("Axis length must match associated "+
-                                        "dimension, and this one does not: " +
-                                        str(axis) + "!")
-        #Axes must have 'unit' attribute
-        if not 'unit' in axis.attrs.keys():
-            raise hdfDatasetFormatError("Axis must have a 'unit' attribute, " +
-                                        "and this one does not: " +
-                                        str(axis) + "!")
 
-    return True
 
 
 
@@ -90,6 +47,12 @@ def copyAttrs(srcobj, destobj):
     return True
 
 
+def arrToStrList(arr):
+    l = arr.tolist()
+    return [x.decode('utf-8') for x in l]
+    
+def strListToArr(strlist):
+    return np.array( [s.encode('utf-8') for s in strlist] )
 
 
 class hdfPath():
@@ -105,6 +68,10 @@ class hdfPath():
         
     def __str__(self):
         return str(self.file) + ' : ' + str(self.group)
+    
+    
+    
+
 
 
 
@@ -122,11 +89,7 @@ class hdfGroupExists(Exception):
     """
     pass
 
-class hdfDatasetFormatError(Exception):
-    """
-    This HDF5 dataset does not conform to the HEDP group's standard data layout
-    """
-    pass
+
 
 
 

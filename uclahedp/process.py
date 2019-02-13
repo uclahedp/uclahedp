@@ -35,7 +35,8 @@ def process(data_dir, run, probe, overwrite=True,
         rawfile =  lapdtools.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
     else:
         print("Raw file exist: skipping")
-                     
+    
+    print(tdiode_hdf)
     #Make the full file
     if os.path.exists(fullfile.file):
         if overwrite:
@@ -78,7 +79,7 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
         probelist = csvtools.getProbeList(csv_dir, run)
         #If a tdiode exists, bring it to the front of the list so it gets called first
         
-        if ('tdiode','tdiode') in probelist:
+        if ('tdiode','tdiode') in probelist and 'tdiode' in probes:
             #Pop the tdiode to the front of the list, since others depend on it
             probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
             #This is where the tdiode full should end up...
@@ -107,11 +108,11 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
 
 if __name__ == "__main__":
     #Windows
-    #data_dir =  os.path.join("F:", "LAPD_Jan2019")
+    data_dir =  os.path.join("F:", "LAPD_Jan2019")
     #OSX
-    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
+    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     
 
-    processMany(data_dir, overwrite=False, runs=[22], probes=['tdiode', 'LAPD_C6']) 
+    processMany(data_dir, overwrite=False, runs=[20], probes=['LAPD_C6']) 
     
     

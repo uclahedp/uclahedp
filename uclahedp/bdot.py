@@ -181,8 +181,8 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                     tb = ta + nti
                 else:
                     #By default, read in the entire dataset
-                    ta = 0
-                    tb = -1
+                    ta = None
+                    tb = None
                 
                 #Read in the data from the source file
                 bx = srcgrp['data'][i,ta:tb, 0]

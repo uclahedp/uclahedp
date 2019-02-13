@@ -23,20 +23,20 @@ def curl(arr, xax, yax, zax, xaxis, yaxis, zaxis):
         print('Compute curl x component')
         dy = np.mean(np.gradient(yaxis))
         dz = np.mean(np.gradient(zaxis))
-        c[..., 0] = np.gradient(c[..., 2], dy, axis=yax) - np.gradient(c[..., 1], dz, axis=zax)
+        c[..., 0] = np.gradient(arr[..., 2], dy, axis=yax) - np.gradient(arr[..., 1], dz, axis=zax)
     
     if nx > 2 and nz > 2:
         print('Compute curl y component')
         dx = np.mean(np.gradient(xaxis))
         dz = np.mean(np.gradient(zaxis))
-        c[..., 1] = np.gradient(c[..., 0], dz, axis=zax) - np.gradient(c[..., 2], dx, axis=xax)
+        c[..., 1] = np.gradient(arr[..., 0], dz, axis=zax) - np.gradient(arr[..., 2], dx, axis=xax)
 
         
     if nx > 2 and ny > 2:
         print('Compute curl z component')
         dx = np.mean(np.gradient(xaxis))
         dy = np.mean(np.gradient(yaxis))
-        c[..., 2] = np.gradient(c[..., 1], dx, axis=xax) - np.gradient(c[..., 0], dy, axis=yax)
+        c[..., 2] = np.gradient(arr[..., 1], dx, axis=xax) - np.gradient(arr[..., 0], dy, axis=yax)
         
     return c
         

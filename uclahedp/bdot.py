@@ -420,9 +420,9 @@ def fullToCurrent(src, dest, verbose=False):
                     b = (i+1)*chunksize
                 
                 #Constant is (c/4pi) * (conversion CGS -> A/m^2)*(conversion A/m^2 -> A/cm^2)
-                #(2.99e10/4pi)*(3.0e5)*(1e-4)
-                #3e5 is from the NRL formulary
-                destgrp['data'][a:b, ...] = (7.138e10)*math.curl(srcgrp['data'][a:b, ...], 
+                #(2.99e10/4pi)*(3.0e-5)*(1e-4)
+                #3e-5 is from the NRL formulary
+                destgrp['data'][a:b, ...] = (7.138)*math.curl(srcgrp['data'][a:b, ...], 
                     xax, yax, zax, xaxis, yaxis, zaxis)
                 
         return dest

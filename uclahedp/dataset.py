@@ -65,6 +65,86 @@ class hdfDatasetFormatError(Exception):
 
 
 
+
+def avgDim(src, dest, ax, delsrc=False, verbose=False):
+    
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        
+        validDataset(srcgrp)
+        
+        oldshape = list( srcgrp['data'].shape )
+        ndim = len(oldshape)
+        dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+        
+        try:
+            axind = dimlabels.index(ax)
+        except ValueError as e:
+            print("ERROR: Couldn't find ax in dimensions array!: " + str(ax) )
+            raise(e)
+        
+        #Decide on a chunking axis
+        #Get a list of the axes indices ordered by chunk size, largest to smallest
+        print(srcgrp['data'].chunks )
+        chunks =  np.flip( np.argsort( srcgrp['data'].chunks ) )
+        
+        print(chunks)
+        #Chose the largest one that ISN'T the chosen axis
+        chunkax = chunks[0]
+        if chunkax == axind:
+            chunkax = chunks[1]
+            
+        chunksize = 1000
+        nchunks = int( np.ceil(oldshape[chunkax] / chunksize))
+        
+        newshape = np.copy(oldshape)
+        newshape[axind] = 1
+        
+        with h5py.File(dest.file, 'w') as df:
+            destgrp = df[dest.group]
+            
+            #Create new data array
+            destgrp.require_dataset('data', newshape, np.float32, chunks=True, compression='gzip')
+            hdftools.copyAttrs(srcgrp['data'], destgrp['data'])
+            
+            #Copy the axes over, except the one being thinned
+            for axis in dimlabels:
+                if axis != ax:
+                    srcgrp.copy(axis, destgrp)
+                    
+            #Create the new axis
+            destgrp.require_dataset(ax, (newshape[axind],), np.float32, chunks=True)
+            destgrp[ax].attrs['unit'] = srcgrp[ax].attrs['unit']
+            
+            
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(newshape[axind])
+   
+            for i in range(nchunks):
+                #Update time remaining
+                if verbose:
+                    tr.updateTimeRemaining(i)
+                srcslice = [ slice(None) ]*ndim
+                srcslice[chunkax] = slice(i*chunksize, (i+1)*chunksize, None)
+                s = srcgrp['data'][tuple(srcslice)]
+                s = np.mean(s, axis=axind, keepdims=True)
+                destgrp['data'][tuple(srcslice)] = s
+                
+            #Make the axis
+            destgrp[ax][:] = np.mean(srcgrp[ax][:])
+                
+    if delsrc:
+        os.remove(src.file)
+                
+
+
+
+
+
+
+
+
+
 def thin(src, dest, ax, step=None, bin=None, loadwhole=False, 
          delsrc=False, verbose=False ):
     """
@@ -236,7 +316,9 @@ def thin(src, dest, ax, step=None, bin=None, loadwhole=False,
 
     
 if __name__ == '__main__':
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_full.hdf5')
-    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_full_thinned.hdf5')
-
-    x = thin(full, thinned, 'time', step = 100, loadwhole=False)
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full.hdf5')
+    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
+    avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
+    
+    #x = thin(full, thinned, 'time', step = 100, loadwhole=False)
+    x = avgDim(full, avged, 'reps')

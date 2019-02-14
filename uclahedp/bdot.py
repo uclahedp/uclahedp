@@ -440,8 +440,9 @@ if __name__ == "__main__":
     
     raw = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_raw.hdf5.hdf5')
     tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_tdiode_raw.hdf5')
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_full_thinned.hdf5')
-    current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_current.hdf5')
+    
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
+    current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_current.hdf5')
     
     print('reading')
     util.mem()

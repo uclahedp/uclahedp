@@ -227,6 +227,9 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
         
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
+			
+			#Copy all the dataset attributes
+			hdftools.copyAttrs(srcgrp, destgrp)
             
             #Create new data array
             destgrp.require_dataset('data', newshape, np.float32, chunks=True, compression='gzip')
@@ -282,7 +285,7 @@ if __name__ == '__main__':
     #thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
-    x = trimDim(full, trimmed, 'time', bounds=[0, 2000], values=False, verbose=True)
+    x = trimDim(full, trimmed, 'time', bounds=[0,1e-5], values=False, verbose=True)
     #x = thinBin(full, thinned, 'time', bin = 10, verbose=True)
     #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
     #x = avgDim(full, avged, 'reps', verbose=True)

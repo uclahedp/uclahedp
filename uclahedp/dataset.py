@@ -76,6 +76,37 @@ def avgDimOp(src_dset, dest_dset, sl, axind, args):
     dest_dset[tuple(sl)] = s
     
     
+    
+def trimDim(src, dest, ax, bounds=None, values = None, delsrc=False, verbose=False):
+    if bounds is None:
+        print("Must set bounds in trimDim!")
+        raise(ValueError)
+    
+    bounds = np.array(bounds, dtype=np.float32)
+    
+    if bounds[0] > bounds[1]:
+        print("Flipping bounds so that the second element is larger!")
+        bounds = np.reverse(bounds)
+    
+    if values is None:
+        useind = True
+    else:
+        useind = False
+        
+    chunked_array_op(src, dest, ax, 'trimDim', delsrc=delsrc, verbose=verbose, 
+                     bounds=bounds, useind=useind)
+    
+def trimDimOp(src_dset, dest_dset, sl, axind, args):
+    #These have already been convered into indices at this point if needed
+    a = args['bounds'][0]
+    b = args['bounds'][1]
+
+    sl[axind] = slice(a, b, None)
+    s = src_dset[tuple(sl)]
+    sl[axind] = slice(None, None, None)
+    dest_dset[tuple(sl)] = s
+    
+    
 def thinPick(src, dest, ax, step=None, delsrc=False, verbose=False):
     if step is None:
         step = 10
@@ -147,28 +178,20 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
         print("Chunking axis: " + str(dimlabels[chunkax]))
         
         if srcgrp['data'].chunks[chunkax] < 2:
-            print("WARNING: POSSIBLE INEFFICENT CHUNKING DETECTED! \n" + 
-                  "Program may be accessing every chunk n^2 times! \n" +
-                  "This can happen if you are trying to thin over the " + 
-                  "predominany chunking dimension in the hdf file." +
-                  "Check the hdf chunk format!")
+            print("WARNING: POSSIBLE INEFFICENT CHUNKING DETECTED!")
         
             
         #Determine optimal chunksize (along chunkax)
-        ideal_chunk_elms = 10000
+        ideal_chunk_elms = 1e7 #1e7*4 bytes (per float32) ~ 40mb, which is good
         nper = np.product(oldshape)/oldshape[chunkax] #number of values per chunk ax value
-        
-        print(nper)
-        
-        chunksize = int( np.round(nper/ideal_chunk_elms) )
-        print(chunksize)
+
+        chunksize = int( np.round(ideal_chunk_elms/nper) )
         if chunksize < 1:
             chunksize = 1
         
         #Determine nchunks    
         nchunks = int( np.ceil(oldshape[chunkax] / chunksize))
         
-        print(nchunks)
 
         #Make alterations to the shape for the new dataset
         #This will obviously depend on what operation is being performed
@@ -182,10 +205,26 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
         elif oplabel == 'thinBin':
             newshape[axind] = int( np.ceil(oldshape[axind] / args['bin']) )
             opfunc = thinBinOp
+        elif oplabel == 'trimDim':
+            #If values are being passed, figure out the indices here
+            if not args['useind']:
+                if args['bounds'][0] < srcgrp[ax][:].min():
+                    a = 0
+                else:
+                    a  =  np.abs(srcgrp[ax][:] - args['bounds'][0]).argmin()
+                
+                if args['bounds'][1] > srcgrp[ax][:].max():
+                    b = oldshape[axind] -1
+                else:
+                    b  =  np.abs(srcgrp[ax][:] - args['bounds'][1]).argmin() 
+                args['bounds'] = (a, b)
+            
+            args['bounds'] = np.clip(args['bounds'], 0, oldshape[axind]-1)
+            newshape[axind] = np.abs(args['bounds'][1] - args['bounds'][0] )
+            opfunc = trimDimOp
         else:
             raise(ValueError, 'Unsupported oplabel! ' + str(oplabel))
         
-
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
             
@@ -205,10 +244,9 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
             
             #Initialize time-remaining printout
             #Chunks are big, so report more often than usual
-            tr = util.timeRemaining(newshape[axind], reportevery=1)
+            tr = util.timeRemaining(nchunks, reportevery=1)
 
             for i in range(nchunks):
-                print(i)
                 #Update time remaining
                 if verbose:
                     tr.updateTimeRemaining(i)
@@ -221,208 +259,14 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
                     
                
                 opfunc(srcgrp['data'], destgrp['data'], sl, axind, args)
-                """
-                if oplabel == 'avgDim':
-                    avgDimOp(srcgrp['data'], destgrp['data'], sl, axind, args)
-                elif oplabel == 'thinPick':
-                    thinPickOp(srcgrp['data'], destgrp['data'], sl, axind, args)
-                elif oplabel == 'thinBin':
-                    thinBinOp(srcgrp['data'], destgrp['data'], sl, axind, args)
-                
-                """
-                
+
             #Make the new axis
             opfunc(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
-            """
-            if oplabel == 'avgDim':
-                avgDimOp(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
-            elif oplabel == 'thinPick':
-                thinPickOp(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
-            elif oplabel == 'thinBin':
-                thinBinOp(srcgrp['data'], destgrp['data'], sl, axind, args)
-            """
-
-            
+     
     if delsrc:
         os.remove(src.file)
                 
 
-
-
-
-
-
-
-
-
-def thin(src, dest, ax, step=None, bin=None, loadwhole=False, 
-         delsrc=False, verbose=False ):
-    """
-    'Thins' a dataset along a dimension with label 'ax'
-    
-    Parameters
-    ----------
-        src: hdfPath object
-            Path to the source hdf dataset
-            
-        dest: hdfPath object
-            Path to the destination hdf dataset
-
-        ax: String
-            Label of the axis to be thinned
-            
-        step: Int, default=10
-            Thin the data by pulling out one datapoint every 'thin' indices.
-            Thin is the default, and overrides bin.
-            
-        bin: Int
-            Thin the dataset by averaging over bins of size 'bin'.
-            
-        loadwhole: Boolean
-            If true, the entire hdf dataset will be loaded into mememory.
-            If false, the data will be processed in chunks along the axis
-            being thinned. Loading the whole file can be desirable if the file
-            is relatively small and/or is chunked in an inconvenient way.
-            
-        delsrc: Boolean
-            If this is set to true, the source file will be deleted after the
-            run is complete.
-            
-        verbose: Boolean
-            If this is set to true, printouts are enabled
-
-
-    Returns
-    -------
-       dest: String
-           Echos back the filepath to the newly created file if successful
-    
-    """
-    
-    #Coerece to type int
-    if step is not None:
-        step = int(step)
-    if bin is not None:
-        bin = int(bin)
-    
-    #Step overrides bin. Default is step=10
-    if bin is None and step is None:
-        step = 10
-    elif bin is not None and step is not None:
-        bin = None
-    
-    with h5py.File(src.file, 'r') as sf:
-        srcgrp = sf[src.group]
-        
-        validDataset(srcgrp)
-        
-        oldshape = list( srcgrp['data'].shape )
-        ndim = len(oldshape)
-        
-        dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
-        
-        try:
-            axind = dimlabels.index(ax)
-        except ValueError as e:
-            print("ERROR: Couldn't find ax in dimensions array!: " + str(ax) )
-            raise(e)
-
-        #Calculate new shape
-        newshape = np.copy(oldshape)
-        
-        if step is None:
-            newshape[axind] = int( np.floor(oldshape[axind] / bin) )
-        else:
-            newshape[axind] = int( np.floor(oldshape[axind] / step) )
-
-
-        with h5py.File(dest.file, 'w') as df:
-            destgrp = df[dest.group]
-            
-            #Create new data array
-            destgrp.require_dataset('data', newshape, np.float32, chunks=True, compression='gzip')
-            hdftools.copyAttrs(srcgrp['data'], destgrp['data'])
-            
-            #Copy the axes over, except the one being thinned
-            for axis in dimlabels:
-                if axis != ax:
-                    srcgrp.copy(axis, destgrp)
-                    
-            #Create the new axis
-            destgrp.require_dataset(ax, (newshape[axind],), np.float32, chunks=True)
-            destgrp[ax].attrs['unit'] = srcgrp[ax].attrs['unit']
-
-             
-            if step is not None and bin is None:
-                #Thin by plucking out entries (faster, doesn't load whole array)
-                b = int(np.floor(oldshape[axind]/step))*step
-                srcslice = [ slice(None) ]*ndim
-                srcslice[axind] = slice(0, b, step)
-                srcaxslice = [srcslice[axind] ]
-                
-                if loadwhole:
-                    srcdata = srcgrp['data']
-                    destdata = srcdata[tuple(srcslice) ]
-                    destgrp['data'][:] = destdata
-                    destgrp[ax][:] = srcgrp[ax][ tuple(srcaxslice) ]  
-                else:
-                    destgrp['data'][:] = srcgrp['data'][ tuple(srcslice) ] 
-                    destgrp[ax][:] = srcgrp[ax][ tuple(srcaxslice) ]
-              
-                
-                
-            elif step is None and bin is not None:
-                
-                if loadwhole:
-                    srcdata = srcgrp['data']
-                    destdata = np.empty(newshape)
-                    destax = np.empty(newshape[axind])
-                
-                #Initialize time-remaining printout
-                tr = util.timeRemaining(newshape[axind])
-                
-                for i in range(newshape[axind]):
-                    
-                    #Update time remaining
-                    if verbose:
-                        tr.updateTimeRemaining(i)
-                    print(tr.avgExecutionTime())
-                    
-                    srcslice = [ slice(None) ]*ndim
-                    srcslice[axind] = slice(i*bin, (i+1)*bin, None)
-                    srcaxslice = [srcslice[axind] ]
-                    
-                    destslice = [ slice(None) ]*ndim
-                    destslice[axind] = slice(i, i+1, None)
-                    destaxslice = [ destslice[axind] ]
-                    
-                    #print(str(srcslice[axind]) + ' -> ' + str(destslice[axind]))
-                    
-                    
-                    if loadwhole:
-                        indrange = (i*bin, (i+1)*bin)
-                        s = np.take(srcdata, indrange, axis=axind)
-                        s = np.mean(s)
-                        destdata[tuple(destslice)] = s
-                    else:
-                        s = srcgrp['data'][ tuple(srcslice) ] 
-                        x = srcgrp[ax][tuple(srcaxslice)]
-                        s = np.mean(s)
-                        x = np.mean(x)
-                        destgrp['data'][tuple(destslice)] = s
-                        destgrp[ax][tuple(destaxslice)] = x
-                        
-                if loadwhole:
-                    destgrp['data'][:] = destdata[:]
-                    destgrp[ax][:] = destax[:]
-            
-    if delsrc:
-        os.remove(src.file)
-                
-
-           
-              
-              
 
     
 if __name__ == '__main__':
@@ -430,6 +274,7 @@ if __name__ == '__main__':
     #Windows
     full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full.hdf5") )
     thinned = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_thinned.hdf5") )
+    trimmed = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_trim.hdf5") )
     avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
     
     #OSX
@@ -437,6 +282,7 @@ if __name__ == '__main__':
     #thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
-    x = thinBin(full, thinned, 'time', bin = 10, verbose=True)
+    x = trimDim(full, trimmed, 'time', bounds=[0, 2000], values=False, verbose=True)
+    #x = thinBin(full, thinned, 'time', bin = 10, verbose=True)
     #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
     #x = avgDim(full, avged, 'reps', verbose=True)

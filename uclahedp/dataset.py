@@ -7,6 +7,7 @@ Created on Wed Feb 13 09:20:38 2019
 """
 import h5py
 import numpy as np
+import os
 
 from uclahedp import hdftools, util
 
@@ -89,10 +90,33 @@ def thinPickOp(src_dset, dest_dset, sl, axind, args):
     sl[axind] = slice(None, None, None)
     print(s.shape)
     dest_dset[tuple(sl)] = s
-
-
+    
+    
+    
+def thinBin(src, dest, ax, bin=None, delsrc=False, verbose=False):
+    if bin is None:
+        bin = 10
+    else:
+        bin = int(bin)    
+    chunked_array_op(src, dest, ax, 'thinBin', delsrc=delsrc, verbose=verbose, bin=bin)
+    
+    
+def thinBinOp(src_dset, dest_dset, sl, axind, args):
+    bin = args['bin']
+    s = src_dset[tuple(sl)]
+    nelm = s.shape[axind]
+    nbins = int( np.ceil(nelm/bin) )
+    
+    dsl = np.copy(sl)
+    for i in range(nbins):
+        print('i=' + str(i))
+        indrange = (i*bin, (i+1)*bin)
+        x = np.take(s, indrange, axis=axind)
+        x = np.mean(x, axis=axind)
+        dsl[axind] = slice(None, None, None)
+        dest_dset[tuple(dsl)] = x
         
-
+    
 
 
 def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args):
@@ -120,19 +144,46 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
         chunkax = chunks[0]
         if chunkax == axind:
             chunkax = chunks[1]
+        print("Chunking axis: " + str(dimlabels[chunkax]))
+        
+        if srcgrp['data'].chunks[chunkax] < 2:
+            print("WARNING: POSSIBLE INEFFICENT CHUNKING DETECTED! \n" + 
+                  "Program may be accessing every chunk n^2 times! \n" +
+                  "This can happen if you are trying to thin over the " + 
+                  "predominany chunking dimension in the hdf file." +
+                  "Check the hdf chunk format!")
+        
             
-        chunksize = 1000
+        #Determine optimal chunksize (along chunkax)
+        ideal_chunk_elms = 10000
+        nper = np.product(oldshape)/oldshape[chunkax] #number of values per chunk ax value
+        
+        print(nper)
+        
+        chunksize = int( np.round(nper/ideal_chunk_elms) )
+        print(chunksize)
+        if chunksize < 1:
+            chunksize = 1
+        
+        #Determine nchunks    
         nchunks = int( np.ceil(oldshape[chunkax] / chunksize))
+        
+        print(nchunks)
 
         #Make alterations to the shape for the new dataset
         #This will obviously depend on what operation is being performed
         newshape = np.copy(oldshape)
         if oplabel == 'avgDim':
             newshape[axind] = 1
+            opfunc = avgDimOp
         elif oplabel == 'thinPick':
             newshape[axind] = int( np.ceil(oldshape[axind] / args['step']) )
+            opfunc = thinPickOp
         elif oplabel == 'thinBin':
             newshape[axind] = int( np.ceil(oldshape[axind] / args['bin']) )
+            opfunc = thinBinOp
+        else:
+            raise(ValueError, 'Unsupported oplabel! ' + str(oplabel))
         
 
         with h5py.File(dest.file, 'w') as df:
@@ -155,8 +206,7 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
             #Initialize time-remaining printout
             #Chunks are big, so report more often than usual
             tr = util.timeRemaining(newshape[axind], reportevery=1)
-   
-            print(nchunks)
+
             for i in range(nchunks):
                 print(i)
                 #Update time remaining
@@ -169,29 +219,30 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
                 else:
                     sl [chunkax] = slice(i*chunksize, None, None)
                     
-                
+               
+                opfunc(srcgrp['data'], destgrp['data'], sl, axind, args)
+                """
                 if oplabel == 'avgDim':
                     avgDimOp(srcgrp['data'], destgrp['data'], sl, axind, args)
                 elif oplabel == 'thinPick':
                     thinPickOp(srcgrp['data'], destgrp['data'], sl, axind, args)
                 elif oplabel == 'thinBin':
-                    pass
-                else:
-                    raise(ValueError, 'Unsupported oplabel! ' + str(oplabel))
+                    thinBinOp(srcgrp['data'], destgrp['data'], sl, axind, args)
                 
+                """
                 
             #Make the new axis
+            opfunc(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
+            """
             if oplabel == 'avgDim':
                 avgDimOp(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
             elif oplabel == 'thinPick':
                 thinPickOp(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
             elif oplabel == 'thinBin':
-                pass
+                thinBinOp(srcgrp['data'], destgrp['data'], sl, axind, args)
+            """
 
             
-            
-            
-
     if delsrc:
         os.remove(src.file)
                 
@@ -375,9 +426,17 @@ def thin(src, dest, ax, step=None, bin=None, loadwhole=False,
 
     
 if __name__ == '__main__':
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full.hdf5')
-    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
-    avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
-    x = thinPick(full, thinned, 'time', step = 10, verbose=True)
+    #Windows
+    full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full.hdf5") )
+    thinned = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_thinned.hdf5") )
+    avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
+    
+    #OSX
+    #full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full.hdf5')
+    #thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
+    #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
+    
+    x = thinBin(full, thinned, 'time', bin = 10, verbose=True)
+    #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
     #x = avgDim(full, avged, 'reps', verbose=True)

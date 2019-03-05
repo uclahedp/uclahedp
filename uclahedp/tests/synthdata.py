@@ -34,6 +34,31 @@ def twoWavePackets(verbose=False, plots=False):
     return dt, t, arr
 
 
+def cpWave(plots=False, rcp=None):
+    
+    if rcp is None or rcp is True:
+        rcp = True
+    else:
+        rcp = False #Generate LCP
+    
+    n = int(1e5)
+    f1 = 5e5
+    dt=1e-10
+    t = np.arange(n)*dt
+    
+    if rcp:
+        ax = np.sin(2*np.pi*f1*t)
+        ay = np.cos(2*np.pi*f1*t)
+    else:
+        ay = np.sin(2*np.pi*f1*t)
+        ax = np.cos(2*np.pi*f1*t)
+        
+    if plots:
+        plt.plot(t*1e6, ax, '-', t*1e6, ay, '--')
+        
+    return t, ax, ay
+
 
 if __name__=='__main__':
-    x = twoWavePackets(plots=True)
+    #x = twoWavePackets(plots=True)
+    x = rcpWave(plots=True)

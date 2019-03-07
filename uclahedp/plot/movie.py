@@ -79,7 +79,6 @@ if __name__ == '__main__':
         
         times = np.linspace(0, 2, num=60)
         tinds = pickTimeInds(times, timearr*1e6)
-        print(tinds)
         
         simpleMovie(tinds, x, y, arr, savefile)
         

@@ -11,22 +11,35 @@ import numpy as np
 import scipy.fftpack as fft
 from uclahedp.tests.synthdata import cpWave as cpWave
 import matplotlib.pyplot as plt
+import h5py
 
-def polarization_decomp(bx,by):
+def polarization_decomp(bx,by, flipz=False):
     """
-    IN:  by, bz Real 1D-arrays with perpendicular field components
-    OUT: br, bl Complex 1D-arrays with the right- and left-hand circularly 
-                polarized components of by, bz, with respect to the 
-                positive x-axis. The real parts correspond to by and the 
-                imaginary parts to bz, which should only differ by much if 
-                the signal is strongly elliptically polarized.
+    INPUTS
+    bx, by (Float arrays)
+    Transverse field components
+    
+    flipz (Boolean)
+    If False, wave is assumed to be propagating along the z direction defined
+    by the given x and y directions and the right-hand rule. If True, the wave
+    is assumed to propagate in the -Z direction. 
+    
+    OUPTUTS
+    br, bl (Float arrays)
+    Polarization decomposition of the field: decomposed onto RCP and LCP
+    basis vectors.
     """
+
     # Compute forward Fourier transforms
     bxf = fft.fft(bx)
     byf = fft.fft(by)
     # Get phase-shifted superpositions (byf+I*bzf)/2,(byf-I*bzf)/2
-    blf = (0.5+0.j)*bxf + (0.+0.5j)*byf
-    brf = (0.5+0.j)*bxf - (0.+0.5j)*byf
+    if flipz:
+        brf = (0.5+0.j)*bxf + (0.+0.5j)*byf
+        blf = (0.5+0.j)*bxf - (0.+0.5j)*byf
+    else:
+        blf = (0.5+0.j)*bxf + (0.+0.5j)*byf
+        brf = (0.5+0.j)*bxf - (0.+0.5j)*byf
     # Store length of arrays in array_len (assumed to be even)
     array_len = int( np.size(bxf) /2. )
     
@@ -45,9 +58,11 @@ def polarization_decomp(bx,by):
 
 
 def _test_polarization_decomp():
-    t, ax, ay = cpWave(rcp=False)
+    t, ax, ay = cpWave(rcp=True)
     br, bl = polarization_decomp(ax, ay)
-    plt.plot(t*1e6, br, '-', t*1e6, bl, '--')
+    
+    fig, ax = plt.subplots()
+    ax.plot(t*1e6, br, '-', t*1e6, bl, '--')
     
 
 def hodograph(ax, ay, indices=None):
@@ -72,16 +87,44 @@ def hodograph(ax, ay, indices=None):
     return x0,y0,dx,dy
     
 def _test_hodograph():
-    t, ax, ay = cpWave(rcp=False)
+    t, ax, ay = cpWave(rcp=True)
     indices = np.arange(0, 15000, 500)
     x,y,u,v = hodograph(ax, ay, indices=indices)
     
-    plt.quiver(x,y,u,v, pivot='tail')
-    plt.show()
+    fig, ax = plt.subplots()
+    
+    ax.quiver(x,y,u,v, pivot='tail')
+
 
 
 
 
 if __name__ == '__main__':
-    _test_polarization_decomp()
-    _test_hodograph()
+    #_test_polarization_decomp()
+    #_test_hodograph()
+    
+    
+    
+    title='Parallel'
+    f =  '/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run40_LAPD7_full.hdf5'
+    
+    #title='Perpendicular'
+    #f = '/Volumes/PVH_DATA/LAPD_Jan2019/FULL/run34_LAPD10_full.hdf5'
+    
+    with h5py.File(f) as f:
+        bx = f['data'][0,:,0]
+        by = f['data'][0,:,1]
+        t = f['time'][:]
+        
+        fig, ax = plt.subplots()
+        br, bl = polarization_decomp(bx, by, flipz=True)
+        ax.plot(t*1e6, br, 'b-', label='RCP' )
+        ax.plot(t*1e6, bl, 'r-', label='LCP')
+        ax.set_xlim((0,50))
+        ax.set_xlabel('t (us)')
+        ax.set_ylabel('dB (G)')
+        ax.set_title(title)
+        ax.legend(loc=4)
+        
+   
+        

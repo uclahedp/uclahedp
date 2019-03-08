@@ -107,14 +107,21 @@ if __name__ == '__main__':
     
     title='Parallel'
     f =  '/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run40_LAPD7_full.hdf5'
+    f =  '/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run56_LAPD1_full.hdf5'
+    
     
     #title='Perpendicular'
     #f = '/Volumes/PVH_DATA/LAPD_Jan2019/FULL/run34_LAPD10_full.hdf5'
     
     with h5py.File(f) as f:
-        bx = f['data'][0,:,0]
-        by = f['data'][0,:,1]
+        
         t = f['time'][:]
+        
+        #bx = f['data'][0,:,0]
+        #by = f['data'][0,:,1]
+        bx = f['data'][:,30,0,0,0,0]
+        by = f['data'][:,30,0,0,0,1]
+        
         
         fig, ax = plt.subplots()
         br, bl = polarization_decomp(bx, by, flipz=True)

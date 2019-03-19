@@ -23,7 +23,11 @@ def vbLab_to_vb(nb, vblab, qb, qc):
     return vb
 
 
-def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None):
+def ve(nb, vb, qb, qc):
+    return -(qb/qc)*nb*vb/(1-qb*nb)
+
+
+def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None, mc=None):
     if vb is None:
         vb = 5 
     if nb is None:
@@ -34,6 +38,8 @@ def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None):
         qc = 1
     if mb is None:
         mb = 3.0
+    if mc is None:
+        mc = 1.0
         
     #Construct a complex value
     w = z[0] + 1j*abs(z[1])
@@ -55,7 +61,7 @@ def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None):
 
     #Calculate solution
     sol = ( (pow(w,2)/pow(wpc,2) - pow(k,2))*(w - vc*k + wcc)*(w - vb*k + wcb) - 
-        nc*(w - vc*k)*(w - vb*k + wcb) + 
+        nc*(pow(qc,2)/mc)*(w - vc*k)*(w - vb*k + wcb) + 
         ne*( (w - ve*k)/wcc )*(w - vc*k + wcc)*(w - vb*k + wcb) -
         nb*(pow(qb,2)/mb)*(w-vb*k)*(w - vc*k + wcc) )
     
@@ -68,9 +74,18 @@ def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None):
 def bestGuess(k):
     return np.array([k**2, 1])
 
+def rightPropGuess(k):
+    if k < 0:
+        return np.array([k*0.1, -1])
+    else: 
+        return np.array([k**2, .1])
+
+def leftPropGuess(k):
+    return rightPropGuess(-k)
 
 
-def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, krange = None, guessFcn = None):
+
+def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, mc=None, krange = None, guessFcn = None):
     
     #Create kspace and output w vectors
     if krange is None:
@@ -87,7 +102,7 @@ def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, krange = None, gue
     for i,k in enumerate(kspace):
         #Guess: k**2. This is important to get the right branch
         guess = guessFcn(k)
-        wr, wi = optimize.fsolve(lambda z : dispRel(z, k, vb=vb, nb=nb, qb=qb, qc=qc, mb=mb), guess, factor=0.1)
+        wr, wi = optimize.fsolve(lambda z : dispRel(z, k, vb=vb, nb=nb, qb=qb, qc=qc, mb=mb, mc=mc), guess, factor=0.1)
         #Repackage as a complex value
         #The absolute value on wi seems to be necessary to keep on the right
         #branch...
@@ -147,8 +162,8 @@ def classify_peaks(k, wi):
 
 if __name__ == '__main__':
     
-    vb = 5
-    k, wr, wi =  solveDispRel(nb=0.05, vb=vb, qb=4, krange=(-5,5))
+    vb = 0
+    k, wr, wi =  solveDispRel(nb=0.1, vb=vb, qb=4, krange=(-10,10), guessFcn=rightPropGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
@@ -158,6 +173,7 @@ if __name__ == '__main__':
     wr = savgol_filter(wr, 501, 3)
     
     wifactor = 25
+    ax.set_ylim((-3,3))
     ax.plot(k, wr, '-', k, wi*wifactor, '--')
     ax.plot(k, vbline, '--')
     ax.axvline(0, color='black', linewidth=1)

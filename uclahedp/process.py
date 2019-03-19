@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-overwrite.py
+process.py
 @author: Peter
 """
 import os
@@ -113,6 +113,6 @@ if __name__ == "__main__":
     data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     
 
-    processMany(data_dir, overwrite=False, runs=[61], probes=['tdiode', 'LAPD1']) 
+    processMany(data_dir, overwrite=True, runs=[102], probes=['tdiode', 'LAPD1']) 
     
     

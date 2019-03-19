@@ -23,8 +23,11 @@ def vbLab_to_vb(nb, vblab, qb, qc):
     return vb
 
 
-def ve(nb, vb, qb, qc):
+def calc_vc(nb, vb, qb, qc):
     return -(qb/qc)*nb*vb/(1-qb*nb)
+
+def calc_nc(nb, qb):
+     return 1.00 - qb*nb
 
 
 def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None, mc=None):
@@ -48,10 +51,10 @@ def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None, mc=None):
     F = np.zeros((2))
 
     ne = 1.00
-    nc = ne - qb*nb
+    nc = calc_nc(nb, qb)
     
     ve = 0.0
-    vc = -(qb/qc)*nb*vb/(1-qb*nb)
+    vc = calc_vc(nb, vb, qb, qc)
     
     wcc = 1
     wcb = (qb/mb)*wcc

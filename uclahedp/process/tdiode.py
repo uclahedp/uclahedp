@@ -2,7 +2,8 @@ import h5py
 import numpy as np
 import os
 
-from uclahedp import hdftools, util
+from uclahedp.tools import hdf as hdftools
+from uclahedp.tools import util
 
 
 def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
@@ -109,8 +110,12 @@ def findBadShots(srcgrp, verbose=False, badshotratio=None, fatal_badshot_percent
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5"))
-    dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_full.hdf5"))
+    #src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5"))
+    #dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_full.hdf5"))
+    
+    src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_tdiode_raw.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_tdiode_full.hdf5')
+    
     #print(calcT0(src)[0:20] )
     #print(findBadShots(src) )
     tdiodeRawToFull(src, dest, verbose=True)

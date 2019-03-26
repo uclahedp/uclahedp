@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 @author: Peter Heuer
-lapdtools.py: LAPD HDF5 analysis programs
+lapd.py: LAPD HDF5 analysis programs
  --> readRunPobe(run, probe, data_dir, dest, verbose=False)
      Reads LAPD HDF5 dataset into a new HDF5 file w/ metadata,
      calls lapdReadHDF with options chosen from metadata csvs.
@@ -14,7 +14,9 @@ from astropy import units as u
 import time
 import os
 
-from uclahedp import csvtools, hdftools, util
+from uclahedp.tools import csv as csvtools
+from uclahedp.tools import hdf as hdftools
+from uclahedp.tools import util
 
 # bapsflib is available from pip. Run command 'pip bapsflib' from terminal to
 # install it
@@ -311,14 +313,14 @@ if __name__ == "__main__":
     csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
     dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
     
-    #hdf_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/HDF/'
-    #csv_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/'
-    #dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
+    hdf_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/HDF/'
+    csv_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/'
+    dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_tdiode_raw.hdf5")
 
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  lapdToRaw(102, 'PL11B', hdf_dir, csv_dir, dest, verbose=True)
+    x =  lapdToRaw(10, 'tdiode', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

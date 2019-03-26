@@ -23,37 +23,6 @@ def makeAxes(pos, precision=.1):
     xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     return xaxes, yaxes, zaxes
 
-"""
-# Depreciated early routine: maybe delete?
-# Replaced by gridShotIndList
-def gridShotIndGrid(pos, precision=.1):
-    
-    xpos = np.round(pos[:,0]/precision, 0)*precision + 0.0
-    ypos = np.round(pos[:,1]/precision, 0)*precision + 0.0
-    zpos = np.round(pos[:,2]/precision, 0)*precision + 0.0
-    
-    xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
-    nshots = len(xpos)
-    nx, ny, nz  = len(xaxes), len(yaxes), len(zaxes)
-    nreps = np.round(nshots/(nx*ny*nz))
-    
-    gridind = np.zeros([nx, ny, nz, nreps],  dtype=np.int32)
-    
-    #This nested for loop isn't as bad as it looks, since the numbers are small
-    #Still, there's probably a better way
-    #...but what is it?
-    for xi in range(nx):
-        for yi in range(ny):
-            for zi in range(nz):
-                dist = np.sqrt( (xaxes[xi] - xpos)**2 + 
-                      (yaxes[yi] - ypos)**2  +
-                      (zaxes[zi] - zpos)**2 )
-                si = np.array( np.where(dist <= precision), dtype=np.int32)
-                gridind[xi,yi,zi,:] = si[0:nreps-1]
-                
-    
-    return gridind, xaxes, yaxes, zaxes
-"""
 
 def gridShotIndList(pos, precision=.1):
     #Round to within the precision given

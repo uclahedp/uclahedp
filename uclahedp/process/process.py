@@ -4,7 +4,9 @@ process.py
 @author: Peter
 """
 import os
-from uclahedp import lapdtools, hdftools, csvtools, tdiode, bdot
+from uclahedp.load import lapd
+from uclahedp.tools import hdf, csv
+from uclahedp.process import tdiode, bdot
 
 
 
@@ -19,8 +21,8 @@ def process(data_dir, run, probe, overwrite=True,
         
     probe_string = 'run'+str(run) + '_' + probe[0]
 
-    rawfile = hdftools.hdfPath(os.path.join(data_dir, "RAW", probe_string + '_raw.hdf5') )
-    fullfile = hdftools.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_full.hdf5') )
+    rawfile = hdf.hdfPath(os.path.join(data_dir, "RAW", probe_string + '_raw.hdf5') )
+    fullfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_full.hdf5') )
     
     #Make the directory if necessary
     os.makedirs(os.path.dirname(rawfile.file), exist_ok=True)
@@ -32,7 +34,7 @@ def process(data_dir, run, probe, overwrite=True,
             os.remove(rawfile.file)
     if not os.path.exists(rawfile.file):
         print("Running lapdToRaw")
-        rawfile =  lapdtools.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
+        rawfile =  lapd.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
     else:
         print("Raw file exist: skipping")
     
@@ -66,7 +68,7 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
         hdf_dir = os.path.join(data_dir, "HDF")
         
     if runs is None:
-        runlist = csvtools.getRunList(csv_dir)
+        runlist = csv.getRunList(csv_dir)
     else:
         runlist = runs
 
@@ -76,14 +78,14 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
         print("Processing run: " + str(run))
         
         #Load the probe list
-        probelist = csvtools.getProbeList(csv_dir, run)
+        probelist = csv.getProbeList(csv_dir, run)
         #If a tdiode exists, bring it to the front of the list so it gets called first
         
         if ('tdiode','tdiode') in probelist and 'tdiode' in probes:
             #Pop the tdiode to the front of the list, since others depend on it
             probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
             #This is where the tdiode full should end up...
-            tdiode_full = hdftools.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
+            tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
         else:
             print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
             tdiode_full = None

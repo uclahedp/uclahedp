@@ -15,8 +15,11 @@ import h5py
 from scipy.signal import detrend as detrend
 import astropy.units as u
 
-
-from uclahedp import csvtools, hdftools, util, postools, math
+from uclahedp.tools import csv as csvtools
+from uclahedp.tools import hdf as hdftools
+from uclahedp.tools import util
+from uclahedp.tools import pos as postools
+from uclahedp.tools import math
 
 
 
@@ -438,17 +441,17 @@ if __name__ == "__main__":
     #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
     #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
-    raw = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_PL11B_raw.hdf5.hdf5')
-    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run103_tdiode_raw.hdf5')
+    raw = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_PL11B_raw.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_tdiode_raw.hdf5')
     
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
-    current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_current.hdf5')
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_full.hdf5')
+    #current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_current.hdf5')
     
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    #full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
-    cur_filepath = fullToCurrent(full, current, verbose=True)
+    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
+    #cur_filepath = fullToCurrent(full, current, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

@@ -4,8 +4,8 @@ import h5py
 import os
 import numpy as np
 
-from uclahedp import csvtools, hdftools
-
+from uclahedp.tools import csv as csvtools
+from uclahedp.tools import hdf as hdftools
 
 
 

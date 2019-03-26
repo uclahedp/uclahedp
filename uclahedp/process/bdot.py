@@ -441,17 +441,18 @@ if __name__ == "__main__":
     #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
     #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
-    raw = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_PL11B_raw.hdf5')
-    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_tdiode_raw.hdf5')
+    src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_PL11B_raw.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_tdiode_full.hdf5')
     
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_full.hdf5')
-    #current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_current.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_full.hdf5')
+    
+    current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_current.hdf5')
     
     print('reading')
     util.mem()
     tstart = util.timeTest()
     full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
-    #cur_filepath = fullToCurrent(full, current, verbose=True)
+    cur_filepath = fullToCurrent(dest, current, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

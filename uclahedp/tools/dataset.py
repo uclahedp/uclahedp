@@ -9,7 +9,8 @@ import h5py
 import numpy as np
 import os
 
-from uclahedp import hdftools, util
+from uclahedp.tools import hdf as hdftools
+from uclahedp.tools import util
 
 def validDataset(grp):
     """

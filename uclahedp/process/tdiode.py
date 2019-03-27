@@ -113,8 +113,18 @@ if __name__ == "__main__":
     #src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_raw.hdf5"))
     #dest = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_tdiode_full.hdf5"))
     
-    src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_tdiode_raw.hdf5')
-    dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_tdiode_full.hdf5')
+    probe = 'tdiode'
+    run = 5
+    
+    src = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/' + 'run' + str(run) + '_' + probe + '_raw.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
+
+
+    #Delete the output file if it already exists
+    try:
+        os.remove(dest.file)
+    except FileNotFoundError:
+        pass
     
     #print(calcT0(src)[0:20] )
     #print(findBadShots(src) )

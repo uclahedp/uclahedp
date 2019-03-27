@@ -60,8 +60,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
         attrs = hdftools.readAttrs(srcgrp)
         
         #Check for keys always required by this function
-        req_keys = ['brd1','brd2','brd3', 'chan1','chan2', 'chan3', 
-                    'xarea', 'yarea', 'zarea',
+        req_keys = ['xarea', 'yarea', 'zarea',
                     'xatten', 'yatten', 'zatten', 'gain',
                     'xpol', 'ypol', 'zpol', 'roll', 
                     'probe_origin_x', 'probe_origin_y', 'probe_origin_z',
@@ -441,18 +440,28 @@ if __name__ == "__main__":
     #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
     #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
-    src = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_PL11B_raw.hdf5')
-    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_tdiode_full.hdf5')
+    probe = 'PLL_B1'
+    run = 5
     
-    dest = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_full.hdf5')
+    src = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/' + 'run' + str(run) + '_' + probe + '_raw.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
+    tdiode_hdf = None
     
-    current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_current.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
+    
+    #current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_current.hdf5')
+    
+    #Delete the output file if it already exists
+    try:
+        os.remove(dest.file)
+    except FileNotFoundError:
+        pass
     
     print('reading')
     util.mem()
     tstart = util.timeTest()
     full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
-    cur_filepath = fullToCurrent(dest, current, verbose=True)
+    #cur_filepath = fullToCurrent(dest, current, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

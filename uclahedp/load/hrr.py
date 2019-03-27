@@ -99,12 +99,17 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                 pos_chan[ax[i]] = ( attrs[digistr][0], attrs[chanstr][0])
             else:
                 pos_chan[ax[i]] = None
+        else:
+                pos_chan[ax[i]] = None
+        
+    
 
 
     #Determine the number of channels from the channel array
     nchan = len(channel_arr)
     
     print(channel_arr)
+    print(pos_chan)
     
         
     #Read some variables from the src file
@@ -130,8 +135,10 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             nti = digigrp['CHANNEL 0'][dataname].shape[1]
             dt = digigrp['CHANNEL 0'][dataname].attrs['WAVEFORM DT'] * u.s
             
-            attrs['dt'] = [s.encode('utf-8') for s 
-                 in [str(dt.value), str(dt.unit) ] ]
+            attrs['dt'] = [str(dt.value), str(dt.unit) ]
+            
+            #attrs['dt'] = [s.encode('utf-8') for s 
+            #     in [str(dt.value), str(dt.unit) ] ]
             
         elif resource_type == 'MOTOR BOARD':
             dataname = 'POSITION'
@@ -191,7 +198,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                     
                     
             
-            if len(pos_chan) > 0:
+            if pos_chan['x'] is not None or pos_chan['y'] is not None or pos_chan['z'] is not None:
                 grp.require_dataset('pos', (nshots, 3), np.float32)
                 ax = ['x', 'y', 'z']
                 for i, a in enumerate(ax):
@@ -226,10 +233,14 @@ if __name__ == "__main__":
     #dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
     
     
+    probe = 'tdiode'
+    probe = 'PLL_B1'
+    run = 5
+    
     
     hdf_dir = '/Volumes/PVH_DATA/2019BIERMANN/HDF/'
     csv_dir = '/Volumes/PVH_DATA/2019BIERMANN/METADATA/'
-    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/run2.hdf5')
+    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/' + 'run' + str(run) + '_' + probe + '_raw.hdf5')
 
     #Delete the output file if it already exists
     try:
@@ -240,7 +251,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  hrrToRaw(2, 'PLL_B1', hdf_dir, csv_dir, dest, verbose=True)
+    x =  hrrToRaw(run, probe, hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

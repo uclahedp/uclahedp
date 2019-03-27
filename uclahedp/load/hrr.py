@@ -114,14 +114,15 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         print(digi_name)
         digigrp = sf[digi_name]
         
-        resource_type = digigrp.attrs['RESOURCE TYPE'][0].decode('utf-8')
+
+        resource_type = digigrp.attrs['RESOURCE TYPE'].decode('utf-8')
         
-        attrs['RESOURCE ALIAS'] = (digigrp.attrs['RESOURCE ALIAS'][0].decode('utf-8'),'')
-        attrs['RESOURCE DESCRIPTION'] = (digigrp.attrs['RESOURCE DESCRIPTION'][0].decode('utf-8'),'')
-        attrs['RESOURCE ID'] = (digigrp.attrs['RESOURCE ID'][0],'')
-        attrs['RESOURCE MODEL'] = (digigrp.attrs['RESOURCE MODEL'][0].decode('utf-8'),'')
+        attrs['RESOURCE ALIAS'] = (digigrp.attrs['RESOURCE ALIAS'].decode('utf-8'),'')
+        attrs['RESOURCE DESCRIPTION'] = (digigrp.attrs['RESOURCE DESCRIPTION'].decode('utf-8'),'')
+        attrs['RESOURCE ID'] = (digigrp.attrs['RESOURCE ID'],'')
+        attrs['RESOURCE MODEL'] = (digigrp.attrs['RESOURCE MODEL'].decode('utf-8'),'')
         attrs['RESOURCE TYPE'] = (resource_type,'')
-        resource_unit = digigrp['CHANNEL 0']['UNITS'][0]
+        resource_unit = digigrp['CHANNEL 0']['UNITS'][0].decode('utf-8')
         
         if resource_type == 'SCOPE':
             dataname = 'TRACE'
@@ -224,9 +225,11 @@ if __name__ == "__main__":
     #csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
     #dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
     
+    
+    
     hdf_dir = '/Volumes/PVH_DATA/2019BIERMANN/HDF/'
     csv_dir = '/Volumes/PVH_DATA/2019BIERMANN/METADATA/'
-    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/testfile.hdf5')
+    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/run2.hdf5')
 
     #Delete the output file if it already exists
     try:
@@ -237,7 +240,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  hrrToRaw(1, 'PLL_B1', hdf_dir, csv_dir, dest, verbose=True)
+    x =  hrrToRaw(2, 'PLL_B1', hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

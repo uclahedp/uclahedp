@@ -9,7 +9,6 @@ Created by Scott Feister on Wed Mar 27 06:42:34 2019
 """
 
 import numpy as np
-import pandas as pd
 import datetime
 
 class TSequence():
@@ -65,20 +64,25 @@ class TDevice():
         self.resource_id = resource_id
         self.channel = channel
         self.vals = None
-        
+    
+    def validate(self, nsteps=None):
+        """ Validates that the TDevice instance is ready to write to file, etc."""
+        if type(self.vals) != np.ndarray:
+            raise Exception("Invalid 'vals' must be of type ndarray")
                 
     
         
 if __name__ == "__main__":
     # Initialize sequence
     nsteps = 5
-    comment = "Created with python\nSecond line of comments \nMore comments"
+    comment = "First test of lens stage in an HRR sequence"
+    comment += "\nAuthor: Scott Feister"
     
     tseq = TSequence(nsteps, comment=comment)
 
     # Define devices and step values
     lens_stage = TDevice(146, unit="mm", channel=0)
-    lens_stage.vals = np.linspace(0, 10, nsteps) # Sequence of values
+    lens_stage.vals = np.linspace(30, 50, nsteps) # Sequence of values
     
     # Place devices into the sequence
     tseq.tdevs = [lens_stage]

@@ -50,7 +50,7 @@ class TSequence():
             f.write("###\n")
             
             ## Write the values
-            for i in range(nsteps):
+            for i in range(self.nsteps):
                 for tdev in self.tdevs:
                     f.write(str(tdev.vals[i]) + "\t")
                 f.write("\n")                
@@ -74,21 +74,23 @@ class TDevice():
         
 if __name__ == "__main__":
     # Initialize sequence
-    nsteps = 5
+    nsteps = 50
+    nreps = 5
     comment = "First test of lens stage in an HRR sequence"
     comment += "\nAuthor: Scott Feister"
     
-    tseq = TSequence(nsteps, comment=comment)
+    tseq = TSequence(nsteps*nreps, comment=comment)
 
     # Define devices and step values
     lens_stage = TDevice(146, unit="mm", channel=0)
-    lens_stage.vals = np.linspace(30, 50, nsteps) # Sequence of values
-    
+    lens_stage.vals = np.linspace(10, 70, nsteps) # Sequence of values
+    lens_stage.vals = np.tile(lens_stage.vals, [nreps,1]).T.flatten() # Repeated sequence of values
+        
     # Place devices into the sequence
     tseq.tdevs = [lens_stage]
     
     # Write the sequence to file
-    tseq.write(r"C:\Users\scott\Documents\temp\march2019\test.csv")
+    tseq.write(r"C:\Users\scott\Documents\temp\march2019\test.txt")
     
     
 

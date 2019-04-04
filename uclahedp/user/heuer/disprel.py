@@ -27,7 +27,7 @@ def vbLab_to_vb(nb, vblab, qb, qc):
 
 
 def calc_vc(nb, vb, qb, qc):
-    return -(qb/qc)*nb*vb/(1-qb*nb)
+    return (qb/qc)*nb*vb/(1-qb*nb)
 
 def calc_nc(nb, qb):
      return 1.00 - qb*nb

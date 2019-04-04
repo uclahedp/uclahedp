@@ -198,6 +198,12 @@ def gen_gr():
     output['vbprf'] = np.zeros(shape)
     output['vcprf'] = np.zeros(shape)
     
+    output['qb'] = qb
+    output['qc'] = qc
+    output['mb'] = mb
+    output['mc'] = mc
+    
+    
     
     t = timer(nv*nn, reportevery=1)
     
@@ -233,7 +239,7 @@ def make_gr(file):
     output = gen_gr()  
     with h5py.File(file, 'w') as f:
       
-        for g in ('vblab', 'nb', 'vbprf', 'vcprf'):    
+        for g in ('vblab', 'nb', 'vbprf', 'vcprf', 'qb', 'qc', 'mb', 'mc'):    
              f[g] = output[g]
         
         for g in ('F', 'A', 'C', 'E'):

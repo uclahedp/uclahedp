@@ -128,7 +128,7 @@ def classify_peaks(k, wr, wi):
     kwidth = .01
     width = int(kwidth/dk)
     
-    wi = medfilt(wi, 9)
+    wi = medfilt(wi, 25)
     
     peaks = find_peaks(wi, height = 0.001)
     peaks = peaks[0]
@@ -149,6 +149,7 @@ def classify_peaks(k, wr, wi):
         output['F'] = {'k': k[pos[0]], 'w': wr[pos[0]], 'gr': wi[pos[0]]}
         output['E'] = {'k': k[pos[1]], 'w': wr[pos[1]], 'gr': wi[pos[1]]}
     else:
+        print(len(pos))
         raise ValueError("Invalid number of positive k peaks!")
      
     if neg == []:
@@ -159,6 +160,7 @@ def classify_peaks(k, wr, wi):
         output['A'] = {'k': k[neg[1]], 'w': wr[neg[1]], 'gr': wi[neg[1]]}
         output['C'] = {'k': k[neg[0]], 'w': wr[neg[0]], 'gr': wi[neg[0]]}
     else:
+        print(len(neg))
         raise ValueError ("Invalid number of negative k peaks!")
 
     return output
@@ -167,17 +169,18 @@ def classify_peaks(k, wr, wi):
 
 def gen_gr():
     qb = 4.0
+    mb = 3.0
     qc = 1
+    mc = 1
     
     #NOTE: Avoid letting nb/n0 = 1/qb = 0.25! Jump's branches there...
     
-    #krange = (-10,10)
-    #vblab_range = np.arange(1, 20, 0.1)
-    #nb_range = np.arange(0, 0.24, 0.01)
-    
     krange = (-10,10)
-    vblab_range = np.arange(4, 8, 1)
-    nb_range = np.arange(.1, 0.2, .05 )
+    vblab_range = np.arange(1, 20, 0.1)
+    nb_range = np.arange(0, 0.24, 0.01)
+    
+    #vblab_range = np.arange(4, 8, 1)
+    #nb_range = np.arange(.1, 0.2, .05 )
     
     nv = len(vblab_range)
     nn = len(nb_range)
@@ -190,38 +193,48 @@ def gen_gr():
     output['C'] = {'k':np.zeros(shape), 'w':np.zeros(shape), 'gr':np.zeros(shape)}
     output['E'] = {'k':np.zeros(shape), 'w':np.zeros(shape), 'gr':np.zeros(shape)}
 
+    output['vblab'] = vblab_range
+    output['nb'] = nb_range
+    output['vbprf'] = np.zeros(shape)
+    output['vcprf'] = np.zeros(shape)
+    
     
     t = timer(nv*nn, reportevery=1)
     
     for i, vblab in enumerate(vblab_range):
         for j, nb in enumerate(nb_range):
-            vb  = vbLab_to_vb(nb, vblab, qb, qc)
-            
-            ii = i*nb + j
+            ii = i*nn + j
             t.updateTimeRemaining(ii)
+            
+            vb  = vbLab_to_vb(nb, vblab, qb, qc)
+            vc = calc_vc(nb, vb, qb, qc)
+            
+            output['vbprf'][i,j] = vb
+            output['vcprf'][i,j] = vc
+            
 
             print("i,j=" + str(i) + ','  + str(j) + 
                     ", nb=" + str(np.round(nb, decimals=2)) +
                   ', vblab=' + str(np.round(vblab, decimals=2)) +
                   ', vb=' + str(np.round(vb, decimals=2))  )
-            k, wr, wi = solveDispRel( nb=nb, vb =vb, qb=qb, qc=qc, guessFcn = bestGuess, krange=krange)
+            
+            k, wr, wi = solveDispRel( nb=nb, vb =vb, qb=qb, mb=mb, qc=qc, mc=mc, guessFcn = bestGuess, krange=krange)
             peaks = classify_peaks(k, wr, wi)
             #plot1(k, wr, wi, peaks=peaks)
             for g in ('F', 'A', 'C', 'E'):
                 for sg in ('k', 'w', 'gr'):
                     output[g][sg][i,j] = peaks[g][sg]
-
-            
-            
-    return vblab_range, nb_range, output
+          
+     
+    return output
 
 
 def make_gr(file):
-    vlab_range, nb_range, output = gen_gr()  
+    output = gen_gr()  
     with h5py.File(file, 'w') as f:
-        
-        f['vlab'] = vlab_range
-        f['nb'] = nb_range
+      
+        for g in ('vblab', 'nb', 'vbprf', 'vcprf'):    
+             f[g] = output[g]
         
         for g in ('F', 'A', 'C', 'E'):
             f.require_group(g)
@@ -233,27 +246,35 @@ def make_gr(file):
 
 
 if __name__ == '__main__':
-    
-    vb = 4
-    k, wr, wi =  solveDispRel(nb=0.1, vb=vb, qb=5, mb=3, krange=(-5,5), guessFcn=bestGuess)
+     
+    """
+    vb = .92
+    k, wr, wi =  solveDispRel(nb=0.16, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
     vbline = k*vb
     
+    wi = medfilt(wi, 25)
+    
     #Filtering bc branch in solution makes an annoying bump
     wr = savgol_filter(wr, 501, 3)
     
-    wifactor = 1
+    
+    
+    wifactor = 10
     ax.set_ylim((-1,10))
     ax.plot(k, wr + k*vb, '-', k, wi*wifactor, '--')
     ax.plot(k, vbline, '--')
     ax.axvline(0, color='black', linewidth=1)
+    ax.set_xlim(-4,4)
     plt.show()
-
+    
+    peaks = classify_peaks(k, wr, wi)
     
     """
-    file = os.path.join("C:", "Users","Peter", "Desktop", "gr_save_exp.hdf5")
-    file = '/Users/peter/Desktop/new_gr_save.hdf5'
+    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_C+4_He+1.hdf5")
+    #file = '/Users/peter/Desktop/new_gr_save.hdf5'
+    print(file)
     make_gr(file)
-    """
+    

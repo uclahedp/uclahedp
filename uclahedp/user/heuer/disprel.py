@@ -10,6 +10,9 @@ import scipy.interpolate as interpolate
 from scipy.signal import savgol_filter, medfilt
 from scipy.signal import find_peaks
 
+from uclahedp.tools.util import timeRemaining as timer
+
+import h5py
 import matplotlib.pyplot as plt
 
 def vb_to_vbLab(nb, vb, qb, qc):
@@ -119,7 +122,7 @@ def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, mc=None, krange = 
     return k, wr, wi
 
 
-def classify_peaks(k, wi):
+def classify_peaks(k, wr, wi):
     
     dk = np.mean(np.gradient(k))
     kwidth = .01
@@ -130,10 +133,10 @@ def classify_peaks(k, wi):
     peaks = find_peaks(wi, height = 0.001)
     peaks = peaks[0]
 
-    output  = {'F': {'k':None, 'gr':0},
-               'A': {'k':None, 'gr':0},
-               'C': {'k':None, 'gr':0},
-               'E': {'k':None, 'gr':0}}
+    output  = {'F': {'k':None, 'w':None, 'gr':0},
+               'A': {'k':None, 'w':None, 'gr':0},
+               'C': {'k':None, 'w':None, 'gr':0},
+               'E': {'k':None, 'w':None, 'gr':0}}
 
     pos = [p for p in peaks if k[p]> 0]
     neg = [p for p in peaks if k[p]< 0]
@@ -141,20 +144,20 @@ def classify_peaks(k, wi):
     if pos == []:
         pass
     elif len(pos) == 1:
-        output['F'] = {'k': k[pos[0]], 'gr': wi[pos[0]]}
+        output['F'] = {'k': k[pos[0]], 'w': wr[pos[0]], 'gr': wi[pos[0]]}
     elif len(pos) == 2:
-        output['F'] = {'k': k[pos[0]], 'gr': wi[pos[0]]}
-        output['E'] = {'k': k[pos[1]], 'gr': wi[pos[1]]}
+        output['F'] = {'k': k[pos[0]], 'w': wr[pos[0]], 'gr': wi[pos[0]]}
+        output['E'] = {'k': k[pos[1]], 'w': wr[pos[1]], 'gr': wi[pos[1]]}
     else:
         raise ValueError("Invalid number of positive k peaks!")
      
     if neg == []:
         pass
     elif len(neg) == 1:
-        output['A'] = {'k': k[neg[0]], 'gr': wi[neg[0]]}
+        output['A'] = {'k': k[neg[0]], 'w': wr[neg[0]], 'gr': wi[neg[0]]}
     elif len(neg) == 2:
-        output['A'] = {'k': k[neg[1]], 'gr': wi[neg[1]]}
-        output['C'] = {'k': k[neg[0]], 'gr': wi[neg[0]]}
+        output['A'] = {'k': k[neg[1]], 'w': wr[neg[1]], 'gr': wi[neg[1]]}
+        output['C'] = {'k': k[neg[0]], 'w': wr[neg[0]], 'gr': wi[neg[0]]}
     else:
         raise ValueError ("Invalid number of negative k peaks!")
 
@@ -162,11 +165,77 @@ def classify_peaks(k, wi):
 
 
 
+def gen_gr():
+    qb = 4.0
+    qc = 1
+    
+    #NOTE: Avoid letting nb/n0 = 1/qb = 0.25! Jump's branches there...
+    
+    #krange = (-10,10)
+    #vblab_range = np.arange(1, 20, 0.1)
+    #nb_range = np.arange(0, 0.24, 0.01)
+    
+    krange = (-10,10)
+    vblab_range = np.arange(4, 8, 1)
+    nb_range = np.arange(.1, 0.2, .05 )
+    
+    nv = len(vblab_range)
+    nn = len(nb_range)
+     
+    shape = (nv, nn)
+
+    output = {}
+    output['F'] = {'k':np.zeros(shape), 'w':np.zeros(shape), 'gr':np.zeros(shape)}
+    output['A'] = {'k':np.zeros(shape), 'w':np.zeros(shape), 'gr':np.zeros(shape)}
+    output['C'] = {'k':np.zeros(shape), 'w':np.zeros(shape), 'gr':np.zeros(shape)}
+    output['E'] = {'k':np.zeros(shape), 'w':np.zeros(shape), 'gr':np.zeros(shape)}
+
+    
+    t = timer(nv*nn, reportevery=1)
+    
+    for i, vblab in enumerate(vblab_range):
+        for j, nb in enumerate(nb_range):
+            vb  = vbLab_to_vb(nb, vblab, qb, qc)
+            
+            ii = i*nb + j
+            t.updateTimeRemaining(ii)
+
+            print("i,j=" + str(i) + ','  + str(j) + 
+                    ", nb=" + str(np.round(nb, decimals=2)) +
+                  ', vblab=' + str(np.round(vblab, decimals=2)) +
+                  ', vb=' + str(np.round(vb, decimals=2))  )
+            k, wr, wi = solveDispRel( nb=nb, vb =vb, qb=qb, qc=qc, guessFcn = bestGuess, krange=krange)
+            peaks = classify_peaks(k, wr, wi)
+            #plot1(k, wr, wi, peaks=peaks)
+            for g in ('F', 'A', 'C', 'E'):
+                for sg in ('k', 'w', 'gr'):
+                    output[g][sg][i,j] = peaks[g][sg]
+
+            
+            
+    return vblab_range, nb_range, output
+
+
+def make_gr(file):
+    vlab_range, nb_range, output = gen_gr()  
+    with h5py.File(file, 'w') as f:
+        
+        f['vlab'] = vlab_range
+        f['nb'] = nb_range
+        
+        for g in ('F', 'A', 'C', 'E'):
+            f.require_group(g)
+            for sg in ('k', 'w', 'gr'):
+                f[g][sg] = output[g][sg]
+
+
+
+
 
 if __name__ == '__main__':
     
-    vb = 0
-    k, wr, wi =  solveDispRel(nb=0.1, vb=vb, qb=4, krange=(-10,10), guessFcn=rightPropGuess)
+    vb = 4
+    k, wr, wi =  solveDispRel(nb=0.1, vb=vb, qb=5, mb=3, krange=(-5,5), guessFcn=bestGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
@@ -175,9 +244,16 @@ if __name__ == '__main__':
     #Filtering bc branch in solution makes an annoying bump
     wr = savgol_filter(wr, 501, 3)
     
-    wifactor = 25
-    ax.set_ylim((-3,3))
-    ax.plot(k, wr, '-', k, wi*wifactor, '--')
+    wifactor = 1
+    ax.set_ylim((-1,10))
+    ax.plot(k, wr + k*vb, '-', k, wi*wifactor, '--')
     ax.plot(k, vbline, '--')
     ax.axvline(0, color='black', linewidth=1)
     plt.show()
+
+    
+    """
+    file = os.path.join("C:", "Users","Peter", "Desktop", "gr_save_exp.hdf5")
+    file = '/Users/peter/Desktop/new_gr_save.hdf5'
+    make_gr(file)
+    """

@@ -441,7 +441,7 @@ if __name__ == "__main__":
     #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
     probe = 'PLL_B1'
-    run = 5
+    run = 6
     
     src = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/' + 'run' + str(run) + '_' + probe + '_raw.hdf5')
     tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')

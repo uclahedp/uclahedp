@@ -234,8 +234,8 @@ if __name__ == "__main__":
     
     
     probe = 'tdiode'
-    probe = 'PLL_B1'
-    run = 5
+    #probe = 'PLL_B1'
+    run = 6
     
     
     hdf_dir = '/Volumes/PVH_DATA/2019BIERMANN/HDF/'

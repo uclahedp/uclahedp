@@ -78,7 +78,7 @@ def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None, mc=None):
     return F
 
 def bestGuess(k):
-    return np.array([k**2, 1])
+    return np.array([k**2, .1])
 
 def rightPropGuess(k):
     if k < 0:
@@ -109,10 +109,11 @@ def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, mc=None, krange = 
         #Guess: k**2. This is important to get the right branch
         guess = guessFcn(k)
         wr, wi = optimize.fsolve(lambda z : dispRel(z, k, vb=vb, nb=nb, qb=qb, qc=qc, mb=mb, mc=mc), guess, factor=0.1)
+        #wr, wi = optimize.root(lambda z : dispRel(z, k, vb=vb, nb=nb, qb=qb, qc=qc, mb=mb, mc=mc), guess, method='hybr' ).x
         #Repackage as a complex value
         #The absolute value on wi seems to be necessary to keep on the right
         #branch...
-        w[i] = wr + 1j*abs(wi)
+        w[i] = np.abs(wr) + 1j*np.abs(wi)
     
     #Interpolate roots
     k = np.arange(krange[0], krange[1], .01)
@@ -168,7 +169,7 @@ def classify_peaks(k, wr, wi):
 
 
 def gen_gr():
-    qb = 5.0
+    qb = 6.0
     mb = 3.0
     qc = 1
     mc = 1
@@ -254,33 +255,35 @@ def make_gr(file):
 if __name__ == '__main__':
     
     """
-    vb = 2.44
-    k, wr, wi =  solveDispRel(nb=0.15, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
+    vb = 4.5
+    k, wr, wi =  solveDispRel(nb=0.13, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
     vbline = k*vb
     
-    wi = medfilt(wi, 1)
+    #wi = medfilt(wi, 1)
     
     #Filtering bc branch in solution makes an annoying bump
-    wr = savgol_filter(wr, 501, 3)
+    #wr = savgol_filter(wr, 501, 3)
     
     
     
     wifactor = 10
-    ax.set_ylim((-1,10))
-    ax.plot(k, wr + k*vb, '-', k, wi*wifactor, '--')
+    ax.set_ylim((-5,100))
+    ax.plot(k, wr, '-', k, wi*wifactor, '--')
     ax.plot(k, vbline, '--')
     ax.axvline(0, color='black', linewidth=1)
-    ax.set_xlim(-4,10)
+    ax.set_xlim(-10,10)
     plt.show()
     
     peaks = classify_peaks(k, wr, wi)
+    print(peaks)
     
     """
-    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_C+5_He+1.hdf5")
+    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_C+6_He+1.hdf5")
     #file = '/Users/peter/Desktop/new_gr_save.hdf5'
     print(file)
     make_gr(file)
+    
     

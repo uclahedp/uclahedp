@@ -254,9 +254,9 @@ def make_gr(file):
 
 if __name__ == '__main__':
     
-    """
-    vb = 4.5
-    k, wr, wi =  solveDispRel(nb=0.13, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
+    
+    vb = 4.98
+    k, wr, wi =  solveDispRel(nb=0.1, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
@@ -285,5 +285,5 @@ if __name__ == '__main__':
     #file = '/Users/peter/Desktop/new_gr_save.hdf5'
     print(file)
     make_gr(file)
-    
+    """
     

@@ -128,9 +128,9 @@ def classify_peaks(k, wr, wi):
     kwidth = .01
     width = int(kwidth/dk)
     
-    wi = medfilt(wi, 25)
+    wi = medfilt(wi, 1)
     
-    peaks = find_peaks(wi, height = 0.001)
+    peaks = find_peaks(wi, height = .1, distance=300)
     peaks = peaks[0]
 
     output  = {'F': {'k':None, 'w':None, 'gr':0},
@@ -140,7 +140,7 @@ def classify_peaks(k, wr, wi):
 
     pos = [p for p in peaks if k[p]> 0]
     neg = [p for p in peaks if k[p]< 0]
-
+    
     if pos == []:
         pass
     elif len(pos) == 1:
@@ -168,7 +168,7 @@ def classify_peaks(k, wr, wi):
 
 
 def gen_gr():
-    qb = 4.0
+    qb = 5.0
     mb = 3.0
     qc = 1
     mc = 1
@@ -252,16 +252,16 @@ def make_gr(file):
 
 
 if __name__ == '__main__':
-     
+    
     """
-    vb = .92
-    k, wr, wi =  solveDispRel(nb=0.16, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
+    vb = 2.44
+    k, wr, wi =  solveDispRel(nb=0.15, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
     vbline = k*vb
     
-    wi = medfilt(wi, 25)
+    wi = medfilt(wi, 1)
     
     #Filtering bc branch in solution makes an annoying bump
     wr = savgol_filter(wr, 501, 3)
@@ -273,13 +273,13 @@ if __name__ == '__main__':
     ax.plot(k, wr + k*vb, '-', k, wi*wifactor, '--')
     ax.plot(k, vbline, '--')
     ax.axvline(0, color='black', linewidth=1)
-    ax.set_xlim(-4,4)
+    ax.set_xlim(-4,10)
     plt.show()
     
     peaks = classify_peaks(k, wr, wi)
     
     """
-    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_C+4_He+1.hdf5")
+    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_C+5_He+1.hdf5")
     #file = '/Users/peter/Desktop/new_gr_save.hdf5'
     print(file)
     make_gr(file)

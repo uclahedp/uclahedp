@@ -86,7 +86,8 @@ def findBadShots(srcgrp, verbose=False, badshotratio=None, fatal_badshot_percent
         #Update time remaining
         if verbose:
                 tr.updateTimeRemaining(i)
-        max_median_ratio = np.max( srcgrp['data'][i,:,0]) / np.median(srcgrp['data'][i,:,0])
+        #TODO: trying using the mean of the last 500 points rather than the median as the reference
+        max_median_ratio = np.max( srcgrp['data'][i,:,0]) / np.mean(srcgrp['data'][i,-500:,0])
         #This defines a 'bad shot' where the laser diode was indistinct,
         #indicating a possible misfire
         if (max_median_ratio < badshotratio):

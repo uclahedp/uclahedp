@@ -4,20 +4,23 @@ process.py
 @author: Peter
 """
 import os
-from uclahedp.load import lapd
+from uclahedp.load import lapd, hrr
 from uclahedp.tools import hdf, csv
 from uclahedp.process import tdiode, bdot
 
 
 
 def process(data_dir, run, probe, overwrite=True,
-            csv_dir=None, hdf_dir=None, tdiode_hdf=None):
+            csv_dir=None, hdf_dir=None, tdiode_hdf=None, rawsource=None):
 
     if csv_dir is None:
         csv_dir = os.path.join(data_dir, "METADATA")
         
     if hdf_dir is None:
         hdf_dir = os.path.join(data_dir, "HDF")
+        
+    if rawsource is None:
+        rawsource = 'LAPD'
         
     probe_string = 'run'+str(run) + '_' + probe[0]
 
@@ -33,8 +36,12 @@ def process(data_dir, run, probe, overwrite=True,
         if overwrite:
             os.remove(rawfile.file)
     if not os.path.exists(rawfile.file):
-        print("Running lapdToRaw")
-        rawfile =  lapd.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
+        if rawsource == 'LAPD':
+            print("Running lapdToRaw")
+            rawfile =  lapd.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
+        if rawsource == 'HRR':
+            print("Running lapdToRaw")
+            rawfile =  hrr.hrrToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
     else:
         print("Raw file exist: skipping")
     
@@ -46,7 +53,7 @@ def process(data_dir, run, probe, overwrite=True,
     if not os.path.exists(fullfile.file):
         if probe[1] == 'tdiode':
             print("Running tdiodeRawToFull")
-            fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True)
+            fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True, fatal_badshot_percentage=.2, badshotratio=2)
         elif probe[1] == 'bdot':
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
@@ -58,7 +65,9 @@ def process(data_dir, run, probe, overwrite=True,
         
 
 def processMany(data_dir, overwrite=True, runs=None, probes=None, 
-            csv_dir=None, hdf_dir=None):
+            csv_dir=None, hdf_dir=None, rawsource=None):
+    
+    
     
     
     if csv_dir is None:
@@ -104,17 +113,21 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
                 continue
             print("Processing probe: " + str(probe))
             process(data_dir, run, probe, overwrite=overwrite, 
-                    csv_dir=csv_dir, hdf_dir=hdf_dir, tdiode_hdf=tdiode_full)
+                    csv_dir=csv_dir, hdf_dir=hdf_dir, tdiode_hdf=tdiode_full,
+                    rawsource=rawsource)
                 
 
 
 if __name__ == "__main__":
     #Windows
-    data_dir =  os.path.join("F:", "LAPD_Jan2019")
+    #data_dir =  os.path.join("F:", "LAPD_Jan2019")
     #OSX
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
+    
+    #rawsource='LAPD'
+    rawsource='HRR'
     
 
-    processMany(data_dir, overwrite=False, runs=[18,25, 30], probes=['tdiode', 'LAPD10']) 
+    processMany(data_dir, overwrite=False, runs=[26,27,28,29,30,31,32,33], probes=['tdiode', 'LAPD_C6'], rawsource=rawsource) 
     
     

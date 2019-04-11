@@ -107,7 +107,8 @@ def trimDimOp(src_dset, dest_dset, sl, axind, args):
     sl[axind] = slice(None, None, None)
     dest_dset[tuple(sl)] = s
     
-    
+
+#Thin by picking out values (not by binning and averaging)
 def thinPick(src, dest, ax, step=None, delsrc=False, verbose=False):
     if step is None:
         step = 10
@@ -124,7 +125,7 @@ def thinPickOp(src_dset, dest_dset, sl, axind, args):
     dest_dset[tuple(sl)] = s
     
     
-    
+#Thin by binning and averaging
 def thinBin(src, dest, ax, bin=None, delsrc=False, verbose=False):
     if bin is None:
         bin = 10
@@ -141,8 +142,8 @@ def thinBinOp(src_dset, dest_dset, sl, axind, args):
     
     dsl = np.copy(sl)
     for i in range(nbins):
-        print('i=' + str(i))
-        indrange = (i*bin, (i+1)*bin)
+        indrange = np.arange(i*bin, (i+1)*bin)
+        print(indrange)
         x = np.take(s, indrange, axis=axind)
         x = np.mean(x, axis=axind)
         dsl[axind] = slice(None, None, None)
@@ -228,9 +229,9 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
         
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
-			
-			#Copy all the dataset attributes
-			hdftools.copyAttrs(srcgrp, destgrp)
+            
+            #Copy all the dataset attributes
+            hdftools.copyAttrs(srcgrp, destgrp)
             
             #Create new data array
             destgrp.require_dataset('data', newshape, np.float32, chunks=True, compression='gzip')
@@ -276,8 +277,8 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
 if __name__ == '__main__':
     
     #Windows
-    full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full.hdf5") )
-    thinned = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_thinned.hdf5") )
+    full = hdftools.hdfPath( os.path.join("F:", os.sep, "2019BIERMANN","FULL", "run29_LAPD_C6_full.hdf5") )
+    thinned = hdftools.hdfPath(os.path.join("F:", os.sep, "2019BIERMANN","FULL", "run29_LAPD_C6_avg.hdf5") )
     trimmed = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_trim.hdf5") )
     avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
     
@@ -286,7 +287,7 @@ if __name__ == '__main__':
     #thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
-    x = trimDim(full, trimmed, 'time', bounds=[0,1e-5], values=False, verbose=True)
-    #x = thinBin(full, thinned, 'time', bin = 10, verbose=True)
+    #x = trimDim(full, trimmed, 'time', bounds=[0,1e-5], values=False, verbose=True)
+    x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
     #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
     #x = avgDim(full, avged, 'reps', verbose=True)

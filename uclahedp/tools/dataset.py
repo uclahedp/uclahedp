@@ -68,17 +68,45 @@ class hdfDatasetFormatError(Exception):
 
 
 def avgDim(src, dest, ax, delsrc=False, verbose=False):
-    chunked_array_op(src, dest, ax, 'avgDim', delsrc=delsrc, verbose=verbose)
+    """
+    Average over one dimension of a dataset (collapsing it to len=1)
+    src -> Source dataset (hdfpath object)
+    dest -> Destination dataset path (hdfpath object)
+    ax -> Axis (0 indexed) to average
+    delsrc -> Boolean, if true src file will be deleted after operation
+    verbose -> Boolean, if true activates printouts
+    """
+    #Call the avgDim function, wrapped in the chunked_array_op framework
+    chunked_array_op(src, dest, ax, avgDimOp, delsrc=delsrc, verbose=verbose)
     
 def avgDimOp(src_dset, dest_dset, sl, axind, args):
+    """
+    Average over one dimension of a dataset (collapsing it to len=1)
+    src_dset -> Source dataset (hdfpath to 'data')
+    dest_dset -> Destination dataset path (hdfpath to 'data')
+    sl -> Slice of source data to apply current operation to (for chunks)
+    axind -> Axis to apply operation to
+    args -> Additional function args passed from higher function
+    """
     s = src_dset[tuple(sl)]
     s = np.mean(s, axis=axind, keepdims=True)
     sl[axind] = slice(None, None, None)  # This dim is 1 in the dest dataset
     dest_dset[tuple(sl)] = s
-    
-    
-    
+
+
 def trimDim(src, dest, ax, bounds=None, values = None, delsrc=False, verbose=False):
+    """
+    Trim a dimension of a dataset, disgarding some data
+    
+    src -> Source dataset (hdfpath object)
+    dest -> Destination dataset path (hdfpath object)
+    ax -> Axis (0 indexed) to average
+    bounds -> Start and stop bounds for trim. Default is indicies, but
+    interpreted as values if 'values' flag is set.
+    values -> Boolean, if true interpret bounds as axis values not indices.
+    delsrc -> Boolean, if true src file will be deleted after operation
+    verbose -> Boolean, if true activates printouts
+    """
     if bounds is None:
         print("Must set bounds in trimDim!")
         raise(ValueError)
@@ -94,10 +122,21 @@ def trimDim(src, dest, ax, bounds=None, values = None, delsrc=False, verbose=Fal
     else:
         useind = False
         
-    chunked_array_op(src, dest, ax, 'trimDim', delsrc=delsrc, verbose=verbose, 
+        
+    chunked_array_op(src, dest, ax, trimDimOp, delsrc=delsrc, verbose=verbose, 
                      bounds=bounds, useind=useind)
     
 def trimDimOp(src_dset, dest_dset, sl, axind, args):
+    """
+    Trim a dimension of a dataset, disgarding some data
+    
+    src_dset -> Source dataset (hdfpath to 'data')
+    dest_dset -> Destination dataset path (hdfpath to 'data')
+    sl -> Slice of source data to apply current operation to (for chunks)
+    axind -> Axis to apply operation to
+    args -> Additional function args passed from higher function
+    """
+    
     #These have already been convered into indices at this point if needed
     a = args['bounds'][0]
     b = args['bounds'][1]
@@ -110,13 +149,32 @@ def trimDimOp(src_dset, dest_dset, sl, axind, args):
 
 #Thin by picking out values (not by binning and averaging)
 def thinPick(src, dest, ax, step=None, delsrc=False, verbose=False):
+    """
+    Thin a dataset by picking every nth point and disgarding the rest
+    
+    src -> Source dataset (hdfpath object)
+    dest -> Destination dataset path (hdfpath object)
+    ax -> Axis (0 indexed) to average
+    step -> The points kept will be indices i*step
+    delsrc -> Boolean, if true src file will be deleted after operation
+    verbose -> Boolean, if true activates printouts
+    """
     if step is None:
         step = 10
     else:
         step = int(step)    
-    chunked_array_op(src, dest, ax, 'thinPick', delsrc=delsrc, verbose=verbose, step=step)
+    chunked_array_op(src, dest, ax, thinPickOp, delsrc=delsrc, verbose=verbose, step=step)
 
 def thinPickOp(src_dset, dest_dset, sl, axind, args):
+    """
+    Thin a dataset by picking every nth point and disgarding the rest
+    
+    src_dset -> Source dataset (hdfpath to 'data')
+    dest_dset -> Destination dataset path (hdfpath to 'data')
+    sl -> Slice of source data to apply current operation to (for chunks)
+    axind -> Axis to apply operation to
+    args -> Additional function args passed from higher function
+    """
     #Thin by plucking out entries
     sl[axind] = slice(None, None, args['step'])
     s = src_dset[tuple(sl)]
@@ -127,47 +185,83 @@ def thinPickOp(src_dset, dest_dset, sl, axind, args):
     
 #Thin by binning and averaging
 def thinBin(src, dest, ax, bin=None, delsrc=False, verbose=False):
+    """
+    Thin a dataset by averaging it over non-overlapping bins.
+    
+    src -> Source dataset (hdfpath object)
+    dest -> Destination dataset path (hdfpath object)
+    ax -> Axis (0 indexed) to average
+    bin -> The width of each bin
+    delsrc -> Boolean, if true src file will be deleted after operation
+    verbose -> Boolean, if true activates printouts
+    """
+    
     if bin is None:
         bin = 10
     else:
         bin = int(bin)    
-    chunked_array_op(src, dest, ax, 'thinBin', delsrc=delsrc, verbose=verbose, bin=bin)
+    chunked_array_op(src, dest, ax, thinBinOp, delsrc=delsrc, verbose=verbose, bin=bin)
     
     
 def thinBinOp(src_dset, dest_dset, sl, axind, args):
+    """
+    Thin a dataset by averaging it over non-overlapping bins.
+    
+    src_dset -> Source dataset (hdfpath to 'data')
+    dest_dset -> Destination dataset path (hdfpath to 'data')
+    sl -> Slice of source data to apply current operation to (for chunks)
+    axind -> Axis to apply operation to
+    args -> Additional function args passed from higher function
+    """
+    
     bin = args['bin']
     s = src_dset[tuple(sl)]
     nelm = s.shape[axind]
     nbins = int( np.ceil(nelm/bin) )
     
     dsl = np.copy(sl)
-	#Should this maybe be (i, i+1, None)?
-	dsl[axind] = slice(None, None, None)
-	
-	print(dsl)
-	
+    
+    
+    print(dsl)
+    
     for i in range(nbins):
         indrange = np.arange(i*bin, (i+1)*bin)
         print(indrange)
         x = np.take(s, indrange, axis=axind)
         x = np.mean(x, axis=axind)
-		print(x[0])
+        #Should this maybe be (i, i+1, None)?
+        dsl[axind] = slice(i, i+1, None)
         dest_dset[tuple(dsl)] = x
         
     
 
 
-def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args):
+def chunked_array_op(src, dest, ax, op, delsrc=False, verbose=False, **args):
+    """
+    Apply one of the array functions to an entire dataset, breaking the
+    dataset up into chunks to keep memory load low.
+    
+    src -> Source dataset (hdfpath object)
+    dest -> Destination dataset path (hdfpath object)
+    ax -> Axis (0 indexed) to average
+    op -> Function to be applied. This function must be one of the op functions
+    defined in this file, and must be included in the elif tree in this function
+    delsrc -> Boolean, if true src file will be deleted after operation
+    verbose -> Boolean, if true activates printouts
+    """
     
     with h5py.File(src.file, 'r') as sf:
         srcgrp = sf[src.group]
         
+        #Check source is valid dataset
         validDataset(srcgrp)
         
+        #Load information about source dataset
         oldshape = list( srcgrp['data'].shape )
         ndim = len(oldshape)
         dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
         
+        #Get ax index
         try:
             axind = dimlabels.index(ax)
         except ValueError as e:
@@ -199,21 +293,19 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
         #Determine nchunks    
         nchunks = int( np.ceil(oldshape[chunkax] / chunksize))
         
-
         #Make alterations to the shape for the new dataset
         #This will obviously depend on what operation is being performed
         newshape = np.copy(oldshape)
-        if oplabel == 'avgDim':
+        if op == avgDimOp:
             newshape[axind] = 1
-            opfunc = avgDimOp
-        elif oplabel == 'thinPick':
+        elif op == thinPickOp:
             newshape[axind] = int( np.ceil(oldshape[axind] / args['step']) )
-            opfunc = thinPickOp
-        elif oplabel == 'thinBin':
+        elif op == thinBinOp:
             newshape[axind] = int( np.ceil(oldshape[axind] / args['bin']) )
-            opfunc = thinBinOp
-        elif oplabel == 'trimDim':
+        elif op == trimDimOp:
             #If values are being passed, figure out the indices here
+            #This unfortunately has to be done here currently, because the
+            #opfunc is applied to both the data and the axis.
             if not args['useind']:
                 if args['bounds'][0] < srcgrp[ax][:].min():
                     a = 0
@@ -228,10 +320,10 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
             
             args['bounds'] = np.clip(args['bounds'], 0, oldshape[axind]-1)
             newshape[axind] = np.abs(args['bounds'][1] - args['bounds'][0] )
-            opfunc = trimDimOp
         else:
             raise(ValueError, 'Unsupported oplabel! ' + str(oplabel))
         
+        #Create the destination dataset
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
             
@@ -242,12 +334,14 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
             destgrp.require_dataset('data', newshape, np.float32, chunks=True, compression='gzip')
             hdftools.copyAttrs(srcgrp['data'], destgrp['data'])
             
-            #Copy the axes over, except the one being thinned
+            #Copy the axes over, except the one being operated on
+            #That axis will be copied over later, with changes
             for axis in dimlabels:
                 if axis != ax:
                     srcgrp.copy(axis, destgrp)
                     
-            #Create the new axis
+            #Create the axis being operated on
+            #Newshape was determined above, and is specific to the op
             destgrp.require_dataset(ax, (newshape[axind],), np.float32, chunks=True)
             destgrp[ax].attrs['unit'] = srcgrp[ax].attrs['unit']
             
@@ -262,17 +356,19 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
                     tr.updateTimeRemaining(i)
                 sl= [ slice(None) ]*ndim
                 
+                #Assemble the chunk slices
                 if i != nchunks-1:
                     sl [chunkax] = slice(i*chunksize, (i+1)*chunksize, None)
                 else:
                     sl [chunkax] = slice(i*chunksize, None, None)
                     
-               
-                opfunc(srcgrp['data'], destgrp['data'], sl, axind, args)
+               #Apply op to the chunk
+                op(srcgrp['data'], destgrp['data'], sl, axind, args)
 
-            #Make the new axis
-            opfunc(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
+            #Make the new axis by applying op to the old axis
+            op(srcgrp[ax], destgrp[ax], [slice(None)], 0, args)
      
+    #If requested, delete the source file
     if delsrc:
         os.remove(src.file)
                 
@@ -290,9 +386,10 @@ if __name__ == '__main__':
     #OSX
     full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_full.hdf5')
     thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_avg.hdf5')
+    trimmed = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_trim.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
-    #x = trimDim(full, trimmed, 'time', bounds=[0,1e-5], values=False, verbose=True)
-    x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
+    x = trimDim(full, trimmed, 'time', bounds=[0,1e-6], values=True, verbose=True)
+    #x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
     #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
     #x = avgDim(full, avged, 'reps', verbose=True)

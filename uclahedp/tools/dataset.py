@@ -2,8 +2,33 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Feb 13 09:20:38 2019
-
 @author: peter
+
+The dataset tools package contains functions for manupulating datasets that
+follow the UCLA HEDP dataset format (defined in the validDataset function).
+
+**Chunked Operations**
+Many operations are wrapped in the chunked_array_op function to efficiently
+chunk them to minimize memory usage. Each of these operations uses three
+function levels. For example, avgDim:
+    
+avgDimOp -> This function does the actual operation (averaging) on a slice
+of a dataset.
+
+chunked_array_op -> This function determines the optimal chunking and
+repeatedly calls avgDimOp on slices of the data until the entire operation is
+completed. 
+
+avgDim -> The user-level function. Takes some parameters, then calls
+chunked_array_op to handle the operation
+
+**delscr**
+Overwriting data inside an HDF5 file is not supported because of limitations
+with the HDF format: deleted data does not free memory, so file size ballons.
+As an alternative, these operations have a delsrc keyword that will delete the
+source dataset once the operation is complete. The operations can then be
+'chained' together to avoid accumulating many copies of the data on disk.
+
 """
 import h5py
 import numpy as np
@@ -86,8 +111,19 @@ def avgDim(src, dest, ax, delsrc=False, verbose=False):
     delsrc -> Boolean, if true src file will be deleted after operation
     verbose -> Boolean, if true activates printouts
     """
+    
+    #Load some file parameters to calculate the shape of the new dataset   
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        oldshape = srcgrp['data'].shape
+        dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+        #Get ax index
+        axind = getAxInd(ax, dimlabels)
+        newshape = np.copy(oldshape)
+        newshape[axind] = 1
+    
     #Call the avgDim function, wrapped in the chunked_array_op framework
-    chunked_array_op(src, dest, ax, avgDimOp, delsrc=delsrc, verbose=verbose)
+    chunked_array_op(src, dest, ax, avgDimOp, newshape, delsrc=delsrc, verbose=verbose)
     
 def avgDimOp(src_dset, dest_dset, sl, axind, args):
     """
@@ -151,7 +187,20 @@ def trimDim(src, dest, ax, ind_bounds=None, val_bounds = None, delsrc=False, ver
         raise ValueError("Cannot specify ind_bounds AND val_bounds!")
         
         
-    chunked_array_op(src, dest, ax, trimDimOp, delsrc=delsrc, verbose=verbose, 
+    #Load some file parameters to calculate the shape of the new dataset   
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        oldshape = srcgrp['data'].shape
+        dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+        #Get ax index
+        axind = getAxInd(ax, dimlabels)
+        newshape = np.copy(oldshape)
+        newshape[axind] = np.abs(bounds[1] - bounds[0] )
+        
+        
+        
+        
+    chunked_array_op(src, dest, ax, trimDimOp, newshape, delsrc=delsrc, verbose=verbose, 
                      bounds=bounds)
     
 def trimDimOp(src_dset, dest_dset, sl, axind, args):
@@ -190,8 +239,19 @@ def thinPick(src, dest, ax, step=None, delsrc=False, verbose=False):
     if step is None:
         step = 10
     else:
-        step = int(step)    
-    chunked_array_op(src, dest, ax, thinPickOp, delsrc=delsrc, verbose=verbose, step=step)
+        step = int(step)
+        
+    #Load some file parameters to calculate the shape of the new dataset   
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        oldshape = srcgrp['data'].shape
+        dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+        #Get ax index
+        axind = getAxInd(ax, dimlabels)
+        newshape = np.copy(oldshape)
+        newshape[axind] = int( np.ceil(oldshape[axind] / step) )
+        
+    chunked_array_op(src, dest, ax, thinPickOp, newshape, delsrc=delsrc, verbose=verbose, step=step)
 
 def thinPickOp(src_dset, dest_dset, sl, axind, args):
     """
@@ -227,8 +287,19 @@ def thinBin(src, dest, ax, bin=None, delsrc=False, verbose=False):
     if bin is None:
         bin = 10
     else:
-        bin = int(bin)    
-    chunked_array_op(src, dest, ax, thinBinOp, delsrc=delsrc, verbose=verbose, bin=bin)
+        bin = int(bin)
+        
+    #Load some file parameters to calculate the shape of the new dataset   
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        oldshape = srcgrp['data'].shape
+        dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+        #Get ax index
+        axind = getAxInd(ax, dimlabels)
+        newshape = np.copy(oldshape)
+        newshape[axind] = int( np.ceil(oldshape[axind] / bin) )
+    
+    chunked_array_op(src, dest, ax, thinBinOp, newshape, delsrc=delsrc, verbose=verbose, bin=bin)
     
     
 def thinBinOp(src_dset, dest_dset, sl, axind, args):
@@ -261,7 +332,7 @@ def thinBinOp(src_dset, dest_dset, sl, axind, args):
     
 
 
-def chunked_array_op(src, dest, ax, op, delsrc=False, verbose=False, **args):
+def chunked_array_op(src, dest, ax, op, newshape, delsrc=False, verbose=False, **args):
     """
     Apply one of the array functions to an entire dataset, breaking the
     dataset up into chunks to keep memory load low.
@@ -271,6 +342,7 @@ def chunked_array_op(src, dest, ax, op, delsrc=False, verbose=False, **args):
     ax -> Axis (0 indexed) to average
     op -> Function to be applied. This function must be one of the op functions
     defined in this file, and must be included in the elif tree in this function
+    newshape -> Shape the new dataset will be after op has been applied
     delsrc -> Boolean, if true src file will be deleted after operation
     verbose -> Boolean, if true activates printouts
     """
@@ -314,20 +386,7 @@ def chunked_array_op(src, dest, ax, op, delsrc=False, verbose=False, **args):
         #Determine nchunks    
         nchunks = int( np.ceil(oldshape[chunkax] / chunksize))
         
-        #Make alterations to the shape for the new dataset
-        #This will obviously depend on what operation is being performed
-        newshape = np.copy(oldshape)
-        if op == avgDimOp:
-            newshape[axind] = 1
-        elif op == thinPickOp:
-            newshape[axind] = int( np.ceil(oldshape[axind] / args['step']) )
-        elif op == thinBinOp:
-            newshape[axind] = int( np.ceil(oldshape[axind] / args['bin']) )
-        elif op == trimDimOp:
-            newshape[axind] = np.abs(args['bounds'][1] - args['bounds'][0] )
-        else:
-            raise(ValueError, 'Unsupported oplabel! ' + str(oplabel))
-        
+
         #Create the destination dataset
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
@@ -392,11 +451,11 @@ if __name__ == '__main__':
     full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_full.hdf5')
     thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_avg.hdf5')
     trimmed = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_trim.hdf5')
-    #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
+    avged = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_dimavged.hdf5')
     
     #x = trimDim(full, trimmed, 'time', val_bounds=[0,1e-6],verbose=True)
     #x = trimDim(full, trimmed, 'time', ind_bounds=[120, 500],verbose=True)
     
     x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
-    #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
-    #x = avgDim(full, avged, 'reps', verbose=True)
+    #x = thinPick(full, thinned, 'shots', step = 10, verbose=True)
+    #x = avgDim(full, avged, 'shots', verbose=True)

@@ -141,12 +141,17 @@ def thinBinOp(src_dset, dest_dset, sl, axind, args):
     nbins = int( np.ceil(nelm/bin) )
     
     dsl = np.copy(sl)
+	#Should this maybe be (i, i+1, None)?
+	dsl[axind] = slice(None, None, None)
+	
+	print(dsl)
+	
     for i in range(nbins):
         indrange = np.arange(i*bin, (i+1)*bin)
         print(indrange)
         x = np.take(s, indrange, axis=axind)
         x = np.mean(x, axis=axind)
-        dsl[axind] = slice(None, None, None)
+		print(x[0])
         dest_dset[tuple(dsl)] = x
         
     
@@ -277,14 +282,14 @@ def chunked_array_op(src, dest, ax, oplabel, delsrc=False, verbose=False, **args
 if __name__ == '__main__':
     
     #Windows
-    full = hdftools.hdfPath( os.path.join("F:", os.sep, "2019BIERMANN","FULL", "run29_LAPD_C6_full.hdf5") )
-    thinned = hdftools.hdfPath(os.path.join("F:", os.sep, "2019BIERMANN","FULL", "run29_LAPD_C6_avg.hdf5") )
-    trimmed = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_trim.hdf5") )
-    avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
+    #full = hdftools.hdfPath( os.path.join("F:", os.sep, "2019BIERMANN","FULL", "run29_LAPD_C6_full.hdf5") )
+    #thinned = hdftools.hdfPath(os.path.join("F:", os.sep, "2019BIERMANN","FULL", "run29_LAPD_C6_avg.hdf5") )
+    #trimmed = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_trim.hdf5") )
+    #avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
     
     #OSX
-    #full = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full.hdf5')
-    #thinned = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_thinned.hdf5')
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_full.hdf5')
+    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_avg.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
     #x = trimDim(full, trimmed, 'time', bounds=[0,1e-5], values=False, verbose=True)

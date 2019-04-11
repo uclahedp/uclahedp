@@ -66,13 +66,23 @@ class hdfDatasetFormatError(Exception):
     pass
 
 
+def getAxInd(ax, dimlabels):
+    #Get ax index
+    try:
+        axind = dimlabels.index(ax)
+    except ValueError as e:
+        print("ERROR: Couldn't find ax in dimensions array!: " + str(ax) )
+        raise(e)
+    return axind
+
+
 
 def avgDim(src, dest, ax, delsrc=False, verbose=False):
     """
     Average over one dimension of a dataset (collapsing it to len=1)
     src -> Source dataset (hdfpath object)
     dest -> Destination dataset path (hdfpath object)
-    ax -> Axis (0 indexed) to average
+    ax -> Axis to apply op to (name)
     delsrc -> Boolean, if true src file will be deleted after operation
     verbose -> Boolean, if true activates printouts
     """
@@ -94,37 +104,55 @@ def avgDimOp(src_dset, dest_dset, sl, axind, args):
     dest_dset[tuple(sl)] = s
 
 
-def trimDim(src, dest, ax, bounds=None, values = None, delsrc=False, verbose=False):
+def trimDim(src, dest, ax, ind_bounds=None, val_bounds = None, delsrc=False, verbose=False):
     """
     Trim a dimension of a dataset, disgarding some data
     
     src -> Source dataset (hdfpath object)
     dest -> Destination dataset path (hdfpath object)
-    ax -> Axis (0 indexed) to average
+    ax -> Axis to apply op to (name)
     bounds -> Start and stop bounds for trim. Default is indicies, but
     interpreted as values if 'values' flag is set.
     values -> Boolean, if true interpret bounds as axis values not indices.
     delsrc -> Boolean, if true src file will be deleted after operation
     verbose -> Boolean, if true activates printouts
     """
-    if bounds is None:
-        print("Must set bounds in trimDim!")
-        raise(ValueError)
-    
-    bounds = np.array(bounds, dtype=np.float32)
-    
-    if bounds[0] > bounds[1]:
-        print("Flipping bounds so that the second element is larger!")
-        bounds = np.reverse(bounds)
-    
-    if values is None:
-        useind = True
+
+        
+    if not ind_bounds and not val_bounds:
+        print("Using ind bounds (as default)")
+        bounds = (None, None)
+    if ind_bounds and not val_bounds:
+        print("Using ind bounds")
+        bounds = ind_bounds
+    elif val_bounds and not ind_bounds:
+        print("Using val bounds")
+        #If values are being passed, figure out the indices here
+        with h5py.File(src.file, 'r') as sf:
+            srcgrp = sf[src.group]
+            oldshape = srcgrp['data'].shape
+            dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+            #Get ax index
+            axind = getAxInd(ax, dimlabels)
+            
+            if val_bounds[0] < srcgrp[ax][:].min():
+                a = 0
+            else:
+                a  =  np.abs(srcgrp[ax][:] - val_bounds[0]).argmin()
+                
+            if val_bounds[1] > srcgrp[ax][:].max():
+                b = oldshape[axind] -1
+            else:
+                b  =  np.abs(srcgrp[ax][:] - val_bounds[1]).argmin() 
+            bounds = (a, b)
+            bounds = np.clip(bounds, 0, oldshape[axind]-1)
+            print(bounds)
     else:
-        useind = False
+        raise ValueError("Cannot specify ind_bounds AND val_bounds!")
         
         
     chunked_array_op(src, dest, ax, trimDimOp, delsrc=delsrc, verbose=verbose, 
-                     bounds=bounds, useind=useind)
+                     bounds=bounds)
     
 def trimDimOp(src_dset, dest_dset, sl, axind, args):
     """
@@ -154,7 +182,7 @@ def thinPick(src, dest, ax, step=None, delsrc=False, verbose=False):
     
     src -> Source dataset (hdfpath object)
     dest -> Destination dataset path (hdfpath object)
-    ax -> Axis (0 indexed) to average
+    ax -> Axis to apply op to (name)
     step -> The points kept will be indices i*step
     delsrc -> Boolean, if true src file will be deleted after operation
     verbose -> Boolean, if true activates printouts
@@ -190,7 +218,7 @@ def thinBin(src, dest, ax, bin=None, delsrc=False, verbose=False):
     
     src -> Source dataset (hdfpath object)
     dest -> Destination dataset path (hdfpath object)
-    ax -> Axis (0 indexed) to average
+    ax -> Axis to apply op to (name)
     bin -> The width of each bin
     delsrc -> Boolean, if true src file will be deleted after operation
     verbose -> Boolean, if true activates printouts
@@ -220,13 +248,10 @@ def thinBinOp(src_dset, dest_dset, sl, axind, args):
     nbins = int( np.ceil(nelm/bin) )
     
     dsl = np.copy(sl)
-    
-    
-    print(dsl)
+
     
     for i in range(nbins):
         indrange = np.arange(i*bin, (i+1)*bin)
-        print(indrange)
         x = np.take(s, indrange, axis=axind)
         x = np.mean(x, axis=axind)
         #Should this maybe be (i, i+1, None)?
@@ -262,11 +287,7 @@ def chunked_array_op(src, dest, ax, op, delsrc=False, verbose=False, **args):
         dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
         
         #Get ax index
-        try:
-            axind = dimlabels.index(ax)
-        except ValueError as e:
-            print("ERROR: Couldn't find ax in dimensions array!: " + str(ax) )
-            raise(e)
+        axind = getAxInd(ax, dimlabels)
         
         #Decide on a chunking axis
         #Get a list of the axes indices ordered by chunk size, largest to smallest
@@ -303,22 +324,6 @@ def chunked_array_op(src, dest, ax, op, delsrc=False, verbose=False, **args):
         elif op == thinBinOp:
             newshape[axind] = int( np.ceil(oldshape[axind] / args['bin']) )
         elif op == trimDimOp:
-            #If values are being passed, figure out the indices here
-            #This unfortunately has to be done here currently, because the
-            #opfunc is applied to both the data and the axis.
-            if not args['useind']:
-                if args['bounds'][0] < srcgrp[ax][:].min():
-                    a = 0
-                else:
-                    a  =  np.abs(srcgrp[ax][:] - args['bounds'][0]).argmin()
-                
-                if args['bounds'][1] > srcgrp[ax][:].max():
-                    b = oldshape[axind] -1
-                else:
-                    b  =  np.abs(srcgrp[ax][:] - args['bounds'][1]).argmin() 
-                args['bounds'] = (a, b)
-            
-            args['bounds'] = np.clip(args['bounds'], 0, oldshape[axind]-1)
             newshape[axind] = np.abs(args['bounds'][1] - args['bounds'][0] )
         else:
             raise(ValueError, 'Unsupported oplabel! ' + str(oplabel))
@@ -389,7 +394,9 @@ if __name__ == '__main__':
     trimmed = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_trim.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run61_LAPD1_full_avg.hdf5')
     
-    x = trimDim(full, trimmed, 'time', bounds=[0,1e-6], values=True, verbose=True)
-    #x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
+    #x = trimDim(full, trimmed, 'time', val_bounds=[0,1e-6],verbose=True)
+    #x = trimDim(full, trimmed, 'time', ind_bounds=[120, 500],verbose=True)
+    
+    x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
     #x = thinPick(full, thinned, 'time', step = 10, verbose=True)
     #x = avgDim(full, avged, 'reps', verbose=True)

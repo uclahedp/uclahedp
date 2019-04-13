@@ -59,11 +59,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
     if offset_range is None:
          offset_range = (0, 100)
          
-    print("Removing offset based on avg of points: [" +
-                      str(offset_range[0]) + ',' + str(offset_range[1]) +
-                      ']')
-    
-    
+
     # ******
     # Load data from the raw HDF file
     # ******
@@ -172,6 +168,12 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
             #If a timing diode is being applied, correct the time vector here.
             if tdiode_hdf is not None:
                 t = t[0:nti] - t[min_t0ind]
+                
+                
+            print("Removing offset based on avg of points: [" +
+                      str(offset_range[0]) + ',' + str(offset_range[1]) +
+                      '] or t=[' + str(t[offset_range[0]]) + ',' +
+                      str(t[offset_range[1]]) + ']')
 
             
             #Asssemble the array of calibration factors from the attrs dict

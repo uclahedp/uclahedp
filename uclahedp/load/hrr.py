@@ -10,7 +10,6 @@ hrrtools.py: HEDP group High Rep Rate Program tools
 
 import numpy as np
 from astropy import units as u
-import time
 import os
 
 from uclahedp.tools import csv as csvtools

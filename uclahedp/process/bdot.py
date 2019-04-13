@@ -23,7 +23,7 @@ from uclahedp.tools import math
 
 
 
-def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
+def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_range=None):
     """ Integrates bdot data, calibrates output using information about the probe.
         Corrects for probe angle based on which drive is being used.
 
@@ -42,17 +42,33 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
             If grid is true, output will be written in cartesian grid array
             format, eg. [nti, nx, ny, nz, nreps, nchan]. Otherwise, output will
             be in [nshots, nti, nchan] format
+            
+        offset_range: tuple
+            Tuple of indices between which the average of the signal will be
+            computed and subtracted from the entire signal to correct for
+            offset. This should be a segment with just noise, ideally at the
+            very beginning of the dataset. Longer is better. 
+            Default is (0,100)
 
 
     Returns
     -------
        True (if executes to the end)
     """ 
+    
+    if offset_range is None:
+         offset_range = (0, 100)
+         
+    print("Removing offset based on avg of points: [" +
+                      str(offset_range[0]) + ',' + str(offset_range[1]) +
+                      ']')
+    
+    
     # ******
     # Load data from the raw HDF file
     # ******
     with h5py.File(src.file, 'r') as sf:
-        
+         
         #Get the datagroup
         srcgrp = sf[src.group]
         
@@ -191,10 +207,15 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False):
                 by = srcgrp['data'][i,ta:tb, 1]
                 bz = srcgrp['data'][i,ta:tb, 2]
                 
+                #Remove offset from each channel
+                bx = bx - np.mean(bx[offset_range[0]:offset_range[1]])
+                by = by - np.mean(by[offset_range[0]:offset_range[1]])
+                bz = bz - np.mean(bz[offset_range[0]:offset_range[1]])
+                
                 #Apply the calibration factors
-                bx = np.cumsum( detrend(bx) )*cal[0]
-                by = np.cumsum( detrend(by) )*cal[1]
-                bz = np.cumsum( detrend(bz) )*cal[2]
+                bx = np.cumsum( bx )*cal[0]
+                by = np.cumsum( by )*cal[1]
+                bz = np.cumsum( bz )*cal[2]
                 
                 #If a motion_format is set, apply the appropriate probe angle correction
                 if motion_format == 'fixed_rotation':

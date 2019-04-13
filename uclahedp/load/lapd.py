@@ -20,7 +20,7 @@ from uclahedp.tools import util
 
 # bapsflib is available from pip. Run command 'pip bapsflib' from terminal to
 # install it
-from bapsflib import lapd
+from bapsflib import lapd as bapsf_lapd
 
 import h5py
 
@@ -98,7 +98,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     nchan = len(channel_arr)
         
     #Read some variables from the src file
-    with lapd.File(src, silent=True)  as sf:
+    with bapsf_lapd.File(src, silent=True)  as sf:
         src_digitizers = sf.digitizers
 
         digi = src_digitizers['SIS crate'] #Assume this id the digitizer: it is the only one
@@ -155,7 +155,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         hdftools.writeAttrs(attrs, grp)
 
         #Open the LAPD file and copy the data over
-        with lapd.File(src, silent=True) as sf:
+        with bapsf_lapd.File(src, silent=True) as sf:
             
             #Initialize the output data array
             if 'data' in grp.keys():
@@ -237,7 +237,7 @@ def readPosArray(src, controls,):
 
     if controls[0][0] == '6K Compumotor':
         motion_format = 'fixed_rotation'  
-        with lapd.File(src, silent=True)  as sf: 
+        with bapsf_lapd.File(src, silent=True)  as sf: 
             src_controls = sf.controls
             if controls[0][0] in src_controls.keys():
                 pos = sf.read_controls(controls)['xyz']

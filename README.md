@@ -14,8 +14,9 @@ automatically reflected in the Anaconda package.
 
 (Using Anaconda)
 1. Open an Anaconda prompt (Windows) or a regular terminal prompt (Mac, Linux)
-2. Run the command 'conda develop _' where _ is the package directory path. Eg.
+2. Install the package dependencies by running this command from the anaconda terminal: 'conda install matplotlib h5py numpy pyqt astropy'
+3. Run the command 'conda develop _' where _ is the package directory path. Eg.
 'conda develop /Users/peter/Documents/GitHub/uclahedp'
-3. Open Anaconda (close and restart if necessary) and test that the package has been
+4. Open Anaconda (close and restart if necessary) and test that the package has been
 added to the path by importing something, eg. "from uclahedp import hdftools"
-4. If necessary, packages can be uninstalled with 'conda develop -u _'
+5. If necessary, packages can be uninstalled with 'conda develop -u _'

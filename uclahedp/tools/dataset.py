@@ -7,6 +7,12 @@ Created on Wed Feb 13 09:20:38 2019
 The dataset tools package contains functions for manupulating datasets that
 follow the UCLA HEDP dataset format (defined in the validDataset function).
 
+**Useful dataset functions**
+validDataset -> Check whether a group in an hdf5 file conforms to the dataset
+standard
+
+createDataset -> Create a dataset group in an hdf5 file from data arrays
+
 **Chunked Operations**
 Many operations are wrapped in the chunked_array_op function to efficiently
 chunk them to minimize memory usage. Each of these operations uses three
@@ -89,6 +95,42 @@ class hdfDatasetFormatError(Exception):
     This HDF5 dataset does not conform to the HEDP group's standard data layout
     """
     pass
+
+
+def createDataset(data, axes, dest, dataunit=None, attrs=None):
+    if dataunit is None:
+        dataunit = ''
+    
+    with h5py.File(dest.file, 'w') as df:
+        destgrp = df[dest.group]
+        
+        #Create the axes
+        #each axis is a dict {'ax':array, 'name':'', 'unit'=''}
+        #These must appear in the order that the dimensions appear in the array
+        dimensions = []
+        for ax in axes:
+            destgrp.require_dataset(ax['name'], ax['ax'].shape, np.float32, chunks=True)
+            destgrp[ax['name']] = ax['ax']
+            destgrp[ax['name']].attrs['unit'] = ax['unit']
+            dimensions.append(ax['name'])
+        
+        #Create the data group
+        destgrp.require_dataset('data', data.shape, np.float32, chunks=True, compression='gzip')
+        destgrp['data'] = data
+        destgrp['data'].attrs['unit'] = dataunit
+        destgrp['data'].attrs['dimensions'] = dimensions
+        
+        if attrs is not None:
+            hdftools.writeAttrs(attrs, destgrp)
+        
+        
+        
+        
+
+
+
+
+
 
 
 def getAxInd(ax, dimlabels):
@@ -448,14 +490,14 @@ if __name__ == '__main__':
     #avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
     
     #OSX
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_full.hdf5')
-    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_avg.hdf5')
-    trimmed = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_trim.hdf5')
-    avged = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_dimavged.hdf5')
+    full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run34_LAPD_C6_full.hdf5')
+    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run34_LAPD_C6_avg60.hdf5')
+    #trimmed = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_trim.hdf5')
+    #avged = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_dimavged.hdf5')
     
     #x = trimDim(full, trimmed, 'time', val_bounds=[0,1e-6],verbose=True)
     #x = trimDim(full, trimmed, 'time', ind_bounds=[120, 500],verbose=True)
     
-    x = thinBin(full, thinned, 'shots', bin = 5, verbose=True)
+    x = thinBin(full, thinned, 'shots', bin = 30, verbose=True)
     #x = thinPick(full, thinned, 'shots', step = 10, verbose=True)
     #x = avgDim(full, avged, 'shots', verbose=True)

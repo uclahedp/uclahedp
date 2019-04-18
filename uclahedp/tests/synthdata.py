@@ -33,7 +33,28 @@ def twoWavePackets(verbose=False, plots=False):
     
     return dt, t, arr
 
+def wavey2D(verbose=False, plots=False):
+    dk = 0.01
+    nx,ny = 100,150
+    arr = np.zeros([nx,ny])
+    xvec = np.arange(nx)*dk
+    yvec = np.arange(ny)*dk
+    x = arr + xvec.reshape(nx, 1)
+    y = arr + yvec.reshape(1, ny)
+    f1,f2  = 25, 5
+    
+    arr = np.sin(2*np.pi*f1*x) + np.sin(2*np.pi*f2*y)
+    
+    if plots:
+        fig, ax = plt.subplots(figsize = [4, 4])
+        cplot = ax.contourf(xvec, yvec, arr.T, levels=50)
+        
+        
+    return dk, xvec, yvec, arr
 
+    
+    
+    
 def cpWave(plots=False, rcp=None):
     
     if rcp is None or rcp is True:
@@ -61,4 +82,5 @@ def cpWave(plots=False, rcp=None):
 
 if __name__=='__main__':
     #x = twoWavePackets(plots=True)
-    x = rcpWave(plots=True)
+    #x = rcpWave(plots=True)
+    x = wavey2D(plots=True)

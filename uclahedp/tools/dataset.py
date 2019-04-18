@@ -98,6 +98,16 @@ class hdfDatasetFormatError(Exception):
 
 
 def createDataset(data, axes, dest, dataunit=None, attrs=None):
+    """
+    This function creates an hdf5 dataset from given arrays
+    data -> ndarray containing data
+    axes -> Array of axes dictionaries of the following format:
+        {'ax':array, 'name':'', 'unit'=''}
+        The order of this array must correspond to the order of the data shape
+    dest -> hdfpath to destination
+    dataunit -> Unit string for data. Default is dimensionless ('')
+    attrs -> Dictionary of attributes to be written to the dataset.
+    """
     if dataunit is None:
         dataunit = ''
     
@@ -110,13 +120,13 @@ def createDataset(data, axes, dest, dataunit=None, attrs=None):
         dimensions = []
         for ax in axes:
             destgrp.require_dataset(ax['name'], ax['ax'].shape, np.float32, chunks=True)
-            destgrp[ax['name']] = ax['ax']
+            destgrp[ax['name']][:] = ax['ax']
             destgrp[ax['name']].attrs['unit'] = ax['unit']
-            dimensions.append(ax['name'])
+            dimensions.append(ax['name'].encode("utf-8"))
         
         #Create the data group
         destgrp.require_dataset('data', data.shape, np.float32, chunks=True, compression='gzip')
-        destgrp['data'] = data
+        destgrp['data'][:] = data
         destgrp['data'].attrs['unit'] = dataunit
         destgrp['data'].attrs['dimensions'] = dimensions
         
@@ -490,14 +500,23 @@ if __name__ == '__main__':
     #avged = hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL", "run61_LAPD1_full_avg.hdf5") )
     
     #OSX
-    full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run34_LAPD_C6_full.hdf5')
-    thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run34_LAPD_C6_avg60.hdf5')
+    #full = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run34_LAPD_C6_full.hdf5')
+    #thinned = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run34_LAPD_C6_avg60.hdf5')
     #trimmed = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_trim.hdf5')
     #avged = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/run29_LAPD_C6_dimavged.hdf5')
+    testfile = hdftools.hdfPath('/Volumes/PVH_DATA/test.hdf5')
     
     #x = trimDim(full, trimmed, 'time', val_bounds=[0,1e-6],verbose=True)
     #x = trimDim(full, trimmed, 'time', ind_bounds=[120, 500],verbose=True)
     
-    x = thinBin(full, thinned, 'shots', bin = 30, verbose=True)
+    #x = thinBin(full, thinned, 'shots', bin = 30, verbose=True)
     #x = thinPick(full, thinned, 'shots', step = 10, verbose=True)
     #x = avgDim(full, avged, 'shots', verbose=True)
+    
+    
+    
+    axes=[{'ax':np.arange(10), 'name':'ax1', 'unit':''},
+         {'ax':np.arange(20), 'name':'ax2', 'unit':''}]
+    data = np.zeros([10,20])
+    
+    createDataset(data, axes, testfile)

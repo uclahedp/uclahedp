@@ -28,7 +28,7 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     
     #Find endpoints of the bandpass window
     if band[0] is None:
-        a = 0
+        a = 1
     else:
         a = np.argmin(np.abs(freq - band[0]))
            
@@ -37,9 +37,6 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     else:
         b = np.argmin(np.abs(freq - band[1]))
 
-    print(a)
-    print(b)
-    
     mask = np.zeros(fft.shape)
     
     
@@ -57,7 +54,6 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
             posslice.append( slice(None,None,None) )
             negslice.append( slice(None,None,None) )
             maskshape.append(1)
-
     mask[tuple(posslice)] = np.hanning(b-a).reshape(maskshape)
     mask[tuple(negslice)] = np.hanning(b-a).reshape(maskshape)
     
@@ -97,13 +93,13 @@ if __name__ == '__main__':
     dk, x, y, arr = synthdata.wavey2D()
     
     fig, ax = plt.subplots(figsize = [4, 4])
-    cplot = ax.contourf(x, y, arr.T, levels=50)
+    cplot = ax.contourf(x, y, arr.T, levels=50, vmin=-1, vmax=1)
     
     
-    arr = fftFilter(arr, dk, band=(20, 30), mode='pass', axis=0, plots=False)
+    arr = fftFilter(arr, dk, band=(15, None), mode='pass', axis=0, plots=False)
     
     fig, ax = plt.subplots(figsize = [4, 4])
-    cplot = ax.contourf(x, y, arr.T, levels=50)
+    cplot = ax.contourf(x, y, arr.T, levels=50, vmin=-1, vmax=1)
     
     
     """

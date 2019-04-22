@@ -120,14 +120,15 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
 
 if __name__ == "__main__":
     #Windows
-    data_dir =  os.path.join("F:", "2019BIERMANN")
+    #data_dir =  os.path.join("F:", "2019BIERMANN")
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     
-    #rawsource='LAPD'
-    rawsource='HRR'
+    rawsource='LAPD'
+    #rawsource='HRR'
     
 
-    processMany(data_dir, overwrite=True, runs=[29], probes=['tdiode', 'LAPD_C6'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=True, runs=[1], probes=[ 'PL11B'], rawsource=rawsource) 
     
     

@@ -236,7 +236,7 @@ def readPosArray(src, controls,):
     motion_attrs = {'unit':'cm'}
 
     if controls[0][0] == '6K Compumotor':
-        motion_format = 'fixed_rotation'  
+        motion_format = 'fixed_pivot'  
         with bapsf_lapd.File(src, silent=True)  as sf: 
             src_controls = sf.controls
             if controls[0][0] in src_controls.keys():
@@ -246,7 +246,7 @@ def readPosArray(src, controls,):
 
     #If the controlling drive is the NI_XZ drive...
     elif controls[0][0] == 'NI_XZ':
-        motion_format = 'fixed_rotation' #Defines how to correct angles
+        motion_format = 'fixed_pivot' #Defines how to correct angles
         with h5py.File(src, "r") as sf:
             motion_group = sf['Raw data + config/NI_XZ']
             for item in motion_group.items():
@@ -273,7 +273,7 @@ def readPosArray(src, controls,):
             
     #If the controlling drive is the NI_XYZ drive (Krishna's)...
     elif controls[0][0] == 'NI_XYZ':
-        motion_format = 'fixed_rotation'
+        motion_format = 'fixed_pivot'
         with h5py.File(src, "r") as sf:
             try:
                 motion_group = sf['Raw data + config/NI_XYZ']

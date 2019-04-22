@@ -83,6 +83,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
             pos = srcgrp['pos'][:] #Read the entire array in
             #If pos array exists, there are keywords required for that too.
             motion_format = srcgrp['pos'].attrs['motion_format']
+            print(motion_format)
             if motion_format == 'fixed_pivot':
                 req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
             elif motion_format == 'cartesian':

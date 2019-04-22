@@ -30,7 +30,7 @@ import numpy as np
 
 
 
-nan_codes = ['NA', '', 'NR', 'NONE']
+nan_codes = ['NA', '', 'NR', 'NONE', "N/A"]
 
 
 

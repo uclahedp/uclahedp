@@ -20,12 +20,47 @@ def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
         #Replace any bad shots with a standin avg value
         #(Later should overwrite bad shots with good neighboring shots)
         t0indarr[badshots] = int(np.median(t0indarr[goodshots]))
+        
+        t = srcgrp['time'][:]
+        nshots = srcgrp['shots'].shape[0]
+        nti = srcgrp['time'].shape[0]
+        nchan = srcgrp['chan'].shape[0]
    
-    with h5py.File(dest.file) as df:
-        grp = df[dest.group]
-        grp['t0indarr'] = t0indarr
-        grp['badshots'] = badshots
-        grp['goodshots'] = goodshots
+        with h5py.File(dest.file) as df:
+            destgrp = df[dest.group]
+            destgrp['t0indarr'] = t0indarr
+            destgrp['badshots'] = badshots
+            destgrp['goodshots'] = goodshots
+            
+    
+            #Apply the tdiode correction to the data, as a check
+            #If this is working correctly, the full tdiode files will show
+            #the tdiode's all lined up...
+            min_t0ind = np.min(t0indarr[goodshots])
+            max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
+            #Compute new nti
+            nti = nti - max_t0shift
+            
+            print('here here')
+            destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, np.min([nti, 20000]), 1), compression='gzip')
+            destgrp['data'].attrs['dimensions'] = srcgrp['data'].attrs['dimensions']
+            destgrp['data'].attrs['unit'] = srcgrp['data'].attrs['unit']
+            
+            for i in range(0, nshots):
+                ta = t0indarr[i] - min_t0ind
+                tb = ta + nti
+                destgrp['data'][i, :, :] = srcgrp['data'][i, ta:tb, :]
+            
+            
+            
+            destgrp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = t[0:nti] - t[min_t0ind]
+            destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
+            
+            destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
+            destgrp['chan'].attrs['unit'] = srcgrp['chan'].attrs['unit']
+            destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
+            destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
+            
     
     return dest
 

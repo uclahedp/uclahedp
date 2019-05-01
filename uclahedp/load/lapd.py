@@ -13,7 +13,6 @@ import numpy as np
 from astropy import units as u
 import time
 import os
-import pathlib #modern path library slowly replacing os.path
 
 from uclahedp.tools import csv as csvtools
 from uclahedp.tools import hdf as hdftools

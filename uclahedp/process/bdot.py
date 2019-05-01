@@ -345,21 +345,21 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
             #Write the axes as required by the format of the data written
             if motion_format is not None:
                 #Add the other axes and things we'd like in this file
-                destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][:]
+                destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][0:nshots]
                 for k in srcgrp['pos'].attrs.keys():
                     destgrp['pos'].attrs[k] = srcgrp['pos'].attrs[k]
 
             if grid:
                 dimlabels = ['time', 'xaxis', 'yaxis', 'zaxis', 'reps', 'chan']
                 
-                destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxes
-                destgrp['xaxis'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxis
+                destgrp['xaxis'].attrs['unit'] = srcgrp.attrs['motion_unit']
                 
-                destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxes
-                destgrp['yaxis'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxis
+                destgrp['yaxis'].attrs['unit'] = srcgrp.attrs['motion_unit']
                 
-                destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxes
-                destgrp['zaxis'].attrs['unit'] = srcgrp['pos'].attrs['unit']
+                destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxis
+                destgrp['zaxis'].attrs['unit'] = srcgrp.attrs['motion_unit']
                 
                 destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
                 destgrp['reps'].attrs['unit'] = ''

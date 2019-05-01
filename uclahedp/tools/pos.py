@@ -16,20 +16,25 @@ def calcNpoints(pos, xaxis, yaxis, zaxis):
     nx,ny,nz = len(xaxis), len(yaxis), len(zaxis)
     nshots = len(pos)
     npos = nx*ny*nz
-    nreps =np.floor(nshots/npos)
+    nreps = int(np.floor(nshots/npos))
     
     return nx, ny, nz, nreps
 
 
-def makeAxes(npoints, centers, deltas):
+def makeAxes(nx, ny, nz, dx, dy, dz, x0, y0, z0):
     """
     This function maxes axes a priori from grid specifications
     """
     #TODO: Do these formulas work if npoints is even??
     #We don't usually do this, but it's possible...
-    xaxis = centers[0] - deltas[0]*(npoints[0] - 1)/2.0
-    yaxis = centers[1] - deltas[1]*(npoints[1] - 1)/2.0
-    zaxis = centers[2] - deltas[2]*(npoints[2] - 1)/2.0
+    xstep = x0 - dx*(nx - 1)/2.0
+    ystep = y0 - dy*(ny - 1)/2.0
+    zstep = z0 - dz*(nz - 1)/2.0
+    
+    xaxis = np.arange(nx)*dx + xstep
+    yaxis = np.arange(ny)*dy + ystep
+    zaxis = np.arange(nz)*dz + zstep
+    
     return xaxis, yaxis, zaxis
 
 
@@ -42,8 +47,6 @@ def guessAxes(pos, precision=0.1):
     xpos = np.round(pos[:,0]/precision, 0)*precision + 0.0
     ypos = np.round(pos[:,1]/precision, 0)*precision + 0.0
     zpos = np.round(pos[:,2]/precision, 0)*precision + 0.0
-    
-    nshots = len(xpos)
     
     xaxis, yaxis, zaxis = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     
@@ -98,7 +101,11 @@ def strictGrid(nx,ny,nz,nreps):
     Grid's positional data by assuming a number of reps and that the probe
     was moved in the standard X->Y->Z order. 
     """
-    nshots = nx*ny*nz*nreps
+    nx = int(nx)
+    ny = int(ny)
+    nz = int(nz)
+    nreps = int(nreps)
+    nshots = int(nx*ny*nz*nreps)
     
     shotindarr = np.zeros([nshots, 4],  dtype=np.int32)
     
@@ -107,7 +114,6 @@ def strictGrid(nx,ny,nz,nreps):
             for x in range(nx):
                 for r in range(nreps):
                     shot = r + x*nreps + y*nreps*nx + z*nreps*nx*ny
-                    print(shot)
                     shotindarr[shot, :] = [x,y,z,r]
     return shotindarr
     

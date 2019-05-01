@@ -252,16 +252,19 @@ def readPosArray(src, controls, motion_attrs):
                 dset= sf[sf.controls['6K Compumotor'].configs[receptacle]['dset paths'][0]]
                 motion_list = ( dset['Motion list'][0] ).decode("utf-8")
                 
+                nx = temp_list[motion_list]['npoints'][0]
+                ny = temp_list[motion_list]['npoints'][1]
+                nz = temp_list[motion_list]['npoints'][2]
                 
-                motion_attrs['motion_list'] = (motion_list, '')
-                motion_attrs['grid_deltas'] = (list(temp_list[motion_list]['delta']), "")
-                motion_attrs['grid_centers'] = (list(temp_list[motion_list]['center']), "")
-                motion_attrs['grid_npoints'] = (list(temp_list[motion_list]['npoints']), "")
-            
- 
-            
+                dx = temp_list[motion_list]['delta'][0]
+                dy = temp_list[motion_list]['delta'][1]
+                dz = temp_list[motion_list]['delta'][2]
+                
+                x0 = temp_list[motion_list]['center'][0]
+                y0 = temp_list[motion_list]['center'][1]
+                z0 = temp_list[motion_list]['center'][2]
+                
 
-  
     #If the controlling drive is the NI_XZ drive...
     elif control == 'NI_XZ':
         motion_attrs['motion_format'] = ('fixed_pivot', '')   #Defines how to correct angles
@@ -272,23 +275,11 @@ def readPosArray(src, controls, motion_attrs):
                     motion_list = str(item[0])
                     mlpath = 'Raw data + config/NI_XZ/' + motion_list
 
-                    npoints = list(sf[mlpath].attrs['Nx'],
-                               1.0,
-                               sf[mlpath].attrs['Nz'])
-                    
-                    center = list(sf[mlpath].attrs['x0'],
-                               0.0,
-                               sf[mlpath].attrs['z0'])
-                    
-                    delta = list(sf[mlpath].attrs['dx'],
-                               0.0,
-                               sf[mlpath].attrs['dz'])
-                    
-            motion_attrs['motion_list'] = (motion_list, '')
-            motion_attrs['grid_deltas'] = (delta, "")
-            motion_attrs['grid_centers'] = (center, "")
-            motion_attrs['grid_npoints'] = (npoints, "")
-            
+                    nx, ny, nz = sf[mlpath].attrs['Nx'], 1.0, sf[mlpath].attrs['Nz']
+                    dx, dy, dz = sf[mlpath].attrs['dx'], 0.0, sf[mlpath].attrs['dz']
+                    x0, y0, z0 = sf[mlpath].attrs['x0'], 0.0, sf[mlpath].attrs['z0']
+                     
+    
             runtimelist = sf['Raw data + config/NI_XZ/Run time list']
             xpos =   runtimelist['x']
             zpos =   runtimelist['z']
@@ -315,22 +306,10 @@ def readPosArray(src, controls, motion_attrs):
                     motion_list = str(item[0])
                     mlpath = 'Raw data + config/NI_XYZ/' + motion_list
 
-                    npoints = list(sf[mlpath].attrs['Nx'],
-                               sf[mlpath].attrs['Ny'],
-                               sf[mlpath].attrs['Nz'])
-                    
-                    center = list(sf[mlpath].attrs['x0'],
-                               sf[mlpath].attrs['y0'],
-                               sf[mlpath].attrs['z0'])
-                    
-                    delta = list(sf[mlpath].attrs['dx'],
-                               sf[mlpath].attrs['dy'],
-                               sf[mlpath].attrs['dz'])
-                    
-            motion_attrs['motion_list'] = (motion_list, '')
-            motion_attrs['grid_deltas'] = (delta, "")
-            motion_attrs['grid_centers'] = (center, "")
-            motion_attrs['grid_npoints'] = (npoints, "")
+                    nx, ny, nz = sf[mlpath].attrs['Nx'], 1.0, sf[mlpath].attrs['Nz']
+                    dx, dy, dz = sf[mlpath].attrs['dx'], 0.0, sf[mlpath].attrs['dz']
+                    x0, y0, z0 = sf[mlpath].attrs['x0'], 0.0, sf[mlpath].attrs['z0']
+
 
             runtimelist = sf['Raw data + config/NI_XYZ/Run time list']
             xpos =   runtimelist['x']
@@ -343,6 +322,17 @@ def readPosArray(src, controls, motion_attrs):
             pos[:,2] = zpos
             del(xpos, ypos, zpos)
             
+    motion_attrs['motion_list'] = (motion_list, '')
+    motion_attrs['nx'] = (nx, "")
+    motion_attrs['ny'] = (ny, "")
+    motion_attrs['nz'] = (nz, "")
+    motion_attrs['dx'] = (dx, "")
+    motion_attrs['dy'] = (dy, "")
+    motion_attrs['dz'] = (dz, "")
+    motion_attrs['x0'] = (x0, "")
+    motion_attrs['y0'] = (y0, "")
+    motion_attrs['z0'] = (z0, "")
+
     return pos, motion_attrs
 
     
@@ -356,17 +346,14 @@ if __name__ == "__main__":
     probe = 'LAPD10'
     run = 30
 
-    #hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
-    #csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
-    #dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
+    #hdf_dir = '/Volumes/PVH_DATA/' + exp + '/HDF/'
+    #csv_dir = '/Volumes/PVH_DATA/' + exp + '/METADATA/'
+    #dest = hdftools.hdfPath( '/Volumes/PVH_DATA/' +  exp +  '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
     
-    hdf_dir = '/Volumes/PVH_DATA/' + exp + '/HDF/'
-    csv_dir = '/Volumes/PVH_DATA/' + exp + '/METADATA/'
-    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/' +  exp +  '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
+    hdf_dir =  os.path.join("F:", exp, "HDF")
+    csv_dir =  os.path.join("F:", exp, "METADATA")
+    dest = hdftools.hdfPath( os.path.join("F:", exp, "RAW", 'run' + str(run) + '_' + probe + '_raw.hdf5'))
 
-    #hdf_dir = '/Volumes/PVH_DATA/LAPD_Jan2019/HDF/'
-    #csv_dir = '/Volumes/PVH_DATA/LAPD_Jan2019/METADATA/'
-    #dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Jan2019/RAW/testing.hdf5")
     
     
     #Delete the output file if it already exists

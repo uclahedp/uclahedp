@@ -41,7 +41,6 @@ def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
             #Compute new nti
             nti = nti - max_t0shift
             
-            print('here here')
             destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, np.min([nti, 20000]), 1), compression='gzip')
             destgrp['data'].attrs['dimensions'] = srcgrp['data'].attrs['dimensions']
             destgrp['data'].attrs['unit'] = srcgrp['data'].attrs['unit']

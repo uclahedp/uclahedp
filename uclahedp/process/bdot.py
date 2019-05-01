@@ -23,7 +23,9 @@ from uclahedp.tools import math
 
 
 
-def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_range=None, grid_precision=0.1):
+def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, 
+                  offset_range=None, offset_rel_t0 = (False, False), 
+                  grid_precision=0.1):
     """ Integrates bdot data, calibrates output using information about the probe.
         Corrects for probe angle based on which drive is being used.
 
@@ -53,9 +55,8 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
             
         grid_precision: float
             This is the precision to which position values will be rounded
-            before being fit onto the grid. A value != 0 will be applied as a
-            precision. A value of 0 will cause strict gridding to be applied,
-            where grid parameters will be used to set up the grid.
+            before being fit onto the grid. Only applies to fuzzy axis and grid
+            creation.
 
 
     Returns
@@ -119,16 +120,32 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
             #If not, generate a guess
             try:
                 print("Applying stric axis creation")
-                print(attrs['grid_npoints'][0])
-                xaxis, yaxis, zaxis = postools.makeAxes(attrs['grid_npoints'][0], 
-                                                        attrs['grid_centers'][0], 
-                                                        attrs['grid_deltas'][0])
+                nx = attrs['nx'][0]
+                ny = attrs['ny'][0]
+                nz = attrs['nz'][0]
+                dx = attrs['dx'][0]
+                dy = attrs['dy'][0]
+                dz = attrs['dz'][0]
+                x0 = attrs['x0'][0]
+                y0 = attrs['y0'][0]
+                z0 = attrs['z0'][0]
+                xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
+                                                        dx,dy,dz,
+                                                        x0,y0,z0)
             except KeyError:
                 print("Applying fuzzy axis creation")
                 xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
                 
             #Calculate length of axes
             nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+            
+            #This line SHOULD be redundent, but sometimes it's necessary.
+            #It is possible, when combining two motion lists, to get
+            #some extra shots at the end of the datarun that don't have
+            #positions associated. Recalculating this here ensures we only
+            #take the ones we are looking for
+            nshots = nx*ny*nz*nreps
+            
             #If grid precision is zero, apply strict gridding
             #Otherwise, apply fuzzy gridding
             if grid_precision == 0:
@@ -139,11 +156,11 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
                 shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
                                                  precision=grid_precision)
             
-            
             print('nshots: ' + str(nshots))
-            print('nx, ny, nz: ' + str( (nx, ny, nz)  ) )
-            print(nshots/(nx*ny*nz))
-            print(nreps)
+            print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
+            print('dx, dy, dz: ' + str((dx, dy, dz)))
+            print('x0, y0, z0: ' + str((x0, y0, z0)))
+
             
             
         #If tdiode_hdf is set, load the pre-processed tdiode data
@@ -501,14 +518,15 @@ if __name__ == "__main__":
     probe = 'LAPD10'
     run = 30
     
-    src = hdftools.hdfPath( '/Volumes/PVH_DATA/' + exp + '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
-    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/' + exp + '/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
-    tdiode_hdf = None
+    src = hdftools.hdfPath( os.path.join("F:", exp, "RAW", 'run' + str(run) + '_' + probe + '_raw.hdf5'))
+    tdiode_hdf = hdftools.hdfPath(os.path.join("F:", exp, "FULL", 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5'))
+    dest = hdftools.hdfPath(os.path.join("F:", exp, "FULL", 'run' + str(run) + '_' + probe + '_full.hdf5'))
     
-    dest = hdftools.hdfPath('/Volumes/PVH_DATA/'+ exp + '/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
+    #src = hdftools.hdfPath( '/Volumes/PVH_DATA/' + exp + '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
+    #tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/' + exp + '/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
+    #dest = hdftools.hdfPath('/Volumes/PVH_DATA/'+ exp + '/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
     
-    #current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_current.hdf5')
-    
+
     #Delete the output file if it already exists
     try:
         os.remove(dest.file)
@@ -519,7 +537,7 @@ if __name__ == "__main__":
     util.mem()
     tstart = util.timeTest()
     print(src.file)
-    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
+    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True, grid_precision=0)
     #cur_filepath = fullToCurrent(dest, current, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()

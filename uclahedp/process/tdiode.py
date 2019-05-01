@@ -25,7 +25,10 @@ def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
         nshots = srcgrp['shots'].shape[0]
         nti = srcgrp['time'].shape[0]
         nchan = srcgrp['chan'].shape[0]
-   
+        
+        #Create the destination file directory if necessary
+        hdftools.requireDirs(dest.file)
+        
         with h5py.File(dest.file) as df:
             destgrp = df[dest.group]
             destgrp['t0indarr'] = t0indarr
@@ -50,8 +53,7 @@ def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
                 tb = ta + nti
                 destgrp['data'][i, :, :] = srcgrp['data'][i, ta:tb, :]
             
-            
-            
+
             destgrp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = t[0:nti] - t[min_t0ind]
             destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
             

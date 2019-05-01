@@ -23,9 +23,10 @@ from uclahedp.tools import math
 
 
 
-def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, 
-                  offset_range=None, offset_rel_t0 = (False, False), 
-                  grid_precision=0.1):
+def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, 
+                  verbose=False, debug = False,
+                  offset_range=(0,100), offset_rel_t0 = (False, False), 
+                  grid_precision=0.1, strict_grid=False, strict_axes = False):
     """ Integrates bdot data, calibrates output using information about the probe.
         Corrects for probe angle based on which drive is being used.
 
@@ -52,21 +53,36 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
             very beginning of the dataset. Longer is better. 
             Default is (0,100)
             
+        offset_rel_t0: Tuple of booleans
+            If either of these values is set to True, the coorresponding
+            offset_range value will be taken to be relative to the t0 index
+            for that each shot. For example, if t0=2000 for a shot, 
+            offset_range=(10, -100), and offset_rel_t0 = (False, True), then
+            the offset will be computed over the range (10, 1900)
+            
             
         grid_precision: float
             This is the precision to which position values will be rounded
             before being fit onto the grid. Only applies to fuzzy axis and grid
             creation.
+            
+        strict_axes: boolean
+            If true, attempt to calculate axes from saved grid parameters.
+            Default is false, which attempts to calculate axes by looking at
+            position values.
+            
+        strict_grid: boolean
+            If true, strictly unravel data onto the axes, assuming the probe
+            moved in order reps->X->Y->Z. This will NOT correctly handle
+            points where the probe was not at the requested position. Default
+            is false, which applys "fuzzy gridding", which tries to find the
+            best grid position for each shot individually.
 
 
     Returns
     -------
        True (if executes to the end)
     """ 
-    
-    if offset_range is None:
-         offset_range = (0, 100)
-         
 
     # ******
     # Load data from the raw HDF file
@@ -113,26 +129,30 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
         #Extract the shape of the source data
         nshots, nti, nchan = srcgrp['data'].shape
         
-        
         #If requested by keyword, apply gridding
         if grid:
+            
             #If grid parameters exist in the attrs, generate an exact grid
             #If not, generate a guess
-            try:
-                print("Applying stric axis creation")
-                nx = attrs['nx'][0]
-                ny = attrs['ny'][0]
-                nz = attrs['nz'][0]
-                dx = attrs['dx'][0]
-                dy = attrs['dy'][0]
-                dz = attrs['dz'][0]
-                x0 = attrs['x0'][0]
-                y0 = attrs['y0'][0]
-                z0 = attrs['z0'][0]
-                xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
-                                                        dx,dy,dz,
-                                                        x0,y0,z0)
-            except KeyError:
+            if strict_axes:
+                try:
+                    print("Applying stric axis creation")
+                    nx = attrs['nx'][0]
+                    ny = attrs['ny'][0]
+                    nz = attrs['nz'][0]
+                    dx = attrs['dx'][0]
+                    dy = attrs['dy'][0]
+                    dz = attrs['dz'][0]
+                    x0 = attrs['x0'][0]
+                    y0 = attrs['y0'][0]
+                    z0 = attrs['z0'][0]
+                    xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
+                                                            dx,dy,dz,
+                                                            x0,y0,z0)
+                except KeyError:
+                    print("Missing axis parameters: attempting fuzzy axis creation")
+                    xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+            else:
                 print("Applying fuzzy axis creation")
                 xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
                 
@@ -143,12 +163,12 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
             #It is possible, when combining two motion lists, to get
             #some extra shots at the end of the datarun that don't have
             #positions associated. Recalculating this here ensures we only
-            #take the ones we are looking for
+            #take the ones relevant to this grid
             nshots = nx*ny*nz*nreps
             
             #If grid precision is zero, apply strict gridding
             #Otherwise, apply fuzzy gridding
-            if grid_precision == 0:
+            if strict_grid:
                 print("Applying strict gridding")
                 shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
             else:
@@ -156,10 +176,12 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
                 shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
                                                  precision=grid_precision)
             
-            print('nshots: ' + str(nshots))
-            print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
-            print('dx, dy, dz: ' + str((dx, dy, dz)))
-            print('x0, y0, z0: ' + str((x0, y0, z0)))
+            if debug:
+                print("** Gridding parameters **")
+                print('nshots: ' + str(nshots))
+                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
+                print('dx, dy, dz: ' + str((dx, dy, dz)))
+                print('x0, y0, z0: ' + str((x0, y0, z0)))
 
             
             
@@ -176,11 +198,14 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
             min_t0ind = np.min(t0indarr[goodshots])
             max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
             #Compute new nti
+            print(max_t0shift)
             nti = nti - max_t0shift 
-            
             
         if verbose:
             print("Opening destination HDF file")
+        
+        #Create the destination file directory if necessary
+        hdftools.requireDirs(dest.file)
 
         #Open the destination file
         #This exists WITHIN the open statement for the source file, so the
@@ -215,14 +240,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
             #If a timing diode is being applied, correct the time vector here.
             if tdiode_hdf is not None:
                 t = t[0:nti] - t[min_t0ind]
-                
-                
-            print("Removing offset based on avg of points: [" +
-                      str(offset_range[0]) + ',' + str(offset_range[1]) +
-                      '] or t=[' + str(t[offset_range[0]]) + ',' +
-                      str(t[offset_range[1]]) + ']')
-
-            
+    
             #Asssemble the array of calibration factors from the attrs dict
             cal = calibrationFactor(attrs)
             
@@ -244,22 +262,47 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False,
                 #If a tdiode hdf was supplied, calculate the index correction
                 #here
                 if tdiode_hdf is not None:
+                    #Calculate the starting and ending arrays for the data
                     ta = t0indarr[i] - min_t0ind
                     tb = ta + nti
+
+                    #Calculate the range over which to calculate the offset
+                    #for each shot
+                    #If offset_rel_t0 is set for either point, add the t0 array
+                    if offset_rel_t0[0]:
+                        offset_a = offset_range[0] + t0indarr[i]
+                    else:
+                        offset_a = offset_range[0]
+                        
+                    if offset_rel_t0[1]:
+                        offset_b = offset_range[1] + t0indarr[i]
+                    else:
+                        offset_b = offset_range[1]
+                    
                 else:
                     #By default, read in the entire dataset
                     ta = None
                     tb = None
+                    offset_a = offset_range[0]
+                    offset_b = offset_range[1]
+                    
+                if debug:
+                    print("Data range: [" + str(ta) + "," + str(tb) + "]")
+                    print("Offset range: [" + str(offset_a) + "," + 
+                                          str(offset_b) + "]")
+                    
+                    
                 
                 #Read in the data from the source file
                 bx = srcgrp['data'][i,ta:tb, 0]
                 by = srcgrp['data'][i,ta:tb, 1]
                 bz = srcgrp['data'][i,ta:tb, 2]
                 
+                
                 #Remove offset from each channel
-                bx = bx - np.mean(bx[offset_range[0]:offset_range[1]])
-                by = by - np.mean(by[offset_range[0]:offset_range[1]])
-                bz = bz - np.mean(bz[offset_range[0]:offset_range[1]])
+                bx = bx - np.mean(bx[offset_a:offset_b])
+                by = by - np.mean(by[offset_a:offset_b])
+                bz = bz - np.mean(bz[offset_a:offset_b])
                 
                 #Apply the calibration factors
                 bx = np.cumsum( bx )*cal[0]
@@ -515,16 +558,16 @@ if __name__ == "__main__":
     #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
     exp = 'LAPD_Jan2019'
-    probe = 'LAPD10'
+    probe = 'LAPD_C6'
     run = 30
     
     src = hdftools.hdfPath( os.path.join("F:", exp, "RAW", 'run' + str(run) + '_' + probe + '_raw.hdf5'))
     tdiode_hdf = hdftools.hdfPath(os.path.join("F:", exp, "FULL", 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5'))
     dest = hdftools.hdfPath(os.path.join("F:", exp, "FULL", 'run' + str(run) + '_' + probe + '_full.hdf5'))
     
-    #src = hdftools.hdfPath( '/Volumes/PVH_DATA/' + exp + '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
-    #tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/' + exp + '/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
-    #dest = hdftools.hdfPath('/Volumes/PVH_DATA/'+ exp + '/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
+    src = hdftools.hdfPath( '/Volumes/PVH_DATA/' + exp + '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/' + exp + '/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/'+ exp + '/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
     
 
     #Delete the output file if it already exists
@@ -537,7 +580,9 @@ if __name__ == "__main__":
     util.mem()
     tstart = util.timeTest()
     print(src.file)
-    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True, grid_precision=0)
+    full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True, debug=False, 
+                                  offset_range = (0, -100), offset_rel_t0 = (False, True), 
+                                  strict_axes = True, strict_grid = False, grid_precision=0.1)
     #cur_filepath = fullToCurrent(dest, current, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()

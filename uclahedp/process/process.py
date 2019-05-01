@@ -56,7 +56,7 @@ def process(data_dir, run, probe, overwrite=True,
     if not os.path.exists(fullfile.file):
         if probe[1] == 'tdiode':
             print("Running tdiodeRawToFull")
-            fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True, fatal_badshot_percentage=.2, badshotratio=2)
+            fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True, fatal_badshot_percentage=.2, badshotratio=10)
         elif probe[1] == 'bdot':
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
@@ -122,16 +122,17 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
 if __name__ == "__main__":
     #Windows
     #data_dir =  os.path.join("F:", "2019BIERMANN")
-    data_dir =  os.path.join("F:", "LAPD_Jan2019")
+    #data_dir =  os.path.join("F:", "LAPD_Jan2019")
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     
     rawsource='LAPD'
     #rawsource='HRR'
     
 
-    processMany(data_dir, overwrite=True, runs=[29,30], probes=['tdiode'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=False, runs=[61], probes=['tdiode', 'LAPD1'], rawsource=rawsource) 
     
     

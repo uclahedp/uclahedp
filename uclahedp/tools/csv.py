@@ -248,6 +248,10 @@ def getCSVList(csv_dir):
             if ext == '.csv' and name[0] != '.':
                 fpath = os.path.join(root, f)
                 output.append(fpath)
+                
+    if len(output) == 0:
+        raise ValueError("No metadata spreadsheets found! Check that metadata directory is valid: "+
+                         str(csv_dir))
     return output
 
 
@@ -274,20 +278,37 @@ def getAllAttrs(csv_dir, run, probe):
     """
      csvs = getCSVList(csv_dir)
      attrs = {}
+     valid_probe_run = False
 
      for csv_file in csvs:
          csvdict = opencsv(csv_file)
          csv_attrs = getRow( csvdict, run=run, probe=probe)
+         
+         #Check to see if this sheet is a probe_runs sheet that shows this
+         #probe, run combination is valid. This function is the point where
+         #this should result in an error.
+         try:
+             if (csv_attrs['run'][0] == run and 
+             csv_attrs['probe'][0].lower().strip() == probe.lower().strip()):
+                 valid_probe_run = True
+         except KeyError:
+            #This error could be thrown when run or probe are not valid keys
+            pass
+         except TypeError:
+            #This error could be thrown if csv_attrs is None
+            pass
+         
+         #Add all of the attributes from this file to the main attributes dict
          if csv_attrs is not None:
              for key in csv_attrs.keys():
                  attrs[key] = csv_attrs[key]
-             
-     #Validate that a matching line was actually found
-     #The main program depends on this function to throw an error
-     #if this is not the case
-     if 'run' in attrs.keys() and 'probe' in attrs.keys():
+                 
+     #If the run/probe combination was valid, return the attrs.
+     #Otherwise, throw a fatal error.
+     if valid_probe_run:
              return attrs
-     raise ValueError("No spreadsheet found with row matching input: run=" 
+     else:
+         raise ValueError("No spreadsheet found with row matching input: run=" 
                       + str(run) +', probe= ' + str(probe))
      
      

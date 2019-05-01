@@ -13,6 +13,7 @@ import numpy as np
 from astropy import units as u
 import time
 import os
+import pathlib #modern path library slowly replacing os.path
 
 from uclahedp.tools import csv as csvtools
 from uclahedp.tools import hdf as hdftools
@@ -127,22 +128,23 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     req_keys = ['motion_controller', 'motion_receptacle']    
     if csvtools.missingKeys(attrs, req_keys, fatal_error = False):
         print("Some motion keys not found: positon data will not be read out!")
-        controls = None
+        controls, pos = None, None
     else:
         motion_controller = attrs['motion_controller'][0]
         motion_receptacle = attrs['motion_receptacle'][0]
         controls = [(motion_controller, motion_receptacle)]
+        
         #Check to see if the motion controller reported actually exists in the
         #hdf file. If not, assume the probe was stationary (motion=None)
         #If motion_controller isn't in this list, lapdReadHDF can't handle it
-        
         #Check if the motion controller provided is supported by the code and
         if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
             pos, attrs = readPosArray(src, controls, attrs)
-
         else:
             controls, pos = None, None
-
+    
+    #Create the destination file directory if necessary
+    hdftools.requireDirs(dest.file)
     #Create the destination file
     with h5py.File(dest.file, "a") as df:
 
@@ -200,7 +202,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                 
 
         #If applicable, write the pos array to file
-        if controls is not None:
+        if pos is not None:
             grp.require_dataset('pos', (nshots, 3), np.float32)[:] = pos
             del pos
             
@@ -343,17 +345,17 @@ def readPosArray(src, controls, motion_attrs):
 if __name__ == "__main__":
     
     exp = 'LAPD_Jan2019'
-    probe = 'LAPD10'
+    probe = 'LAPD_C6'
     run = 30
 
-    #hdf_dir = '/Volumes/PVH_DATA/' + exp + '/HDF/'
-    #csv_dir = '/Volumes/PVH_DATA/' + exp + '/METADATA/'
-    #dest = hdftools.hdfPath( '/Volumes/PVH_DATA/' +  exp +  '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
     
     hdf_dir =  os.path.join("F:", exp, "HDF")
     csv_dir =  os.path.join("F:", exp, "METADATA")
     dest = hdftools.hdfPath( os.path.join("F:", exp, "RAW", 'run' + str(run) + '_' + probe + '_raw.hdf5'))
 
+    hdf_dir = '/Volumes/PVH_DATA/' + exp + '/HDF/'
+    csv_dir = '/Volumes/PVH_DATA/' + exp + '/METADATA/'
+    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/' +  exp +  '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
     
     
     #Delete the output file if it already exists

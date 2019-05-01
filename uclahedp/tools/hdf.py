@@ -4,12 +4,21 @@ import h5py
 import os
 import numpy as np
 
+import pathlib
+
 from uclahedp.tools import csv as csvtools
 from uclahedp.tools import hdf as hdftools
 
 
-
-
+def requireDirs(destfile):
+    """
+    Checks to see if the folder associated with a filepath exists, and creates
+    it if it does not.
+    """
+    p = pathlib.Path(destfile)
+    folder = p.parent
+    if not folder.exists():
+        os.mkdir(folder)
 
 
 def writeAttrs(attrs, group):

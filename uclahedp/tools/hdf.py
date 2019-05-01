@@ -33,7 +33,13 @@ def readAttrs(obj):
     """
     attrs = {}
     for k in obj.attrs.keys():
-        attrs[k] = ( csvtools.fixType(obj.attrs[k][0]), obj.attrs[k][1])
+        val = obj.attrs[k][0].decode('utf-8')
+        unit = obj.attrs[k][1].decode('utf-8')
+        
+
+        val = csvtools.fixType(val)
+        
+        attrs[k] = (val,unit)
     return attrs
 
 
@@ -95,7 +101,14 @@ class hdfGroupExists(Exception):
 
 if __name__ == "__main__":
     
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_LAPD1.hdf5")  )
+    exp = 'LAPD_Jan2019'
+    probe = 'LAPD10'
+    run = 29
+    
+    src = hdftools.hdfPath( '/Volumes/PVH_DATA/' + exp + '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
+    
+    print(src.file)
     with h5py.File(src.file, 'r') as f:
-        datagrp = f[src.group]
-        print( validDataset(datagrp) )
+        srcgrp = f[src.group]
+        attrs = readAttrs(srcgrp)
+        print(len(attrs))

@@ -9,6 +9,9 @@ from uclahedp.tools import hdf, csv
 from uclahedp.process import tdiode, bdot
 
 
+import importlib
+
+
 
 def process(data_dir, run, probe, overwrite=True,
             csv_dir=None, hdf_dir=None, tdiode_hdf=None, rawsource=None):
@@ -67,9 +70,7 @@ def process(data_dir, run, probe, overwrite=True,
 def processMany(data_dir, overwrite=True, runs=None, probes=None, 
             csv_dir=None, hdf_dir=None, rawsource=None):
     
-    
-    
-    
+
     if csv_dir is None:
         csv_dir = os.path.join(data_dir, "METADATA")
         
@@ -123,12 +124,13 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("F:", "2019BIERMANN")
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
-    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
+    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     
     rawsource='LAPD'
     #rawsource='HRR'
     
 
-    processMany(data_dir, overwrite=True, runs=[1], probes=[ 'PL11B'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=False, runs=[30], probes=['LAPD10'], rawsource=rawsource) 
     
     

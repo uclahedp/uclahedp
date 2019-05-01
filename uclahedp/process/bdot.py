@@ -23,7 +23,7 @@ from uclahedp.tools import math
 
 
 
-def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_range=None):
+def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_range=None, grid_precision=0.1):
     """ Integrates bdot data, calibrates output using information about the probe.
         Corrects for probe angle based on which drive is being used.
 
@@ -49,6 +49,13 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
             offset. This should be a segment with just noise, ideally at the
             very beginning of the dataset. Longer is better. 
             Default is (0,100)
+            
+            
+        grid_precision: float
+            This is the precision to which position values will be rounded
+            before being fit onto the grid. A value != 0 will be applied as a
+            precision. A value of 0 will cause strict gridding to be applied,
+            where grid parameters will be used to set up the grid.
 
 
     Returns
@@ -79,17 +86,17 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
                     'dt', 'nturns']
        
 
+
         if  'pos' in srcgrp:
             pos = srcgrp['pos'][:] #Read the entire array in
             #If pos array exists, there are keywords required for that too.
-            motion_format = srcgrp['pos'].attrs['motion_format']
-            print(motion_format)
+            motion_format = attrs['motion_format'][0]
             if motion_format == 'fixed_pivot':
                 req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
             elif motion_format == 'cartesian':
                 pass
             else:
-                raise ValueError("Motion format unrecognized: " + str(srcgrp['pos'].attrs['motion_format']) )
+                raise ValueError("Motion format unrecognized: " + str(attrs['motion_format'][0]) )
             
         else:
             #If no position information is given, a single explicit position
@@ -106,18 +113,38 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
         nshots, nti, nchan = srcgrp['data'].shape
         
         
-        #If keywords specify gridded output, run postools.grid
-        #shotgridind is a list of grid and repetition indices for each shot num
-        #that tells the program where to store each data trace in the array
+        #If requested by keyword, apply gridding
         if grid:
-            shotgridind, xaxes, yaxes, zaxes = postools.gridShotIndList(pos, precision=.1)
-            nx,ny,nz = len(xaxes), len(yaxes), len(zaxes)
-            nreps =np.floor(nshots/(nx*ny*nz))
+            #If grid parameters exist in the attrs, generate an exact grid
+            #If not, generate a guess
+            try:
+                print("Applying stric axis creation")
+                print(attrs['grid_npoints'][0])
+                xaxis, yaxis, zaxis = postools.makeAxes(attrs['grid_npoints'][0], 
+                                                        attrs['grid_centers'][0], 
+                                                        attrs['grid_deltas'][0])
+            except KeyError:
+                print("Applying fuzzy axis creation")
+                xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+                
+            #Calculate length of axes
+            nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+            #If grid precision is zero, apply strict gridding
+            #Otherwise, apply fuzzy gridding
+            if grid_precision == 0:
+                print("Applying strict gridding")
+                shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
+            else:
+                print("Applying fuzzy gridding")
+                shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
+                                                 precision=grid_precision)
             
-            #print('nshots: ' + str(nshots))
-            #print('nx, ny, nz: ' + str( (nx, ny, nz)  ) )
-            #print(nshots/(nx*ny*nz))
-            #print(nreps)
+            
+            print('nshots: ' + str(nshots))
+            print('nx, ny, nz: ' + str( (nx, ny, nz)  ) )
+            print(nshots/(nx*ny*nz))
+            print(nreps)
+            
             
         #If tdiode_hdf is set, load the pre-processed tdiode data
         if tdiode_hdf is not None:
@@ -223,7 +250,10 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
                 bz = np.cumsum( bz )*cal[2]
                 
                 #If a motion_format is set, apply the appropriate probe angle correction
-                if motion_format == 'fixed_rotation':
+                if motion_format == 'cartesian':
+                    #Don't need to make any correction
+                    pass 
+                elif motion_format == 'fixed_pivot':
                     #x,y,z is the probe's current position
                     x,y,z = srcgrp['pos'][i, :]
                     #rx, ry, rz is the location of the probe rotation point
@@ -265,6 +295,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False, verbose=False, offset_
                     bz =  ((np.cos(yaw)*np.sin(roll)*np.sin(pitch) - np.cos(roll)*np.sin(yaw))*bx + 
                            np.cos(pitch)*np.sin(roll)*by  +
                            (np.cos(roll)*np.cos(yaw) + np.sin(roll)*np.sin(pitch)*np.sin(yaw))*bz)
+                
                     
                 if grid:
                     #Get location to write this datapoint from the shotgridind
@@ -349,9 +380,9 @@ def calibrationFactor(attrs):
     #Atten is assumed to be in dB. We could use the units to check this,
     #but it always is in dB and it's just a stupid source for errors.
     #Print this warning message if the units are different, just in case
-    if attrs['xatten'][1].decode("utf-8") != 'dB':
+    if attrs['xatten'][1] != 'dB':
         print("WARNING: ATTEN UNITS DO NOT MATCH dB")
-        print(attrs['xatten'][1].decode("utf-8"))
+        print(attrs['xatten'][1])
         print("CONVERTING ANYWAY: CHECK YOUR UNITS!")
 
     #Convert atten to dB (if units set to dB)
@@ -466,14 +497,15 @@ if __name__ == "__main__":
     #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
     #current = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_current.hdf5") )
     
-    probe = 'PLL_B1'
-    run = 6
+    exp = 'LAPD_Jan2019'
+    probe = 'LAPD10'
+    run = 30
     
-    src = hdftools.hdfPath( '/Volumes/PVH_DATA/2019BIERMANN/RAW/' + 'run' + str(run) + '_' + probe + '_raw.hdf5')
-    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
+    src = hdftools.hdfPath( '/Volumes/PVH_DATA/' + exp + '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
+    tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/' + exp + '/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
     tdiode_hdf = None
     
-    dest = hdftools.hdfPath('/Volumes/PVH_DATA/2019BIERMANN/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
+    dest = hdftools.hdfPath('/Volumes/PVH_DATA/'+ exp + '/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
     
     #current = hdftools.hdfPath('/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run10_PL11B_current.hdf5')
     
@@ -486,6 +518,7 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
+    print(src.file)
     full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
     #cur_filepath = fullToCurrent(dest, current, verbose=True)
     util.timeTest(t0=tstart)

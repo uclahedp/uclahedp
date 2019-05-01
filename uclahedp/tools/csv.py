@@ -386,8 +386,8 @@ def missingKeys(attrs, required_keys, fatal_error=True):
     #TODO: Persistent bug here where this function says keys are missing
     #when they are not? Print statements added below to try and figure this out
     missing_keys = []
-    print(attrs)
-    print(required_keys)
+    #print(attrs)
+    #print(required_keys)
     for k in required_keys:
         if not k in attrs.keys():
             missing_keys.append(k)

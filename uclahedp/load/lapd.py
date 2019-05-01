@@ -135,13 +135,13 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         #Check to see if the motion controller reported actually exists in the
         #hdf file. If not, assume the probe was stationary (motion=None)
         #If motion_controller isn't in this list, lapdReadHDF can't handle it
-        #If motion controller is supported by this code, get the position array
+        
+        #Check if the motion controller provided is supported by the code and
         if motion_controller in ['6K Compumotor', 'NI_XZ', 'NI_XYZ']:
-            pos, controls, motion_attrs = readPosArray(src, controls)
+            pos, attrs = readPosArray(src, controls, attrs)
+
         else:
-            controls = None
-            pos, motion_attrs = None, None
-            
+            controls, pos = None, None
 
     #Create the destination file
     with h5py.File(dest.file, "a") as df:
@@ -202,10 +202,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         #If applicable, write the pos array to file
         if controls is not None:
             grp.require_dataset('pos', (nshots, 3), np.float32)[:] = pos
-            #Write any motion attributes to the pos array too
-            for k in motion_attrs:
-                grp['pos'].attrs[k] = motion_attrs[k]
-            del(pos, motion_attrs)
+            del pos
             
         
         #Create the axes
@@ -226,38 +223,71 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     return dest
     
 
-def readPosArray(src, controls,):
+def readPosArray(src, controls, motion_attrs):
      
     #This ugly initial code block extracts position information for drives
     #that are as-yet unsupported by bapsflib.
     #bool(motion) keeps track of whether there WAS motion for later
     #Currently, this assumes only ONE XZ or XYZ drive is being used.
     #Not a problem for now, but just FYI
-    motion_attrs = {'unit':'cm'}
+    motion_attrs['motion_unit'] = ('cm', '')
+    
+    print("Reading position array: " + str(controls[0][0]))
+    
+    control = controls[0][0]
+    receptacle = controls[0][1]
 
-    if controls[0][0] == '6K Compumotor':
-        motion_format = 'fixed_pivot'  
+    #For the 6K, we can check to see if there is actually one present
+    if control == '6K Compumotor' :
+        motion_attrs['motion_format'] = ('fixed_pivot', '')  
         with bapsf_lapd.File(src, silent=True)  as sf: 
-            src_controls = sf.controls
-            if controls[0][0] in src_controls.keys():
+            
+            if control in sf.controls.keys():
+                src_controls = sf.controls
                 pos = sf.read_controls(controls)['xyz']
-            else:
-                pos, controls = None, None
+                
+                #Extract some other parameters
+                #This is currently ALL the motion lists in the file
+                temp_list = sf.controls['6K Compumotor'].configs[receptacle]['motion lists']
+                dset= sf[sf.controls['6K Compumotor'].configs[receptacle]['dset paths'][0]]
+                motion_list = ( dset['Motion list'][0] ).decode("utf-8")
+                
+                
+                motion_attrs['motion_list'] = (motion_list, '')
+                motion_attrs['grid_deltas'] = (list(temp_list[motion_list]['delta']), "")
+                motion_attrs['grid_centers'] = (list(temp_list[motion_list]['center']), "")
+                motion_attrs['grid_npoints'] = (list(temp_list[motion_list]['npoints']), "")
+            
+ 
+            
 
+  
     #If the controlling drive is the NI_XZ drive...
-    elif controls[0][0] == 'NI_XZ':
-        motion_format = 'fixed_pivot' #Defines how to correct angles
+    elif control == 'NI_XZ':
+        motion_attrs['motion_format'] = ('fixed_pivot', '')   #Defines how to correct angles
         with h5py.File(src, "r") as sf:
             motion_group = sf['Raw data + config/NI_XZ']
             for item in motion_group.items():
-                #Find the group, which will be the motion group, and 
-                #copy over its attributes for future reference
                 if isinstance(item[1], h5py.Group):
-                    config_name = str(item[0])
-                    for k in motion_group.attrs.keys():
-                        motion_attrs[k] = motion_group.attrs[k]
-                    for k in motion_group[config_name].attrs.keys():
-                        motion_attrs[k] = motion_group[config_name].attrs[k]
+                    motion_list = str(item[0])
+                    mlpath = 'Raw data + config/NI_XZ/' + motion_list
+
+                    npoints = list(sf[mlpath].attrs['Nx'],
+                               1.0,
+                               sf[mlpath].attrs['Nz'])
+                    
+                    center = list(sf[mlpath].attrs['x0'],
+                               0.0,
+                               sf[mlpath].attrs['z0'])
+                    
+                    delta = list(sf[mlpath].attrs['dx'],
+                               0.0,
+                               sf[mlpath].attrs['dz'])
+                    
+            motion_attrs['motion_list'] = (motion_list, '')
+            motion_attrs['grid_deltas'] = (delta, "")
+            motion_attrs['grid_centers'] = (center, "")
+            motion_attrs['grid_npoints'] = (npoints, "")
             
             runtimelist = sf['Raw data + config/NI_XZ/Run time list']
             xpos =   runtimelist['x']
@@ -272,22 +302,36 @@ def readPosArray(src, controls,):
 
             
     #If the controlling drive is the NI_XYZ drive (Krishna's)...
-    elif controls[0][0] == 'NI_XYZ':
-        motion_format = 'fixed_pivot'
+    elif control == 'NI_XYZ':
+        motion_attrs['motion_format'] = ('fixed_pivot', '')  
         with h5py.File(src, "r") as sf:
             try:
                 motion_group = sf['Raw data + config/NI_XYZ']
             except KeyError:
                 return None
+            
             for item in motion_group.items():
-                #Find the group, which will be the motion group, and 
-                #copy over its attributes for future reference
                 if isinstance(item[1], h5py.Group):
-                    config_name = str(item[0])
-                    for k in motion_group.attrs.keys():
-                        motion_attrs[k] = motion_group.attrs[k]
-                    for k in motion_group[config_name].attrs.keys():
-                        motion_attrs[k] = motion_group[config_name].attrs[k]
+                    motion_list = str(item[0])
+                    mlpath = 'Raw data + config/NI_XYZ/' + motion_list
+
+                    npoints = list(sf[mlpath].attrs['Nx'],
+                               sf[mlpath].attrs['Ny'],
+                               sf[mlpath].attrs['Nz'])
+                    
+                    center = list(sf[mlpath].attrs['x0'],
+                               sf[mlpath].attrs['y0'],
+                               sf[mlpath].attrs['z0'])
+                    
+                    delta = list(sf[mlpath].attrs['dx'],
+                               sf[mlpath].attrs['dy'],
+                               sf[mlpath].attrs['dz'])
+                    
+            motion_attrs['motion_list'] = (motion_list, '')
+            motion_attrs['grid_deltas'] = (delta, "")
+            motion_attrs['grid_centers'] = (center, "")
+            motion_attrs['grid_npoints'] = (npoints, "")
+
             runtimelist = sf['Raw data + config/NI_XYZ/Run time list']
             xpos =   runtimelist['x']
             ypos = runtimelist['y']
@@ -298,9 +342,8 @@ def readPosArray(src, controls,):
             pos[:,1] = ypos
             pos[:,2] = zpos
             del(xpos, ypos, zpos)
-    
-    motion_attrs['motion_format'] = motion_format
-    return pos, controls, motion_attrs
+            
+    return pos, motion_attrs
 
     
 
@@ -308,19 +351,34 @@ def readPosArray(src, controls,):
     
 #Simple test program
 if __name__ == "__main__":
-
-    hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
-    csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
-    dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
     
-    hdf_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/HDF/'
-    csv_dir = '/Volumes/PVH_DATA/LAPD_Mar2018/METADATA/'
-    dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Mar2018/RAW/run10_tdiode_raw.hdf5")
+    exp = 'LAPD_Jan2019'
+    probe = 'LAPD10'
+    run = 30
+
+    #hdf_dir = os.path.join("F:", "LAPD_Mar2018", "HDF")
+    #csv_dir = os.path.join("F:", "LAPD_Mar2018", "METADATA")
+    #dest = hdftools.hdfPath( r"F:/LAPD_Mar2018/RAW/run102_PL11B_raw.hdf5")
+    
+    hdf_dir = '/Volumes/PVH_DATA/' + exp + '/HDF/'
+    csv_dir = '/Volumes/PVH_DATA/' + exp + '/METADATA/'
+    dest = hdftools.hdfPath( '/Volumes/PVH_DATA/' +  exp +  '/RAW/run' + str(run) + '_' + probe + '_raw.hdf5')
+
+    #hdf_dir = '/Volumes/PVH_DATA/LAPD_Jan2019/HDF/'
+    #csv_dir = '/Volumes/PVH_DATA/LAPD_Jan2019/METADATA/'
+    #dest = hdftools.hdfPath( "/Volumes/PVH_DATA/LAPD_Jan2019/RAW/testing.hdf5")
+    
+    
+    #Delete the output file if it already exists
+    try:
+        os.remove(dest.file)
+    except FileNotFoundError:
+        pass
 
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    x =  lapdToRaw(10, 'tdiode', hdf_dir, csv_dir, dest, verbose=True)
+    x =  lapdToRaw(run, probe, hdf_dir, csv_dir, dest, verbose=True)
     util.timeTest(t0=tstart)
     util.mem()
     print('done')

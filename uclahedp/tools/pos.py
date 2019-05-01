@@ -9,22 +9,34 @@ def shotClosestTo(pos, point=(0,0,0) ):
     dist = np.sqrt( (pos[:,0] - point[0])**2 + 
                   (pos[:,1] - point[1])**2 + 
                   (pos[:,2] - point[2])**2 )
-    
     return np.argmin(dist)
 
 
-
-def makeAxes(pos, precision=.1):
-    #Round to within the precision given
-    #+0.0 prevents weird -0's being in the resulting array
-    xpos = np.round(pos[:,0]/precision, 0)*precision + 0.0
-    ypos = np.round(pos[:,1]/precision, 0)*precision + 0.0
-    zpos = np.round(pos[:,2]/precision, 0)*precision + 0.0
-    xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
-    return xaxes, yaxes, zaxes
+def calcNpoints(pos, xaxis, yaxis, zaxis):
+    nx,ny,nz = len(xaxis), len(yaxis), len(zaxis)
+    nshots = len(pos)
+    npos = nx*ny*nz
+    nreps =np.floor(nshots/npos)
+    
+    return nx, ny, nz, nreps
 
 
-def gridShotIndList(pos, precision=.1):
+def makeAxes(npoints, centers, deltas):
+    """
+    This function maxes axes a priori from grid specifications
+    """
+    #TODO: Do these formulas work if npoints is even??
+    #We don't usually do this, but it's possible...
+    xaxis = centers[0] - deltas[0]*(npoints[0] - 1)/2.0
+    yaxis = centers[1] - deltas[1]*(npoints[1] - 1)/2.0
+    zaxis = centers[2] - deltas[2]*(npoints[2] - 1)/2.0
+    return xaxis, yaxis, zaxis
+
+
+def guessAxes(pos, precision=0.1):
+    """
+    This function guesses the axes for a given grid based on the position array
+    """
     #Round to within the precision given
     #+0.0 prevents weird -0's being in the resulting array
     xpos = np.round(pos[:,0]/precision, 0)*precision + 0.0
@@ -33,57 +45,77 @@ def gridShotIndList(pos, precision=.1):
     
     nshots = len(xpos)
     
-    xaxes, yaxes, zaxes = np.unique(xpos), np.unique(ypos), np.unique(zpos)
-    nx, ny, nz  = len(xaxes), len(yaxes), len(zaxes)
+    xaxis, yaxis, zaxis = np.unique(xpos), np.unique(ypos), np.unique(zpos)
     
-    nreps =np.floor(nshots/(nx*ny*nz))
+    return xaxis, yaxis, zaxis
+
+
+def fuzzyGrid(pos, xaxis, yaxis, zaxis, precision=0.1):
+    """
+    Grid's positional data by trying to match each point to the nearest grid
+    point. Nreps is calculated and enforced by throwing away any data that
+    overfills a gridpoint.
+    """
+    #Round to within the precision given
+    #+0.0 prevents weird -0's being in the resulting array
+    xpos = np.round(pos[:,0]/precision, 0)*precision + 0.0
+    ypos = np.round(pos[:,1]/precision, 0)*precision + 0.0
+    zpos = np.round(pos[:,2]/precision, 0)*precision + 0.0
+    
+    
+    nx, ny, nz, nreps = calcNpoints(pos, xaxis, yaxis, zaxis)
+    
+    nshots = int(nx*ny*nz*nreps)
+    
     
     #This array will be used to count the number of reps we've found in each place
     #that will make sure each one gets a unique rep number
-    countgrid = np.zeros( (nx,ny,nz) )
+    countgrid = np.zeros((nx,ny,nz))
     
-    #shotinds[i,:] = (xi, yi, zi, irep)
-    shotind = np.zeros([nshots, 4],  dtype=np.int32)
+
+    #This array will hold the grid indices for each shot
+    shotindarr = np.zeros([nshots, 4],  dtype=np.int32)
     
     for i in range(nshots):
-        xi = np.argmin( np.abs(xaxes - xpos[i]) )
-        yi = np.argmin( np.abs(yaxes - ypos[i]) )
-        zi = np.argmin( np.abs(zaxes - zpos[i]) )
+        xi = np.argmin( np.abs(xaxis - xpos[i]) )
+        yi = np.argmin( np.abs(yaxis - ypos[i]) )
+        zi = np.argmin( np.abs(zaxis - zpos[i]) )
         irep = countgrid[xi,yi,zi]
         
         # Only add up to nreps at each spot.
         # After that, shots will just be thrown away
         if irep < nreps:
-            shotind[i,:] = np.array( (xi,yi,zi, irep )   )
+            shotindarr[i,:] = np.array( (xi,yi,zi, irep )   )
             countgrid[xi,yi,zi] = countgrid[xi,yi,zi] + 1
 
-    return shotind, xaxes, yaxes, zaxes
+    return shotindarr
 
+
+
+
+def strictGrid(nx,ny,nz,nreps):
+    """
+    Grid's positional data by assuming a number of reps and that the probe
+    was moved in the standard X->Y->Z order. 
+    """
+    nshots = nx*ny*nz*nreps
+    
+    shotindarr = np.zeros([nshots, 4],  dtype=np.int32)
+    
+    for z in range(nz):
+        for y in range(ny):
+            for x in range(nx):
+                for r in range(nreps):
+                    shot = r + x*nreps + y*nreps*nx + z*nreps*nx*ny
+                    print(shot)
+                    shotindarr[shot, :] = [x,y,z,r]
+    return shotindarr
+    
+    
 
 
 if __name__ == "__main__":
-    src = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "test_PL11B.hdf5") )
-    
-    with h5py.File(src.file, 'a') as sf:
-        pos = sf[src.group]['pos'][:]
+ 
+    print(strictGrid(6,6,1,2))
         
         
-        
-    shotind, xaxes, yaxes, zaxes = gridShotIndList(pos)
-        
-    point = (4.5,0,-9.5)
-    print('Requested position: ' + str(point) )
-    shot = shotClosestTo(pos, point=point ) 
-    print('Closest shot: ' +  str(shot)  )
-    print('Actual position of shot ' + str(np.round(pos[shot,:],1))   )
-        
-        
-    
-    gridind, xaxes, yaxes, zaxes = gridShotIndGrid(pos)
-    print(gridind.shape)
-    xi, yi, zi = 9, 0, 7
-    predicted_pos = (xaxes[xi], yaxes[yi], zaxes[zi]  )
-    print('Predicted position: ' + str(predicted_pos))
-    shots = gridind[xi, yi, zi, :]
-    print('Shot numbers: ' + str(shots))
-    print('Actual positions at those shot numbers: \n' + str(pos[shots,:]) )

@@ -508,7 +508,10 @@ def fullToCurrent(src, dest, verbose=False):
         if nti > 10000:
             print("WARNING: NTI IS LARGE! CURRENT CALCULATION WILL TAKE A VERY LONG TIME!")
             print("If you have better things to do with your CPU hours, try thinning the data first.")
-
+        
+        #Create the destination file directory if necessary
+        hdftools.requireDirs(dest.file)
+        
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
             

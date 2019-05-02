@@ -166,7 +166,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             grp.require_dataset("data", (nshots, nti, nchan), np.float32, 
                                 chunks=(1, np.min([nti, 20000]), 1), 
                                 compression='gzip')
-            grp['data'].attrs['unit'] = ('V', '')
+            grp['data'].attrs['unit'] = 'V'
             
             grp.attrs['dt'] = [s.encode('utf-8') for s 
                      in [str(dt.value), str(dt.unit)] ]
@@ -208,14 +208,14 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         
         #Create the axes
         grp.require_dataset('shots', (nshots,), np.float32, chunks=True )[:] = np.arange(nshots)
-        grp['shots'].attrs['unit'] = ('','')
+        grp['shots'].attrs['unit'] = ''
         
         t = np.arange(nti)*dt
         grp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = t.value
-        grp['time'].attrs['unit'] =  (str(t.unit), '')
+        grp['time'].attrs['unit'] =  str(t.unit)
         
         grp.require_dataset('chan', (nchan,), np.float32, chunks=True)[:] = np.arange(nchan)
-        grp['chan'].attrs['unit'] = ('', '')
+        grp['chan'].attrs['unit'] = ''
         
         
     #Clear the LAPD HDF file from memory
@@ -231,7 +231,7 @@ def readPosArray(src, controls, motion_attrs):
     #bool(motion) keeps track of whether there WAS motion for later
     #Currently, this assumes only ONE XZ or XYZ drive is being used.
     #Not a problem for now, but just FYI
-    motion_attrs['motion_unit'] = (str("cm"), '')
+    motion_attrs['motion_unit'] = ("cm", '')
     
     print("Reading position array: " + str(controls[0][0]))
     
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     
     exp = 'LAPD_Jan2019'
     probe = 'LAPD_C6'
-    run = 30
+    run = 25
 
     
     hdf_dir =  os.path.join("F:", exp, "HDF")

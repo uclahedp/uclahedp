@@ -198,7 +198,6 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
             min_t0ind = np.min(t0indarr[goodshots])
             max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
             #Compute new nti
-            print(max_t0shift)
             nti = nti - max_t0shift 
             
         if verbose:
@@ -396,16 +395,16 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                 dimlabels = ['time', 'xaxis', 'yaxis', 'zaxis', 'reps', 'chan']
                 
                 destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxis
-                destgrp['xaxis'].attrs['unit'] = attrs['motion_unit']
+                destgrp['xaxis'].attrs['unit'] = attrs['motion_unit'][0]
                 
                 destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxis
-                destgrp['yaxis'].attrs['unit'] = attrs['motion_unit']
+                destgrp['yaxis'].attrs['unit'] = attrs['motion_unit'][0]
                 
                 destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxis
-                destgrp['zaxis'].attrs['unit'] = attrs['motion_unit']
+                destgrp['zaxis'].attrs['unit'] = attrs['motion_unit'][0]
                 
                 destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
-                destgrp['reps'].attrs['unit'] = ('','')
+                destgrp['reps'].attrs['unit'] = ''
 
             else:
                 dimlabels = ['shots', 'time', 'chan']
@@ -423,7 +422,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
             destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
 
            
-            destgrp['data'].attrs['unit'] = ('G', '')
+            destgrp['data'].attrs['unit'] = 'G'
             destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
             
             
@@ -562,7 +561,7 @@ if __name__ == "__main__":
     
     exp = 'LAPD_Jan2019'
     probe = 'LAPD_C6'
-    run = 30
+    run = 25
     
     src = hdftools.hdfPath( os.path.join("F:", exp, "RAW", 'run' + str(run) + '_' + probe + '_raw.hdf5'))
     tdiode_hdf = hdftools.hdfPath(os.path.join("F:", exp, "FULL", 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5'))
@@ -582,7 +581,6 @@ if __name__ == "__main__":
     print('reading')
     util.mem()
     tstart = util.timeTest()
-    print(src.file)
     full_filepath = bdotRawToFull(src, dest, tdiode_hdf=tdiode_hdf, grid=True, verbose=True, debug=False, 
                                   offset_range = (0, -100), offset_rel_t0 = (False, True), 
                                   strict_axes = True, strict_grid = False, grid_precision=0.1)

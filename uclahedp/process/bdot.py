@@ -270,12 +270,12 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                     #for each shot
                     #If offset_rel_t0 is set for either point, add the t0 array
                     if offset_rel_t0[0]:
-                        offset_a = offset_range[0] + t0indarr[i]
+                        offset_a = offset_range[0] + t0indarr[i] - ta
                     else:
                         offset_a = offset_range[0]
                         
                     if offset_rel_t0[1]:
-                        offset_b = offset_range[1] + t0indarr[i]
+                        offset_b = offset_range[1] + t0indarr[i] - ta
                     else:
                         offset_b = offset_range[1]
                     
@@ -396,16 +396,16 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                 dimlabels = ['time', 'xaxis', 'yaxis', 'zaxis', 'reps', 'chan']
                 
                 destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxis
-                destgrp['xaxis'].attrs['unit'] = srcgrp.attrs['motion_unit']
+                destgrp['xaxis'].attrs['unit'] = attrs['motion_unit']
                 
                 destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxis
-                destgrp['yaxis'].attrs['unit'] = srcgrp.attrs['motion_unit']
+                destgrp['yaxis'].attrs['unit'] = attrs['motion_unit']
                 
                 destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxis
-                destgrp['zaxis'].attrs['unit'] = srcgrp.attrs['motion_unit']
+                destgrp['zaxis'].attrs['unit'] = attrs['motion_unit']
                 
                 destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
-                destgrp['reps'].attrs['unit'] = ''
+                destgrp['reps'].attrs['unit'] = ('','')
 
             else:
                 dimlabels = ['shots', 'time', 'chan']
@@ -423,7 +423,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
             destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
 
            
-            destgrp['data'].attrs['unit'] = 'G'
+            destgrp['data'].attrs['unit'] = ('G', '')
             destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
             
             

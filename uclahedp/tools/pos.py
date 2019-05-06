@@ -35,6 +35,12 @@ def makeAxes(nx, ny, nz, dx, dy, dz, x0, y0, z0):
     yaxis = np.arange(ny)*dy + ystep
     zaxis = np.arange(nz)*dz + zstep
     
+    #Sort the axes: even if dxyz was negative, we want the axis to be in
+    #ascending order.
+    xaxis.sort()
+    yaxis.sort()
+    zaxis.sort()
+    
     return xaxis, yaxis, zaxis
 
 
@@ -122,6 +128,6 @@ def strictGrid(nx,ny,nz,nreps):
 
 if __name__ == "__main__":
  
-    print(strictGrid(6,6,1,2))
+    print(makeAxes(21,1,1,-1,0,0,0,0,0))
         
         

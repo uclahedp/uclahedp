@@ -307,9 +307,9 @@ def readPosArray(src, controls, motion_attrs):
                     motion_list = str(item[0])
                     mlpath = 'Raw data + config/NI_XYZ/' + motion_list
 
-                    nx, ny, nz = sf[mlpath].attrs['Nx'], 1.0, sf[mlpath].attrs['Nz']
-                    dx, dy, dz = sf[mlpath].attrs['dx'], 0.0, sf[mlpath].attrs['dz']
-                    x0, y0, z0 = sf[mlpath].attrs['x0'], 0.0, sf[mlpath].attrs['z0']
+                    nx, ny, nz = sf[mlpath].attrs['Nx'], sf[mlpath].attrs['Ny'], sf[mlpath].attrs['Nz']
+                    dx, dy, dz = sf[mlpath].attrs['dx'], sf[mlpath].attrs['dy'], sf[mlpath].attrs['dz']
+                    x0, y0, z0 = sf[mlpath].attrs['x0'], sf[mlpath].attrs['y0'], sf[mlpath].attrs['z0']
 
 
             runtimelist = sf['Raw data + config/NI_XYZ/Run time list']
@@ -333,6 +333,7 @@ def readPosArray(src, controls, motion_attrs):
     motion_attrs['x0'] = (x0, "")
     motion_attrs['y0'] = (y0, "")
     motion_attrs['z0'] = (z0, "")
+
 
     return pos, motion_attrs
 

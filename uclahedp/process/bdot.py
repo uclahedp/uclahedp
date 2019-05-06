@@ -149,6 +149,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                     xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
                                                             dx,dy,dz,
                                                             x0,y0,z0)
+               
                 except KeyError:
                     print("Missing axis parameters: attempting fuzzy axis creation")
                     xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
@@ -158,6 +159,14 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                 
             #Calculate length of axes
             nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+            
+            if debug:
+                print("** Gridding parameters **")
+                print('nshots: ' + str(nshots))
+                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
+                if strict_axes:
+                     print('dx, dy, dz: ' + str((dx, dy, dz)))
+                     print('x0, y0, z0: ' + str((x0, y0, z0)))
             
             #This line SHOULD be redundent, but sometimes it's necessary.
             #It is possible, when combining two motion lists, to get
@@ -176,12 +185,7 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                 shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
                                                  precision=grid_precision)
             
-            if debug:
-                print("** Gridding parameters **")
-                print('nshots: ' + str(nshots))
-                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
-                print('dx, dy, dz: ' + str((dx, dy, dz)))
-                print('x0, y0, z0: ' + str((x0, y0, z0)))
+        
 
             
             

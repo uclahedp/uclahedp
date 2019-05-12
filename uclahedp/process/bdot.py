@@ -15,6 +15,10 @@ import h5py
 from scipy.signal import detrend as detrend
 import astropy.units as u
 
+from scipy.optimize import curve_fit as curve_fit
+import csv
+import matplotlib.pyplot as plt
+
 from uclahedp.tools import csv as csvtools
 from uclahedp.tools import hdf as hdftools
 from uclahedp.tools import util
@@ -905,12 +909,167 @@ def fullToCurrent(src, dest, verbose=False):
                 
         return dest
 
+#These two functions are used in the calibrateProbe routine
+def lfProbeArea(freq, mag, nturns, hturns, gain,  Rp, r):
+     mu0 = 4*np.pi*1e-7
+     return mag*Rp*r/(gain*hturns*np.power(4/5, 1.5)*mu0*nturns)/(2*np.pi*freq)
+
+def hfCoil(freq, nturns, gain, area, Rp, r, tau, tdelay):
+     mu0 = 4*np.pi*1e-7
+     return area*nturns*gain*(16/np.power(5,1.5))*mu0/(r*Rp)*(tau-tdelay)*np.power(freq,2)
     
+def calibrateProbe(csvfile, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [5e4,1e5]):
+     """
+     csvfile -> Bdot calibration csv file with the following columns...
+     
+     "freq" -> Frequencies in Hz
+     
+     For s in [x,y,z] EITHER
+     "smag" and "sphase" with magnitude in dB and phase in degrees
+     OR
+     "sreal" and "sim" with real and imaginary parts in dB
+     
+     
+     Required Keywords (Likely to change)
+     nturns -> number of bdot coil turns
+     gain -> gain of differential amplifier used for calibration
+     
+     Other Keywords (less likely to change bc they are part of the LAPD's bdot
+     testing setup)
+     
+     Rp -> Resistance of the resistor used for measuring the coil current.
+     r -> Radius of the Helmholtz coil in meters
+     """
+    
+     #Figure out the number of lines in the file, assuming one header row
+     #There really doesn't seem to be a better way of doing this?
+     with open(file) as csvfile:
+          reader = csv.DictReader(csvfile)
+          nlines = sum(1 for row in reader) - 1
 
+     freq = np.zeros(nlines)
+     #Signal contains mag, phase, real, imaginary in that order for each 
+     # of the three channels
+     sig = np.zeros([nlines, 4, 3])
+     
+     fit = np.zeros([nlines,3])
+     
+     with open(file) as csvfile:
+          reader = csv.DictReader(csvfile)
+          keys = reader.fieldnames
+          
+          #Determine whether the file contains magnitude/phase data
+          #or real/imaginary data
+          #The network analyzer stores both...
+          if 'xmag' in keys:
+               mag_phase = True
+          elif 'xreal' in keys:
+               mag_phase = False
+          else:
+               raise(KeyError("No mag/phase or real/im keys found!"))
 
+          #Adjust index because of header
+          header = next(reader)
+          for i, row in enumerate(reader):
+               #This is assumed to be in Hz
+               freq[i] = float(row['freq'])
+               
+               if mag_phase:
+                    #Magnitudes are all assumed to be in dB
+                    sig[i, 0, 0] = pow(10.0, float(row['xmag'])/20.0)
+                    sig[i, 0, 1] = pow(10.0, float(row['ymag'])/20.0)
+                    sig[i, 0, 2] = pow(10.0, float(row['zmag'])/20.0)
+               
+                    #Phase is assumed to be in degrees
+                    #Why ths network analyzer does this...who knows
+                    sig[i, 1, 0] = np.radians(  float(row['xphase'])  )
+                    sig[i, 1, 1] = np.radians(  float(row['xphase'])  )
+                    sig[i, 1, 2] = np.radians(  float(row['xphase'])  )
+     
+               else:
+                    #TODO: test this part? (I don't have a file like this handy)
+                    #Real and imaginary parts are all assumed to be in dB
+                    sig[i, 2, 0] = pow(10.0, float(row['xreal'])/20.0)
+                    sig[i, 2, 1] = pow(10.0, float(row['yreal'])/20.0)
+                    sig[i, 2, 2] = pow(10.0, float(row['zreal'])/20.0)
+                    sig[i, 3, 0] = pow(10.0, float(row['xim'])/20.0)
+                    sig[i, 3, 1] = pow(10.0, float(row['yim'])/20.0)
+                    sig[i, 3, 2] = pow(10.0, float(row['zim'])/20.0)
+          
+          #Whichever data wasn't read in, calculate it          
+          if mag_phase:
+               #real = mag*cos(phase)
+               sig[:,2,:] = sig[:,0,:]*np.cos(sig[:,1,:])
+               #imaginary = mag*sin(phase)
+               sig[:,3,:] = sig[:,0,:]*np.sin(sig[:,1,:])
+          else:
+               #mag = sqrt(real^2 + im^2)
+               sig[:,0,:] = np.sqrt(np.power(sig[:,2,:],2)  + np.power(sig[:,3,:],2))
+               #phase = arctan(im/real)
+               sig[:,1,:] = np.arctan(sig[:,3,:]/sig[:,2,:])
+                  
 
+          area = np.zeros(3)
+          tau = np.zeros(3)
+          tdelay = np.zeros(3)
+          
+          
+          a = np.argmin(np.abs(freq - area_freq_range[0]))
+          b = np.argmin(np.abs(freq - area_freq_range[1] ))
+          
+          for i in range(3):
+               #Calculate the area of the coil data from just the specified
+               #frequency range
+               area[i] = np.mean( lfProbeArea(freq[a:b], sig[a:b,0,i], 
+                                       nturns, hturns,gain, Rp, r))
+               
+               #Now fit the full signal (with the area fixed) for the impedence 
+               #time constant tau
+               fcn = lambda freq, tau, tdelay: hfCoil(freq, 
+                                                      nturns, gain, area[i], 
+                                                      Rp, r, tau, tdelay) 
+          
+               popt, pcov = scipy.optimize.curve_fit(fcn, freq, sig[:,2,i], 
+                                                     p0=[ 0,0])
+               tau[i] = popt[0]
+               tdelay[i] = popt[1]
+               
+               fit[:,i] = fcn(freq,  tau[i], tdelay[i])
+               
+              
+          print("**** Bdot Calibration Report *****")
+          for i in range(3):
+               axes = ['x', 'y', 'z']
+               print("************")
+               print(axes[i] + 'area: ' + str(np.round(area[i]*1e6, decimals=3)) + ' mm^2')
+               print(axes[i] + 'tau: ' + str(np.round(tau[i]*1e9, decimals=3)) + ' ns')
+               print(axes[i] + 'tdelay: ' + str(np.round(tdelay[i]*1e9, decimals=3)) + ' ns')
+               
+               
+          fig, ax = plt.subplots( nrows=3, figsize = [3,9], sharex=True)
+          fig.subplots_adjust( hspace=.2)
+          
+          for i in range(3):
+               
+               if i ==2:
+                    ax[i].set_xlabel('Frequency (kHz)', fontsize=16)
+
+               ax[i].set_title(axes[i])
+               ax[i].plot(freq*1e-3, sig[:,2,i], linewidth=3)
+               ax[i].plot(freq*1e-3, fit[:,i])
+               ax[i].set_xscale('log')
+               ax[i].set_xlim(20, 1e4)
+               
+               ax[i].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=16)
+               
 
 if __name__ == "__main__":
+     
+     csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD1_xgain.csv")
+     calibrateProbe(csvfile, 10, 100)
+     
+     
+     """
     #raw = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_raw.hdf5") )
     #tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_tdiode_raw.hdf5") )
     #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )
@@ -945,3 +1104,4 @@ if __name__ == "__main__":
     util.timeTest(t0=tstart)
     util.mem()
     print('done')
+    """

@@ -43,7 +43,8 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
             Path string to location processed bdot data should be written out
 
         tdiode_hdf:  hdfPath object
-            Path to a raw hdf5 file containing tdiode data. T
+            Path to a raw hdf5 file containing tdiode data. If no HDF file is
+            provided, no timing correction will be applied.
             
         grid: Boolean
             If grid is true, output will be written in cartesian grid array

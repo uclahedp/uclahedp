@@ -437,7 +437,360 @@ def bdotRawToFull(src, dest, tdiode_hdf=None, grid=False,
                 
             return True
         
+def bdotRawToProc(src, dest, tdiode_hdf=None, grid=False, 
+                     verbose=False, debug = False,
+                     offset_range=(0,100), offset_rel_t0 = (False, False), 
+                     grid_precision=0.1, strict_grid=False, strict_axes = False):
+    """ Processes raw bdot data, outputing positions and correcting for timing.
+
+    Parameters
+    ----------
+        src: hdfPath object
+            Path string to a raw hdf5 file containing bdot data
+            
+        dest: hdfPath object
+            Path string to location processed bdot data should be written out
+
+        tdiode_hdf:  hdfPath object
+            Path to a raw hdf5 file containing tdiode data. T
+            
+        grid: Boolean
+            If grid is true, output will be written in cartesian grid array
+            format, eg. [nti, nx, ny, nz, nreps, nchan]. Otherwise, output will
+            be in [nshots, nti, nchan] format
+            
+        offset_range: tuple
+            Tuple of indices between which the average of the signal will be
+            computed and subtracted from the entire signal to correct for
+            offset. This should be a segment with just noise, ideally at the
+            very beginning of the dataset. Longer is better. 
+            Default is (0,100)
+            
+        offset_rel_t0: Tuple of booleans
+            If either of these values is set to True, the coorresponding
+            offset_range value will be taken to be relative to the t0 index
+            for that each shot. For example, if t0=2000 for a shot, 
+            offset_range=(10, -100), and offset_rel_t0 = (False, True), then
+            the offset will be computed over the range (10, 1900)
+            
+            
+        grid_precision: float
+            This is the precision to which position values will be rounded
+            before being fit onto the grid. Only applies to fuzzy axis and grid
+            creation.
+            
+        strict_axes: boolean
+            If true, attempt to calculate axes from saved grid parameters.
+            Default is false, which attempts to calculate axes by looking at
+            position values.
+            
+        strict_grid: boolean
+            If true, strictly unravel data onto the axes, assuming the probe
+            moved in order reps->X->Y->Z. This will NOT correctly handle
+            points where the probe was not at the requested position. Default
+            is false, which applys "fuzzy gridding", which tries to find the
+            best grid position for each shot individually.
+
+
+    Returns
+    -------
+       True (if executes to the end)
+    """ 
+
+    # ******
+    # Load data from the raw HDF file
+    # ******
+    with h5py.File(src.file, 'r') as sf:
+         
+        #Get the datagroup
+        srcgrp = sf[src.group]
         
+        #Create dictionary of attributes
+        attrs = hdftools.readAttrs(srcgrp)
+        
+        #Check for keys always required by this function
+        req_keys = ['xarea', 'yarea', 'zarea',
+                    'xatten', 'yatten', 'zatten', 'gain',
+                    'xpol', 'ypol', 'zpol', 'roll', 
+                    'probe_origin_x', 'probe_origin_y', 'probe_origin_z',
+                    'dt', 'nturns']
+       
+
+
+        if  'pos' in srcgrp:
+            pos = srcgrp['pos'][:] #Read the entire array in
+            #If pos array exists, there are keywords required for that too.
+            motion_format = attrs['motion_format'][0]
+            if motion_format == 'fixed_pivot':
+                req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
+            elif motion_format == 'cartesian':
+                pass
+            else:
+                raise ValueError("Motion format unrecognized: " + str(attrs['motion_format'][0]) )
+            
+        else:
+            #If no position information is given, a single explicit position
+            #is required. 
+            req_keys = req_keys + ['xpos', 'ypos', 'zpos']
+            grid = False #Can't grid data if there's no pos array!
+            motion_format = None
+            
+        #Process the required keys, throwing an error if any cannot be found
+        csvtools.missingKeys(attrs, req_keys, fatal_error=True)
+        
+
+        #Extract the shape of the source data
+        nshots, nti, nchan = srcgrp['data'].shape
+        
+        #If requested by keyword, apply gridding
+        if grid:
+            
+            #If grid parameters exist in the attrs, generate an exact grid
+            #If not, generate a guess
+            if strict_axes:
+                try:
+                    print("Applying stric axis creation")
+                    nx = attrs['nx'][0]
+                    ny = attrs['ny'][0]
+                    nz = attrs['nz'][0]
+                    dx = attrs['dx'][0]
+                    dy = attrs['dy'][0]
+                    dz = attrs['dz'][0]
+                    x0 = attrs['x0'][0]
+                    y0 = attrs['y0'][0]
+                    z0 = attrs['z0'][0]
+                    xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
+                                                            dx,dy,dz,
+                                                            x0,y0,z0)
+               
+                except KeyError:
+                    print("Missing axis parameters: attempting fuzzy axis creation")
+                    xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+            else:
+                print("Applying fuzzy axis creation")
+                xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+                
+            #Calculate length of axes
+            nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+            
+            if debug:
+                print("** Gridding parameters **")
+                print('nshots: ' + str(nshots))
+                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
+                if strict_axes:
+                     print('dx, dy, dz: ' + str((dx, dy, dz)))
+                     print('x0, y0, z0: ' + str((x0, y0, z0)))
+            
+            #This line SHOULD be redundent, but sometimes it's necessary.
+            #It is possible, when combining two motion lists, to get
+            #some extra shots at the end of the datarun that don't have
+            #positions associated. Recalculating this here ensures we only
+            #take the ones relevant to this grid
+            nshots = nx*ny*nz*nreps
+            
+            #If grid precision is zero, apply strict gridding
+            #Otherwise, apply fuzzy gridding
+            if strict_grid:
+                print("Applying strict gridding")
+                shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
+            else:
+                print("Applying fuzzy gridding")
+                shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
+                                                 precision=grid_precision)
+            
+            
+        #If tdiode_hdf is set, load the pre-processed tdiode data
+        if tdiode_hdf is not None:
+            if verbose:
+                print("Loading tdiode array from file.")
+            with h5py.File(tdiode_hdf.file, 'r') as sf:
+                grp = sf[tdiode_hdf.group]
+                t0indarr = grp['t0indarr'][:]
+                goodshots = grp['goodshots'][:]
+            #We will remove up to max_t0shift indices from each array such that
+            #the t0 indices all line up.
+            min_t0ind = np.min(t0indarr[goodshots])
+            max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
+            #Compute new nti
+            nti = nti - max_t0shift 
+            
+        if verbose:
+            print("Opening destination HDF file")
+        
+        #Create the destination file directory if necessary
+        hdftools.requireDirs(dest.file)
+
+        #Open the destination file
+        #This exists WITHIN the open statement for the source file, so the
+        #source file is open at the same time.
+        with h5py.File(dest.file, 'a') as df:
+            
+            #Throw an error if this group already exists
+            if dest.group is not '/' and dest.group in df.keys():
+                raise hdftools.hdfGroupExists(dest)
+            
+            destgrp = df.require_group(dest.group)
+
+            
+            #Copy over attributes
+            hdftools.copyAttrs(srcgrp, destgrp)
+
+            #Throw an error if this dataset already exists
+            if 'data' in destgrp.keys():
+                    raise hdftools.hdfDatasetExists(str(dest) + ' -> ' + "'data'")
+                    
+            #Create the dataset 'data' appropriate to whether or not output
+            #data will be gridded
+            if verbose:
+                print("Creating 'data' group in destination file")
+            if grid:
+                destgrp.require_dataset('data', (nti, nx, ny, nz, nreps, nchan), np.float32, chunks=(np.min([nti, 20000]),1,1,1,1,1), compression='gzip')
+            else:
+                destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, np.min([nti, 20000]), 1), compression='gzip')
+            
+            #Load the time vector
+            t = srcgrp['time']
+            #If a timing diode is being applied, correct the time vector here.
+            if tdiode_hdf is not None:
+                t = t[0:nti] - t[min_t0ind]
+    
+
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(nshots)
+            
+            if verbose:
+                print("Beginning processing data shot-by-shot.")
+            
+            #Chunking data processing loop limits memory usage
+            for i in range(nshots):
+                
+                #Update time remaining
+                if verbose:
+                        tr.updateTimeRemaining(i)
+
+                #If a tdiode hdf was supplied, calculate the index correction
+                #here
+                if tdiode_hdf is not None:
+                    #Calculate the starting and ending arrays for the data
+                    ta = t0indarr[i] - min_t0ind
+                    tb = ta + nti
+
+                    #Calculate the range over which to calculate the offset
+                    #for each shot
+                    #If offset_rel_t0 is set for either point, add the t0 array
+                    if offset_rel_t0[0]:
+                        offset_a = offset_range[0] + t0indarr[i] - ta
+                    else:
+                        offset_a = offset_range[0]
+                        
+                    if offset_rel_t0[1]:
+                        offset_b = offset_range[1] + t0indarr[i] - ta
+                    else:
+                        offset_b = offset_range[1]
+                    
+                else:
+                    #By default, read in the entire dataset
+                    ta = None
+                    tb = None
+                    offset_a = offset_range[0]
+                    offset_b = offset_range[1]
+                    
+                if debug:
+                    print("Data range: [" + str(ta) + "," + str(tb) + "]")
+                    print("Offset range: [" + str(offset_a) + "," + 
+                                          str(offset_b) + "]")
+                    
+                    
+                
+                #Read in the data from the source file
+                dbx = srcgrp['data'][i,ta:tb, 0]
+                dby = srcgrp['data'][i,ta:tb, 1]
+                dbz = srcgrp['data'][i,ta:tb, 2]
+                
+                
+                #Remove offset from each channel
+                dbx = dbx - np.mean(dbx[offset_a:offset_b])
+                dby = dby - np.mean(dby[offset_a:offset_b])
+                dbz = dbz - np.mean(dbz[offset_a:offset_b])
+                                    
+                if grid:
+                    #Get location to write this datapoint from the shotgridind
+                    xi = shotgridind[i, 0]
+                    yi = shotgridind[i, 1]
+                    zi = shotgridind[i, 2]
+                    repi = shotgridind[i, 3]
+                    #Write data
+                    try:
+                        destgrp['data'][:, xi, yi, zi, repi, 0] = dbx
+                        destgrp['data'][:, xi, yi, zi, repi, 1] = dby
+                        destgrp['data'][:, xi, yi, zi, repi, 2] = dbz
+                    except ValueError as e:
+                        print("ERROR!")
+                        print(destgrp['data'].shape)
+                        print(bx.shape)
+                        print([xi, yi, zi, repi])
+                        raise(e)
+                else:
+                    #Write data
+                    destgrp['data'][i,:, 0] = dbx
+                    destgrp['data'][i,:, 1] = dby 
+                    destgrp['data'][i,:, 2] = dbz                      
+            
+
+            if verbose:
+                print("Writing axes to destination file")
+            
+            
+            #Write the axes as required by the format of the data written
+            if motion_format is not None:
+                #Add the other axes and things we'd like in this file
+                destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][0:nshots]
+                for k in srcgrp['pos'].attrs.keys():
+                    destgrp['pos'].attrs[k] = srcgrp['pos'].attrs[k]
+
+            if grid:
+                dimlabels = ['time', 'xaxis', 'yaxis', 'zaxis', 'reps', 'chan']
+                
+                destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxis
+                destgrp['xaxis'].attrs['unit'] = attrs['motion_unit'][0]
+                
+                destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxis
+                destgrp['yaxis'].attrs['unit'] = attrs['motion_unit'][0]
+                
+                destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxis
+                destgrp['zaxis'].attrs['unit'] = attrs['motion_unit'][0]
+                
+                destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
+                destgrp['reps'].attrs['unit'] = ''
+
+            else:
+                dimlabels = ['shots', 'time', 'chan']
+                
+                destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
+                destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
+            
+            
+            
+            destgrp.require_dataset('chan', (nchan,), np.int32, chunks=True)[:] = srcgrp['chan'][:]
+            destgrp['chan'].attrs['unit'] = srcgrp['chan'].attrs['unit']
+            
+            destgrp.require_dataset('time', (nti,), np.float32, chunks=True)
+            destgrp['time'][:] = t
+            destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
+
+           
+            destgrp['data'].attrs['unit'] = 'V'
+            destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+            
+            
+            del(dbx,dby,dbz)
+
+            if verbose:
+                print("End of BDOT routine!")
+                
+            return True
+
+
 def calibrationFactor(attrs):
     atten = np.array([attrs['xatten'][0],attrs['yatten'][0],attrs['zatten'][0]])
     #Atten is assumed to be in dB. We could use the units to check this,

@@ -28,7 +28,8 @@ from uclahedp.tools import math
 
 
 def bdotRawToFull(src, dest, 
-                  tdiode_hdf=None, grid=False, integrate=True, calibrate=True,
+                  tdiode_hdf=None, grid=False, integrate=True, 
+                  calibrate =True, highfreq_calibrate=True,
                   angle_correction = True, remove_offset = True,
                   verbose=False, debug = False,
                   offset_range=(0,100), offset_rel_t0 = (False, False), 
@@ -59,8 +60,14 @@ def bdotRawToFull(src, dest,
              Default is True
              
         calibrate: Boolean
-             If True, calculate and apply the calibration factors to the
-             data. Default is True.
+             If True, calculate and apply ANY calibration factors 
+             to the data. Default is True.
+             
+        highfreq_calibrate: Boolean
+             If True, calculate and apply the high frequency calibration 
+             factors to the data. Default is True. If the 'tau' variables are
+             not specified in the probe metadata, the HF calibration won't be
+             applied regardless of this keyword.
              
         angle_correction: Boolean
              If True, apply any angular correction between axes that is
@@ -280,8 +287,8 @@ def bdotRawToFull(src, dest,
                  
                  #If HF calibration factors are provided, calculate those
                  #calibraton constants too
-                 if 'xtau' in attrs.keys():
-                     calBx, calBy, calBz = calibrationFactorsHF(attrs, nti)
+                 if 'xtau' in attrs.keys() and highfreq_calibrate:
+                     calBx, calBy, calBz = calibrationFactorsHF(attrs)
                  else:
                       calBx, calBy, calBz = None,None,None
             
@@ -347,27 +354,28 @@ def bdotRawToFull(src, dest,
                      bz = bz - np.mean(bz[offset_a:offset_b])
                 
                 
-                
-                
-                if integrate:
-                     #Apply the calibration factors
-                     bx = np.cumsum( bx )
-                     by = np.cumsum( by )
-                     bz = np.cumsum( bz )
-                     
-                     
                 if calibrate:
                      #Apply the high-frequency calibration if one was
                      #provided
-                     if calBx is not None:
-                          bx = np.fft.ifft(calBx*np.fft.fft(bx))
-                          by = np.fft.ifft(calBy*np.fft.fft(by))
-                          bz = np.fft.ifft(calBz*np.fft.fft(bz))
-                          
+                     if calBx is not None and highfreq_calibrate:
+                          bx = bx + calBx*np.gradient(bx)
+                          by = by + calBy*np.gradient(by)
+                          bz = bz + calBz*np.gradient(bz)
+
                      #Apply the low-frequency calibration factors
                      bx = bx*calAx
                      by = by*calAy
                      bz = bz*calAz
+                
+                
+                #Integration comes after calibration?
+                if integrate:
+                     #Apply the calibration factors
+                     bx = np.cumsum(bx)
+                     by = np.cumsum(by)
+                     bz = np.cumsum(bz)
+                     
+ 
                      
                      
                 
@@ -536,23 +544,20 @@ def calibrationFactorsLF(attrs):
     return xcal, ycal, zcal
 
 
-def calibrationFactorsHF(attrs, nti):
+def calibrationFactorsHF(attrs):
     # dt -> s
     dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
-    
-    #Create a frequency vector for calculating
-    freq = np.fft.fftfreq(nti, dt)
 
     # area : convert to seconds
     xtau = (attrs['xtau'][0]*u.Unit(attrs['xtau'][1])).to(u.s).value
     ytau = (attrs['ytau'][0]*u.Unit(attrs['ytau'][1])).to(u.s).value
     ztau = (attrs['ztau'][0]*u.Unit(attrs['ztau'][1])).to(u.s).value
-
-    xcal = (1 + 1j*(2*np.pi*freq)*xtau)
-    ycal = (1 + 1j*(2*np.pi*freq)*ytau)
-    zcal = (1 + 1j*(2*np.pi*freq)*ztau)
     
-    return xcal, ycal, zcal
+    calBx = xtau/dt
+    calBy = ytau/dt
+    calBz = ztau/dt
+
+    return calBx, calBy, calBz
 
 
 

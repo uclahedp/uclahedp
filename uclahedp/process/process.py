@@ -133,6 +133,6 @@ if __name__ == "__main__":
     #rawsource='HRR'
     
 
-    processMany(data_dir, overwrite=True, runs=[33], probes=['LAPD_C6'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=False, runs=[34], probes=['tdiode', 'LAPD_C6'], rawsource=rawsource) 
     
     

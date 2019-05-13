@@ -792,7 +792,7 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
 
 if __name__ == "__main__":
      
-     csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD1_xgain.csv")
+     csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
      calibrateProbe(csvfile, 10, 100)
      
      

@@ -59,7 +59,7 @@ def process(data_dir, run, probe, overwrite=True,
             fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True, fatal_badshot_percentage=.2, badshotratio=10)
         elif probe[1] == 'bdot':
             print("Running bdotRawToFull")
-            fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, verbose=True)
+            fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, verbose=True, highfreq_calibrate=False)
         else:
             print("NO MATCHING PROBE TYPE ROUTINE EXISTS: SKIPPING!")
     else:
@@ -123,6 +123,7 @@ if __name__ == "__main__":
     #Windows
     #data_dir =  os.path.join("F:", "2019BIERMANN")
     data_dir =  os.path.join("F:", "LAPD_Jan2019")
+    data_dir =  os.path.join("F:", "LAPD_Mar2018")
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
@@ -133,6 +134,6 @@ if __name__ == "__main__":
     #rawsource='HRR'
     
 
-    processMany(data_dir, overwrite=False, runs=[34], probes=['tdiode', 'LAPD_C6'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=True, runs=[40], probes=['tdiode', 'LAPD7'], rawsource=rawsource) 
     
     

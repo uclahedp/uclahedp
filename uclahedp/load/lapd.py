@@ -264,6 +264,15 @@ def readPosArray(src, controls, motion_attrs):
                 x0 = temp_list[motion_list]['center'][0]
                 y0 = temp_list[motion_list]['center'][1]
                 z0 = temp_list[motion_list]['center'][2]
+            else:
+                 #If this is the case, the probe WASN'T actually moved
+                 motion_list = None
+                 pos = None
+                 nx,ny,nz = None,None,None
+                 dx,dy,dz = None,None,None
+                 x0,y0,z0 = None,None,None
+                 
+                
                 
 
     #If the controlling drive is the NI_XZ drive...
@@ -322,6 +331,7 @@ def readPosArray(src, controls, motion_attrs):
             pos[:,1] = ypos
             pos[:,2] = zpos
             del(xpos, ypos, zpos)
+    
             
     motion_attrs['motion_list'] = (motion_list, '')
     motion_attrs['nx'] = (nx, "")

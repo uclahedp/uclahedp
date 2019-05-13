@@ -282,6 +282,9 @@ def bdotRawToFull(src, dest,
     
           
             if calibrate:
+                 # dt -> s
+                 dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
+                
                  #First calculate the low frequency calibration factors
                  calAx, calAy, calAz = calibrationFactorsLF(attrs)
                  
@@ -291,6 +294,8 @@ def bdotRawToFull(src, dest,
                      calBx, calBy, calBz = calibrationFactorsHF(attrs)
                  else:
                       calBx, calBy, calBz = None,None,None
+                      
+                 print(calBx)
             
             
 
@@ -342,25 +347,34 @@ def bdotRawToFull(src, dest,
                     
                 
                 #Read in the data from the source file
-                bx = srcgrp['data'][i,ta:tb, 0]
-                by = srcgrp['data'][i,ta:tb, 1]
-                bz = srcgrp['data'][i,ta:tb, 2]
+                dbx = srcgrp['data'][i,ta:tb, 0]
+                dby = srcgrp['data'][i,ta:tb, 1]
+                dbz = srcgrp['data'][i,ta:tb, 2]
                 
                 
                 if remove_offset:
                      #Remove offset from each channel
-                     bx = bx - np.mean(bx[offset_a:offset_b])
-                     by = by - np.mean(by[offset_a:offset_b])
-                     bz = bz - np.mean(bz[offset_a:offset_b])
+                     dbx = dbx - np.mean(dbx[offset_a:offset_b])
+                     dby = dby - np.mean(dby[offset_a:offset_b])
+                     dbz = dbz - np.mean(dbz[offset_a:offset_b])
+                     
+                                #Integration comes after calibration?
+                if integrate:
+                     #Intgrate
+                     bx = np.cumsum(dbx)*dt
+                     by = np.cumsum(dby)*dt
+                     bz = np.cumsum(dbz)*dt
+                else:
+                    bx,by,bz = dbx, dby, dbz
                 
                 
                 if calibrate:
                      #Apply the high-frequency calibration if one was
                      #provided
                      if calBx is not None and highfreq_calibrate:
-                          bx = bx + calBx*np.gradient(bx)
-                          by = by + calBy*np.gradient(by)
-                          bz = bz + calBz*np.gradient(bz)
+                          bx = bx + calBx*dbx
+                          by = by + calBy*dby
+                          bz = bz + calBz*dbz
 
                      #Apply the low-frequency calibration factors
                      bx = bx*calAx
@@ -368,12 +382,7 @@ def bdotRawToFull(src, dest,
                      bz = bz*calAz
                 
                 
-                #Integration comes after calibration?
-                if integrate:
-                     #Apply the calibration factors
-                     bx = np.cumsum(bx)
-                     by = np.cumsum(by)
-                     bz = np.cumsum(bz)
+
                      
  
                      
@@ -521,9 +530,6 @@ def calibrationFactorsLF(attrs):
 
     #Convert atten to dB (if units set to dB)
     atten = np.power([10,10,10], atten/20.0) # Convert from decibels   
-   
-    # dt -> s
-    dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
 
     # area : mm^2 -> m^2
     xarea = (attrs['xarea'][0]*u.Unit(attrs['xarea'][1])).to(u.m ** 2).value
@@ -537,25 +543,22 @@ def calibrationFactorsLF(attrs):
     ypol = attrs['ypol'][0]
     zpol = attrs['zpol'][0]
 
-    xcal = 1.0e4*dt*atten[0]/gain/(nturns*xarea)*xpol
-    ycal = 1.0e4*dt*atten[1]/gain/(nturns*yarea)*ypol
-    zcal = 1.0e4*dt*atten[2]/gain/(nturns*zarea)*zpol
+    xcal = 1.0e4*atten[0]/gain/(nturns*xarea)*xpol
+    ycal = 1.0e4*atten[1]/gain/(nturns*yarea)*ypol
+    zcal = 1.0e4*atten[2]/gain/(nturns*zarea)*zpol
     
     return xcal, ycal, zcal
 
 
 def calibrationFactorsHF(attrs):
-    # dt -> s
-    dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
-
     # area : convert to seconds
     xtau = (attrs['xtau'][0]*u.Unit(attrs['xtau'][1])).to(u.s).value
     ytau = (attrs['ytau'][0]*u.Unit(attrs['ytau'][1])).to(u.s).value
     ztau = (attrs['ztau'][0]*u.Unit(attrs['ztau'][1])).to(u.s).value
     
-    calBx = xtau/dt
-    calBy = ytau/dt
-    calBz = ztau/dt
+    calBx = xtau
+    calBy = ytau
+    calBz = ztau
 
     return calBx, calBy, calBz
 
@@ -645,7 +648,7 @@ def hfCoil(freq, nturns, gain, area, Rp, r, tau, tdelay):
      mu0 = 4*np.pi*1e-7
      return area*nturns*gain*(16/np.power(5,1.5))*mu0/(r*Rp)*(tau-tdelay)*np.power(freq,2)
     
-def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [5e4,1e5]):
+def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e3,1e6]):
      """
      csvfile -> Bdot calibration csv file with the following columns...
      
@@ -685,6 +688,8 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
           reader = csv.DictReader(csvfile)
           keys = reader.fieldnames
           
+          print(keys)
+          
           #Determine whether the file contains magnitude/phase data
           #or real/imaginary data
           #The network analyzer stores both...
@@ -694,7 +699,7 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
                mag_phase = False
           else:
                raise(KeyError("No mag/phase or real/im keys found!"))
-
+               
           #Adjust index because of header
           header = next(reader)
           for i, row in enumerate(reader):
@@ -747,8 +752,10 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
           for i in range(3):
                #Calculate the area of the coil data from just the specified
                #frequency range
-               area[i] = np.mean( lfProbeArea(freq[a:b], sig[a:b,0,i], 
+               area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
                                        nturns, hturns,gain, Rp, r))
+               
+
                
                #Now fit the full signal (with the area fixed) for the impedence 
                #time constant tau
@@ -792,7 +799,10 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
 
 if __name__ == "__main__":
      
-     csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     #csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     #csvfile = os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019","bdot_calibrations", "LAPD_C6.csv")
+     csvfile = os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     
      calibrateProbe(csvfile, 10, 100)
      
      

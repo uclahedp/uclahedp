@@ -644,23 +644,36 @@ def lfProbeArea(freq, mag, nturns, hturns, gain,  Rp, r):
      mu0 = 4*np.pi*1e-7
      return mag*Rp*r/(gain*hturns*np.power(4/5, 1.5)*mu0*nturns)/(2*np.pi*freq)
 
+
+def lfCoil(freq, nturns, hturns, gain, area, Rp, r):
+     
+     mu0 = 4*np.pi*1e-7
+     w = 2*np.pi*freq
+     
+     coeff = np.power(4/5, 1.5)*hturns*mu0*area*nturns*gain/(r*Rp)
+     
+     #This function just returns the imaginary part, since that's what is used
+     #real included here for completeness...
+     #real = coeff*np.power(w,2)*tau*tdelay
+     im = coeff*w
+     return im
+
 def hfCoil(freq, nturns, hturns, gain, area, Rp, r, tau, tdelay):
      mu0 = 4*np.pi*1e-7
      
      w = 2*np.pi*freq
 
-     coeff = np.power(5/4, 1.5)*(r*Rp*area*nturns*gain)/(hturns*mu0)
+     coeff = np.power(4/5, 1.5)*hturns*mu0*area*nturns*gain/(r*Rp)
      x = w/(1 + np.power(w*tau,2))
      A = w*tau*np.cos(w*tdelay) - np.sin(w*tdelay)
      B = w*tau*np.sin(w*tdelay) + np.cos(w*tdelay)
      #return area*nturns*gain*(16/np.power(5,1.5))*mu0/(r*Rp)*(tau-tdelay)*np.power(freq,2)
      real = coeff*x*A
      im = coeff*x*B
-     output = np.concatenate((real, im))
-     
-     return output
+
+     return np.concatenate((real,im))
     
-def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e3,1e6]):
+def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e2,1e6]):
      """
      csvfile -> Bdot calibration csv file with the following columns...
      
@@ -694,14 +707,15 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
      # of the three channels
      sig = np.zeros([nlines, 4, 3])
      
-     fit = np.zeros([nlines,3,2])
+     lf_fit = np.zeros([nlines,3])
+     hf_fit_real = np.zeros([nlines,3])
+     hf_fit_im = np.zeros([nlines,3])
      
      with open(file) as csvfile:
           reader = csv.DictReader(csvfile)
           keys = reader.fieldnames
           
-          print(keys)
-          
+
           #Determine whether the file contains magnitude/phase data
           #or real/imaginary data
           #The network analyzer stores both...
@@ -768,10 +782,19 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
           for i in range(3):
                #Calculate the area of the coil data from just the specified
                #frequency range
-               area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
-                                       nturns, hturns,gain, Rp, r))
+               #area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
+               #                        nturns, hturns,gain, Rp, r))
                
+               fcn = lambda freq, area: lfCoil(freq,
+                                               nturns, hturns, gain, area, 
+                                               Rp, r)
                
+               #Fit over the range a:b to find the area
+               popt, pcov = curve_fit(fcn, freq[a:b], sig[a:b,3,i], 
+                                                     p0=[ 1])
+               area[i] = popt[0]
+               
+               lf_fit[:,i] = fcn(freq,  area[i])
                
                
                #Now fit the full signal (with the area fixed) for the impedence 
@@ -780,17 +803,18 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
                                                       nturns, hturns, gain, 
                                                       area[i], 
                                                       Rp, r, tau, tdelay) 
-               testdata = np.concatenate( (sig[:,2,i], sig[:,3,i] ) )
                
-               popt, pcov = curve_fit(fcn, freq, testdata, 
-                                                     p0=[ 1,1])
+               concat_data = np.concatenate((sig[:,1,i],sig[:,2,i]))
+
+               popt, pcov = curve_fit(fcn, freq, concat_data, 
+                                                     p0=[ 5e-8,-1e-7])
                tau[i] = popt[0]
                tdelay[i] = popt[1]
                
-               fit[:,i,0] = fcn(freq,  tau[i], tdelay[i])[0:nlines]
-               fit[:,i,1] = fcn(freq,  tau[i], tdelay[i])[nlines:2*nlines]
+               hf_fit_real[:,i] = fcn(freq,  tau[i], tdelay[i])[0:nlines]
+               hf_fit_im[:,i] = fcn(freq,  tau[i], tdelay[i])[nlines:2*nlines]
                
-              
+
           print("**** Bdot Calibration Report *****")
           for i in range(3):
                axes = ['x', 'y', 'z']
@@ -800,29 +824,44 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
                print(axes[i] + 'tdelay: ' + str(np.round(tdelay[i]*1e9, decimals=3)) + ' ns')
                
                
-          fig, ax = plt.subplots( nrows=3, ncols=2, figsize = [6,9], sharex=True)
-          fig.subplots_adjust( hspace=.2, wspace=.35)
+          fig, ax = plt.subplots( nrows=3, ncols=3, figsize = [8,8])
+          fig.subplots_adjust( hspace=.35, wspace=.35)
+          
+          
+          fontsize = 12
           
           for i in range(3):
-               xrange = (20, 2e5)
+               lf_xrange = (area_freq_range[0]*1e-3,area_freq_range[1]*1e-3)
+               hf_xrange = (np.min(freq)*1e-3,np.max(freq)*1e-3)
+               #hf_xrange = (20, 5000)
      
                if i ==2:
-                    ax[i,0].set_xlabel('Frequency (kHz)', fontsize=16)
-                    ax[i,1].set_xlabel('Frequency (kHz)', fontsize=16)
+                    ax[i,0].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+                    ax[i,1].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+                    ax[i,2].set_xlabel('Frequency (kHz)', fontsize=fontsize)
 
-               ax[i,0].set_title(axes[i])
-               ax[i,0].plot(freq*1e-3, sig[:,2,i], linewidth=3)
-               ax[i,0].plot(freq*1e-3, fit[:,i,0])
-               ax[i,0].set_xscale('log')
-               ax[i,0].set_xlim(xrange)
-               ax[i,0].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=16)
+               ax[i,0].set_title(axes[i] + ' Low Freq.')
+               ax[i,0].plot(freq[a:b]*1e-3, sig[a:b:,3,i], linewidth=3)
+               ax[i,0].plot(freq[a:b]*1e-3, lf_fit[a:b,i])
+               ax[i,0].set_xlim(lf_xrange)
+               ax[i,0].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
                
-               ax[i,1].set_title(axes[i])
-               ax[i,1].plot(freq*1e-3, sig[:,3,i], linewidth=3)
-               ax[i,1].plot(freq*1e-3, fit[:,i,1])
+               
+               ax[i,1].set_title(axes[i] + ' High Freq. Real')
+               ax[i,1].plot(freq*1e-3, sig[:,2,i], linewidth=3)
+               ax[i,1].plot(freq*1e-3, hf_fit_real[0:nlines,i])
+               ax[i,1].set_xlim(hf_xrange)
                ax[i,1].set_xscale('log')
-               ax[i,1].set_xlim(xrange)
-               ax[i,1].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=16)
+               ax[i,1].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+               
+               ax[i,2].set_title(axes[i] + ' High Freq. Imaginary')
+               ax[i,2].plot(freq*1e-3, sig[:,3,i], linewidth=3)
+               ax[i,2].plot(freq*1e-3, hf_fit_im[0:nlines,i])
+               ax[i,2].set_xlim(hf_xrange)
+               ax[i,2].set_xscale('log')
+               ax[i,2].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+               
+              
                
 
 if __name__ == "__main__":

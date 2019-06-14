@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 
 import os
+import h5py
 
 from uclahedp.tools import hdf as hdftools
 
@@ -123,11 +124,47 @@ def strictGrid(nx,ny,nz,nreps):
                     shotindarr[shot, :] = [x,y,z,r]
     return shotindarr
     
+
+
+
+def invertShotGrid(shotgridind, xaxis, yaxis, zaxis):
+     """
+     Takes a grid produces by one of the other functions and "inverts" it
+     to give an array of the shot numbers at each position. This is useful
+     if you are going to average over reps before saving full data (e.g.
+     vsweep langmuir probe raw to full processing)
+     """
+     
+     nx, ny, nz = len(xaxis), len(yaxis), len(zaxis)
+     nshots = shotgridind.shape[0]
+     npos = nx*ny*nz
+     nreps = int(np.floor(nshots/npos))
+     shots = np.zeros([nx, ny, nz, nreps], dtype=np.int32)
+     
+     for i in range(nshots):
+          xi = shotgridind[i,0]
+          yi = shotgridind[i,1]
+          zi = shotgridind[i,2]
+          ri = shotgridind[i,3]
+          shots[xi,yi,zi,ri] = i
+     return shots
+     
     
 
 
 if __name__ == "__main__":
  
-    print(makeAxes(21,1,1,-1,0,0,0,0,0))
+    f=  os.path.join("F:", "LAPD_Mar2018", "RAW","run104_JanusBaO_raw.hdf5")
+    with h5py.File(f, 'a') as sf:
+          pos = sf['pos'][:]
         
         
+    xaxis, yaxis, zaxis = guessAxes(pos)
+    shotgridind = fuzzyGrid(pos, xaxis, yaxis, zaxis)
+    shots = invertShotGrid(shotgridind, xaxis, yaxis, zaxis)
+    
+    
+    #print(shotgridind[0:5, :])
+    print(shots.shape)
+    
+    print(shots[0,0,0,:])

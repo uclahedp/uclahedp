@@ -412,10 +412,9 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                 resistor = float(attrs['resistor'][0]) #Ohms
                 area = (attrs['area'][0]*u.Unit(attrs['area'][1])).to(u.cm ** 2).value
                 
-                probe_calib = probe_gain/np.power(10, probe_atten/20.0)
-                ramp_calib = ramp_gain/np.power(10, ramp_atten/20.0)
-            
-
+                probe_calib = np.power(10, probe_atten/20.0)/probe_gain
+                ramp_calib = np.power(10, ramp_atten/20.0)/ramp_gain
+                
             
                 if grid:
                       #Initialize time-remaining printout
@@ -518,7 +517,7 @@ if __name__ == "__main__":
      ndest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_density.hdf5"))
      tdest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_temperature.hdf5"))
     
-     #vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
+     vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
      
      
      

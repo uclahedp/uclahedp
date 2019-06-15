@@ -27,7 +27,7 @@ def fixRange(array, bound):
 
 
 def expFcn(V, A, B, kT):
-     return A*np.exp(V/kT) - B
+     return A*np.exp((V)/kT) - B
      
 
 def normalize(f):
@@ -524,7 +524,7 @@ if __name__ == "__main__":
      
      with h5py.File(f.file, 'a') as sf:
           
-          shot = 3875
+          shot = 3900
           time = sf['time'][:]
           current = sf['data'][shot:shot+5,:,0]/2.2 #2.2 Ohm resistor, convert to A
           voltage = sf['data'][shot:shot+5,:,1]*100 #Attenuation was x100
@@ -532,11 +532,11 @@ if __name__ == "__main__":
           current = np.mean(current, axis=0)
           voltage = np.mean(voltage, axis=0)
      
-     peaktime, a, b = choose_sweep(time, voltage, .2e-4, plots=True)
+     peaktime, a, b = choose_sweep(time, voltage, .8e-4, plots=True)
      vpp, kTe, esat = vsweep_fit(voltage[a:b], current[a:b],
                 plots=True, verbose=True)
      
-     area = 1e-2 #cm^2
+     area = .1e-2 #cm^2
      vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
      density = esat/(area*1.6e-19*vthe)
      

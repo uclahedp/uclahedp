@@ -50,9 +50,10 @@ def find_sweeps(time, voltage, plots=False):
      if plots:
           fig_full, ax_full = plt.subplots(figsize = [8,4])
           fig_full.suptitle("Entire Ramp Signal")
-          ax_full.set_xlabel("Time (s)")
+          ax_full.set_xlabel("Time (ms)")
           ax_full.set_ylabel("Voltage Sweep (V)")
-          ax_full.plot(time, voltage, 'k')
+          ax_full.plot(time*1e3, voltage, 'k')
+
           
      #Define a maximum height required to be a "peak"
      req_height = 0.95
@@ -78,7 +79,7 @@ def find_sweeps(time, voltage, plots=False):
           a = zeros[-1]
   
           if plots:
-               ax_full.plot(time[a:b], voltage[a:b], color='blue', linewidth=3)
+               ax_full.plot(time[a:b]*1e3, voltage[a:b], color='blue', linewidth=3)
           
           peaktime[i] = time[int(np.mean([a,b]))]
           start[i] = int(a)
@@ -516,22 +517,29 @@ if __name__ == "__main__":
      f=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "RAW","run104_JanusBaO_raw.hdf5"))
      ndest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_density.hdf5"))
      tdest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_temperature.hdf5"))
-    
-     vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
+     resistor = 2.2
+     
+     #f=  hdftools.hdfPath(os.path.join("F:", "LAPD_Jan2019", "RAW","run37_LAPD_LANG1_raw.hdf5"))
+     #ndest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Jan2019", "FULL","run37_LAPD_LANG1_density.hdf5"))
+     #tdest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Jan2019", "FULL","run37_LAPD_LANG1_temperature.hdf5"))
+     #resistor = 16
+     
+     #vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
      
      
      
      with h5py.File(f.file, 'a') as sf:
           
-          shot = 3900
-          time = sf['time'][:]
-          current = sf['data'][shot:shot+5,:,0]/2.2 #2.2 Ohm resistor, convert to A
-          voltage = sf['data'][shot:shot+5,:,1]*100 #Attenuation was x100
+          shot = 400
+          reps = 5
+          time = sf['time'][:]*8
+          current = sf['data'][shot:shot+reps,:,0]/resistor #2.2 Ohm resistor, convert to A
+          voltage = sf['data'][shot:shot+reps,:,1]*100 #Attenuation was x100
           
           current = np.mean(current, axis=0)
           voltage = np.mean(voltage, axis=0)
      
-     peaktime, a, b = choose_sweep(time, voltage, .8e-4, plots=True)
+     peaktime, a, b = choose_sweep(time, voltage, 0, plots=True)
      vpp, kTe, esat = vsweep_fit(voltage[a:b], current[a:b],
                 plots=True, verbose=True)
      

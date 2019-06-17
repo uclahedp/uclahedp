@@ -116,8 +116,8 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         #Read out some digitizer parameters
         nshots = info['nshotnum']
         nti = info['nt']
-        clock_rate = info['clock rate'].to(u.Hz)
-        dt =  (  1.0 / clock_rate  ).to(u.s)
+        #clock_rate = info['clock rate'].to(u.Hz)
+        #dt =  (  1.0 / clock_rate  ).to(u.s)
 
     
     #Check if keys are provided to specify a motion list
@@ -168,9 +168,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                                 compression='gzip')
             grp['data'].attrs['unit'] = 'V'
             
-            grp.attrs['dt'] = [s.encode('utf-8') for s 
-                     in [str(dt.value), str(dt.unit)] ]
-            
+
             dimlabels = ['shots', 'time', 'chan']
             
             grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
@@ -197,6 +195,12 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                                         silent=True, shotnum=shot+1)
                     
                     grp['data'][shot,:,chan] = data['signal']
+                    
+                    if shot == 0:
+                        dt = data.dt #Adusted in bapsflib for clock rate, avging, etc.
+                        
+                        grp.attrs['dt'] = [s.encode('utf-8') for s 
+                                 in [str(dt.value), str(dt.unit)] ]
     
                 
 

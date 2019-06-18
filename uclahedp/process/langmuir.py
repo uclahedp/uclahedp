@@ -363,6 +363,10 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
         #Open the destination file
         #This exists WITHIN the open statement for the source file, so the
         #source file is open at the same time.
+        
+        print(os.path.isfile(ndest.file))
+        print(os.path.isfile(tdest.file))
+        
         with h5py.File(ndest.file, 'a') as ndf:
             with h5py.File(tdest.file, 'a') as tdf:
             
@@ -505,7 +509,350 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
           
      
      
-     
+def isatRawToFull(src, dest, 
+                  ti=1.0, mu=4.0,
+                  tdiode_hdf=None, grid=False,
+                  offset_range=(0,100), offset_rel_t0 = (False, False), 
+                  verbose=False, debug = False,
+                  grid_precision=0.1, strict_grid=False, strict_axes = False):
+    """ Integrates isat Langmuir probe data, calibrates output using information about the probe.
+
+    Parameters
+    ----------
+        src: hdfPath object
+            Path string to a raw hdf5 file containing data
+            
+        dest: hdfPath object
+            Path string to location processed data should be written out
+            
+        ti: Ion temperature (eV). Default assumption is 1 eV, which is typical
+        of the LAPD LaB6 plasma. Scaling is as 1/sqrt(Ti).
+        
+        
+        mu: Ion mass number (m_i/m_p = mu). Default is 4.0, for Helium.
+
+        tdiode_hdf:  hdfPath object
+            Path to a raw hdf5 file containing tdiode data. If no HDF file is
+            provided, no timing correction will be applied.
+            
+        grid: Boolean
+            If grid is true, output will be written in cartesian grid array
+            format, eg. [nti, nx, ny, nz, nreps, nchan]. Otherwise, output will
+            be in [nshots, nti, nchan] format
+            
+        offset_range: tuple
+            Tuple of indices between which the average of the signal will be
+            computed and subtracted from the entire signal to correct for
+            offset. This should be a segment with just noise, ideally at the
+            very beginning of the dataset. Longer is better. 
+            Default is (0,100)
+            
+        offset_rel_t0: Tuple of booleans
+            If either of these values is set to True, the coorresponding
+            offset_range value will be taken to be relative to the t0 index
+            for that each shot. For example, if t0=2000 for a shot, 
+            offset_range=(10, -100), and offset_rel_t0 = (False, True), then
+            the offset will be computed over the range (10, 1900)
+
+            
+        grid_precision: float
+            This is the precision to which position values will be rounded
+            before being fit onto the grid. Only applies to fuzzy axis and grid
+            creation.
+            
+        strict_axes: boolean
+            If true, attempt to calculate axes from saved grid parameters.
+            Default is false, which attempts to calculate axes by looking at
+            position values.
+            
+        strict_grid: boolean
+            If true, strictly unravel data onto the axes, assuming the probe
+            moved in order reps->X->Y->Z. This will NOT correctly handle
+            points where the probe was not at the requested position. Default
+            is false, which applys "fuzzy gridding", which tries to find the
+            best grid position for each shot individually.
+
+
+    Returns
+    -------
+       True (if executes to the end)
+    """ 
+
+    # ******
+    # Load data from the raw HDF file
+    # ******
+    with h5py.File(src.file, 'r') as sf:
+         
+        #Get the datagroup
+        srcgrp = sf[src.group]
+        
+        #Create dictionary of attributes
+        attrs = hdftools.readAttrs(srcgrp)
+        
+        #Check for keys always required by this function
+        req_keys = ['area', 'atten', 'gain','resistor',
+                    'dir', 'pol', 
+                    'probe_origin_x', 'probe_origin_y', 'probe_origin_z',
+                    'dt']
+       
+
+
+        if  'pos' in srcgrp:
+            pos = srcgrp['pos'][:] #Read the entire array in
+        else:
+            #If no position information is given, a single explicit position
+            #is required. 
+            req_keys = req_keys + ['xpos', 'ypos', 'zpos']
+            grid = False #Can't grid data if there's no pos array!
+            motion_format = None
+            
+        #Process the required keys, throwing an error if any cannot be found
+        csvtools.missingKeys(attrs, req_keys, fatal_error=True)
+        
+
+        #Extract the shape of the source data
+        nshots, nti, nchan = srcgrp['data'].shape
+        
+        #If requested by keyword, apply gridding
+        if grid:
+            
+            #If grid parameters exist in the attrs, generate an exact grid
+            #If not, generate a guess
+            if strict_axes:
+                try:
+                    print("Applying stric axis creation")
+                    nx = attrs['nx'][0]
+                    ny = attrs['ny'][0]
+                    nz = attrs['nz'][0]
+                    dx = attrs['dx'][0]
+                    dy = attrs['dy'][0]
+                    dz = attrs['dz'][0]
+                    x0 = attrs['x0'][0]
+                    y0 = attrs['y0'][0]
+                    z0 = attrs['z0'][0]
+                    xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
+                                                            dx,dy,dz,
+                                                            x0,y0,z0)
+               
+                except KeyError:
+                    print("Missing axis parameters: attempting fuzzy axis creation")
+                    xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+            else:
+                print("Applying fuzzy axis creation")
+                xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+                
+            #Calculate length of axes
+            nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+            
+            if debug:
+                print("** Gridding parameters **")
+                print('nshots: ' + str(nshots))
+                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
+                if strict_axes:
+                     print('dx, dy, dz: ' + str((dx, dy, dz)))
+                     print('x0, y0, z0: ' + str((x0, y0, z0)))
+            
+            #This line SHOULD be redundent, but sometimes it's necessary.
+            #It is possible, when combining two motion lists, to get
+            #some extra shots at the end of the datarun that don't have
+            #positions associated. Recalculating this here ensures we only
+            #take the ones relevant to this grid
+            nshots = nx*ny*nz*nreps
+            
+            #If grid precision is zero, apply strict gridding
+            #Otherwise, apply fuzzy gridding
+            if strict_grid:
+                print("Applying strict gridding")
+                shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
+            else:
+                print("Applying fuzzy gridding")
+                shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
+                                                 precision=grid_precision)
+
+        #If tdiode_hdf is set, load the pre-processed tdiode data
+        if tdiode_hdf is not None:
+            if verbose:
+                print("Loading tdiode array from file.")
+            with h5py.File(tdiode_hdf.file, 'r') as sf:
+                grp = sf[tdiode_hdf.group]
+                t0indarr = grp['t0indarr'][:]
+                goodshots = grp['goodshots'][:]
+            #We will remove up to max_t0shift indices from each array such that
+            #the t0 indices all line up.
+            min_t0ind = np.min(t0indarr[goodshots])
+            max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
+            #Compute new nti
+            nti = nti - max_t0shift 
+            
+        if verbose:
+            print("Opening destination HDF file")
+        
+        #Create the destination file directory if necessary
+        hdftools.requireDirs(dest.file)
+
+        #Open the destination file
+        #This exists WITHIN the open statement for the source file, so the
+        #source file is open at the same time.
+        with h5py.File(dest.file, 'a') as df:
+            
+            #Throw an error if this group already exists
+            if dest.group is not '/' and dest.group in df.keys():
+                raise hdftools.hdfGroupExists(dest)
+            
+            destgrp = df.require_group(dest.group)
+
+            #Copy over attributes
+            hdftools.copyAttrs(srcgrp, destgrp)
+
+            #Throw an error if this dataset already exists
+            if 'data' in destgrp.keys():
+                    raise hdftools.hdfDatasetExists(str(dest) + ' -> ' + "'data'")
+                    
+            #Create the dataset 'data' appropriate to whether or not output
+            #data will be gridded
+            if verbose:
+                print("Creating 'data' group in destination file")
+            if grid:
+                destgrp.require_dataset('data', (nti, nx, ny, nz, nreps), np.float32, chunks=(np.min([nti, 20000]),1,1,1,1), compression='gzip')
+            else:
+                destgrp.require_dataset('data', (nshots, nti), np.float32, chunks=(1, np.min([nti, 20000])), compression='gzip')
+            
+            #Load the time vector
+            t = srcgrp['time']
+            #If a timing diode is being applied, correct the time vector here.
+            if tdiode_hdf is not None:
+                t = t[0:nti] - t[min_t0ind]
+    
+          
+            dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
+            
+            resistor = float(attrs['resistor'][0]) #Ohms
+            area = (attrs['area'][0]*u.Unit(attrs['area'][1])).to(u.m ** 2).value
+                
+                
+
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(nshots)
+            
+            if verbose:
+                print("Beginning processing data shot-by-shot.")
+            
+            #Chunking data processing loop limits memory usage
+            for i in range(nshots):
+                
+                #Update time remaining
+                if verbose:
+                        tr.updateTimeRemaining(i)
+
+                #If a tdiode hdf was supplied, calculate the index correction
+                #here
+                if tdiode_hdf is not None and remove_offset:
+                    #Calculate the starting and ending arrays for the data
+                    ta = t0indarr[i] - min_t0ind
+                    tb = ta + nti
+
+                    #Calculate the range over which to calculate the offset
+                    #for each shot
+                    #If offset_rel_t0 is set for either point, add the t0 array
+                    if offset_rel_t0[0]:
+                        offset_a = offset_range[0] + t0indarr[i] - ta
+                    else:
+                        offset_a = offset_range[0]
+                        
+                    if offset_rel_t0[1]:
+                        offset_b = offset_range[1] + t0indarr[i] - ta
+                    else:
+                        offset_b = offset_range[1]
+                    
+                else:
+                    #By default, read in the entire dataset
+                    ta = None
+                    tb = None
+                    offset_a = offset_range[0]
+                    offset_b = offset_range[1]
+                    
+                if debug:
+                    print("Data range: [" + str(ta) + "," + str(tb) + "]")
+                    print("Offset range: [" + str(offset_a) + "," + 
+                                          str(offset_b) + "]")
+                    
+                    
+                
+                #Read in the data from the source file
+                voltage = srcgrp['data'][i,ta:tb, 0]
+                
+                #Calculate density
+                #Equation is 2 from this paper: 10.1119/1.2772282
+                #This is valid for the regime Te~Ti, which is approx true in
+                #LAPD
+                density = 1.6e9*np.sqrt(mu)*voltage/(resistor*area) #cm^-3
+
+
+                if grid:
+                    #Get location to write this datapoint from the shotgridind
+                    xi = shotgridind[i, 0]
+                    yi = shotgridind[i, 1]
+                    zi = shotgridind[i, 2]
+                    repi = shotgridind[i, 3]
+                    #Write data
+                    try:
+                        destgrp['data'][:, xi, yi, zi, repi] = density
+          
+                    except ValueError as e:
+                        print("ERROR!")
+                        print(destgrp['data'].shape)
+                        print(bx.shape)
+                        print([xi, yi, zi, repi])
+                        raise(e)
+                else:
+                    #Write data
+                    destgrp['data'][i,:] = density
+                               
+
+            if verbose:
+                print("Writing axes to destination file")
+            
+
+            if grid:
+                #Add the other axes and things we'd like in this file
+                destgrp.require_dataset('pos', (nshots, 3), np.float32, chunks=True)[:] = srcgrp['pos'][0:nshots]
+                for k in srcgrp['pos'].attrs.keys():
+                    destgrp['pos'].attrs[k] = srcgrp['pos'].attrs[k]
+                    
+                dimlabels = ['time', 'xaxis', 'yaxis', 'zaxis', 'reps']
+                
+                destgrp.require_dataset('xaxis', (nx,), np.float32, chunks=True)[:] = xaxis
+                destgrp['xaxis'].attrs['unit'] = attrs['motion_unit'][0]
+                
+                destgrp.require_dataset('yaxis', (ny,), np.float32, chunks=True)[:] = yaxis
+                destgrp['yaxis'].attrs['unit'] = attrs['motion_unit'][0]
+                
+                destgrp.require_dataset('zaxis', (nz,), np.float32, chunks=True)[:] = zaxis
+                destgrp['zaxis'].attrs['unit'] = attrs['motion_unit'][0]
+                
+                destgrp.require_dataset('reps', (nreps,), np.int32, chunks=True)[:] = np.arange(nreps)
+                destgrp['reps'].attrs['unit'] = ''
+
+            else:
+                dimlabels = ['shots', 'time']
+                
+                destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
+                destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
+            
+            
+            destgrp.require_dataset('time', (nti,), np.float32, chunks=True)
+            destgrp['time'][:] = t
+            destgrp['time'].attrs['unit'] = srcgrp['time'].attrs['unit']
+
+
+            destgrp['data'].attrs['unit'] = 'cm^{-3}'
+                 
+            destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
+            
+            if verbose:
+                print("End of isat Langmuir routine!")
+                
+            return True    
 
      
      
@@ -514,20 +861,27 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
      
 if __name__ == "__main__":
      
-     f=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "RAW","run104_JanusBaO_raw.hdf5"))
-     ndest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_density.hdf5"))
-     tdest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_temperature.hdf5"))
+     """
+     f=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "RAW","run104_JanusBaO_raw.hdf5"))
+     ndest=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "FULL","run104_JanusBaO_density.hdf5"))
+     tdest=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "FULL","run104_JanusBaO_temperature.hdf5"))
+     
+     #f=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "RAW","run104_JanusBaO_raw.hdf5"))
+     #ndest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_density.hdf5"))
+     #tdest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Mar2018", "FULL","run104_JanusBaO_temperature.hdf5"))
      resistor = 2.2
      
-     #f=  hdftools.hdfPath(os.path.join("F:", "LAPD_Jan2019", "RAW","run37_LAPD_LANG1_raw.hdf5"))
-     #ndest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Jan2019", "FULL","run37_LAPD_LANG1_density.hdf5"))
-     #tdest=  hdftools.hdfPath(os.path.join("F:", "LAPD_Jan2019", "FULL","run37_LAPD_LANG1_temperature.hdf5"))
-     #resistor = 16
+     vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
      
-     #vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
+     """
+     
+     f=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "RAW","run104_JanusLaB6_raw.hdf5"))
+     ndest=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "FULL","run104_JanusLaB6_density.hdf5"))
      
      
+     isatRawToFull(f, ndest, verbose=True, grid=True)
      
+     """
      with h5py.File(f.file, 'a') as sf:
           
           shot = 400
@@ -548,7 +902,7 @@ if __name__ == "__main__":
      density = esat/(area*1.6e-19*vthe)
      
      print("Density = " + '{:.2e}'.format(density)+ " cm^-3")
-          
+     """
     
           
      

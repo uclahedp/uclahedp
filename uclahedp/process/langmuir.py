@@ -604,7 +604,6 @@ def isatRawToFull(src, dest,
             #is required. 
             req_keys = req_keys + ['xpos', 'ypos', 'zpos']
             grid = False #Can't grid data if there's no pos array!
-            motion_format = None
             
         #Process the required keys, throwing an error if any cannot be found
         csvtools.missingKeys(attrs, req_keys, fatal_error=True)

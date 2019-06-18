@@ -6,10 +6,7 @@ process.py
 import os
 from uclahedp.load import lapd, hrr
 from uclahedp.tools import hdf, csv
-from uclahedp.process import tdiode, bdot
-
-
-import importlib
+from uclahedp.process import tdiode, bdot, langmuir
 
 
 
@@ -62,6 +59,16 @@ def process(data_dir, run, probe, overwrite=True,
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
                                           offset_range=(0, -1000), offset_rel_t0 = [False, True])
+        elif probe[1] == 'isat':
+             print("Running isatRawToFull")
+             fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
+                                               verbose=True, grid=True, mu=4, ti=1)
+        elif probe[1] == 'vsweep':
+             print("Running vsweepRawToFull")
+             nfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_density.hdf5') )
+             tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_temperature.hdf5') )
+             fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True)                                 
+                                        
         else:
             print("NO MATCHING PROBE TYPE ROUTINE EXISTS: SKIPPING!")
     else:
@@ -124,8 +131,9 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
 if __name__ == "__main__":
     #Windows
     #data_dir =  os.path.join("F:", "2019BIERMANN")
-    data_dir =  os.path.join("F:", "LAPD_Jan2019")
-    #data_dir =  os.path.join("F:", "LAPD_Mar2018")
+    #data_dir =  os.path.join("F:", "LAPD_Apr2017")
+    #data_dir =  os.path.join("F:", "LAPD_Jan2019")
+    data_dir =  os.path.join("F:", "LAPD_Mar2018")
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
@@ -135,7 +143,7 @@ if __name__ == "__main__":
     rawsource='LAPD'
     #rawsource='HRR'
     
-    processMany(data_dir, overwrite=True, runs=[37], probes=['LAPD_LANG1'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=True, runs=[104], probes=['JanusBaO', 'JanusLaB6'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

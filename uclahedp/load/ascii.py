@@ -20,8 +20,7 @@ def asciiToRaw(src, dest, delimiter=None, skip_header=None, ax=None,
      if csv_dir is not None:
           if run is not None or probe is not None:
                attrs = csvtools.getAllAttrs(csv_dir, run, probe)
-     
-     
+ 
      arr = np.genfromtxt(src.file, delimiter=delimiter, skip_header=skip_header )
      
      nelm, nchan = arr.shape
@@ -94,7 +93,7 @@ if __name__ == "__main__":
      
      csv_dir = os.path.join("F:","LAPD_Mar2018","METADATA", "CSV")
      run = 84
-     probe = 'Tony_interferometer'
+     probe = 'TonyInterferometer'
      
      asciiToRaw(src, dest, skip_header=5, ax=0, axis_name='time', 
                 axis_unit='s', data_unit='V',

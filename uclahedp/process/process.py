@@ -143,7 +143,7 @@ if __name__ == "__main__":
     rawsource='LAPD'
     #rawsource='HRR'
     
-    processMany(data_dir, overwrite=True, runs=[104], probes=['JanusBaO', 'JanusLaB6'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=False, runs=[104], probes=['JanusBaO', 'JanusLaB6'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

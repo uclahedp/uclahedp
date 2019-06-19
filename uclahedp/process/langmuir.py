@@ -364,8 +364,13 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
         #This exists WITHIN the open statement for the source file, so the
         #source file is open at the same time.
         
-        print(os.path.isfile(ndest.file))
-        print(os.path.isfile(tdest.file))
+        
+        #remove files if they already exist
+        if os.path.exists(ndest.file):
+            os.remove(ndest.file)
+            
+        if os.path.exists(tdest.file):
+            os.remove(tdest.file)
         
         with h5py.File(ndest.file, 'a') as ndf:
             with h5py.File(tdest.file, 'a') as tdf:
@@ -692,6 +697,12 @@ def isatRawToFull(src, dest,
         #Open the destination file
         #This exists WITHIN the open statement for the source file, so the
         #source file is open at the same time.
+        
+        #remove files if they already exist
+        if os.path.exists(tdest.file):
+            os.remove(tdest.file)
+            
+            
         with h5py.File(dest.file, 'a') as df:
             
             #Throw an error if this group already exists

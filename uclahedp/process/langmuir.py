@@ -92,16 +92,12 @@ def find_sweeps(time, voltage, plots=False):
 
 
 
-def vsweep_fit(voltage, current, esat=None, exp=None, plots=False, 
-               verbose=False ):
+def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False, 
+               verbose=False, return_fits=False ):
      
      #This is a convention. I guess I'll follow it.
      current = -current
      
-     #cfactor = np.max(current) - np.min(current)
-     #current = current/cfactor
-     
-     #Make a plot showing the input data
      if plots:
           fig_input, ax_input = plt.subplots(ncols=2, figsize = [8,3])
           fig_input.suptitle("Input Signal Summary")
@@ -118,7 +114,7 @@ def vsweep_fit(voltage, current, esat=None, exp=None, plots=False,
           
           
           
-     if esat is None or exp is None:
+     if esat_range is None or exp_range is None:
           norm_i, i_offset, i_factor = normalize(current)
 
           esat_ceil = 1.0
@@ -127,14 +123,14 @@ def vsweep_fit(voltage, current, esat=None, exp=None, plots=False,
           exp_ceil = 0.5
           exp_floor = .05
           
-          if esat is None:
+          if esat_range is None:
                esat_a = np.argmin(np.abs(esat_floor  - norm_i))
                esat_b = np.argmin(np.abs(esat_ceil  - norm_i))
-               esat = [voltage[esat_a], voltage[esat_b]]
-          if exp is None:
+               esat_range = [voltage[esat_a], voltage[esat_b]]
+          if exp_range is None:
                exp_a = np.argmin(np.abs(exp_floor - norm_i))
                exp_b = np.argmin(np.abs(exp_ceil  - norm_i))
-               exp = [voltage[exp_a], voltage[exp_b]]
+               exp_range = [voltage[exp_a], voltage[exp_b]]
           
           if plots:
                fig_guess, ax_guess = plt.subplots(figsize = [8,3])
@@ -143,8 +139,8 @@ def vsweep_fit(voltage, current, esat=None, exp=None, plots=False,
                ax_guess.axhspan(exp_floor, exp_ceil, alpha=0.25, color='red')
 
      #Calculate indices based on the esat range
-     esat_a = fixRange(voltage, esat[0])
-     esat_b = fixRange(voltage, esat[1])
+     esat_a = fixRange(voltage, esat_range[0])
+     esat_b = fixRange(voltage, esat_range[1])
      
      #TODO This is a stupid hack that shouldn't be needed.
      #Only an issue for ugly traces...figure out exactly what causes it and
@@ -160,11 +156,11 @@ def vsweep_fit(voltage, current, esat=None, exp=None, plots=False,
      esat_coeff = np.polyfit(esat_v, esat_i, 1)
      esat_fit = esat_coeff[0]*voltage + esat_coeff[1]
      
-     
+
 
      #Calculate indices based on the esat range
-     exp_a = fixRange(voltage, exp[0])
-     exp_b = fixRange(voltage, exp[1])
+     exp_a = fixRange(voltage, exp_range[0])
+     exp_b = fixRange(voltage, exp_range[1])
      #Pull those parts of the curve
      exp_v = voltage[exp_a:exp_b]
      exp_i = current[exp_a:exp_b]
@@ -175,7 +171,7 @@ def vsweep_fit(voltage, current, esat=None, exp=None, plots=False,
      kTe = popt[2]
      exp_fit = expFcn(voltage, A, B, kTe)
      
-
+     
      if plots:
           fig_fit, ax_fit = plt.subplots(figsize = [8,4])
           fig_fit.suptitle("Fitted Langmuir Curve")
@@ -210,7 +206,12 @@ def vsweep_fit(voltage, current, esat=None, exp=None, plots=False,
           print("Te =  " + str(kTe) + " eV")
           print("I_esat =  " + str(esat) + " A")
        
-     return vpp, kTe, esat
+          
+          
+     if return_fits:
+          return esat_fit, exp_fit, vpp, kTe, esat
+     else:
+          return vpp, kTe, esat
 
 
 
@@ -883,17 +884,18 @@ if __name__ == "__main__":
      
      vsweepLangmuirRawToFull(f, ndest, tdest, verbose=True, grid=True)
      
-     """
-     
-     f=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "RAW","run104_JanusLaB6_raw.hdf5"))
-     ndest=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "FULL","run104_JanusLaB6_density.hdf5"))
-     
-     
-     isatRawToFull(f, ndest, verbose=True, grid=True)
+   
      
      """
+     
+     #f=  hdftools.hdfPath(os.path.join("/Volumes", "PVH_DATA", "LAPD_Mar2018", "RAW","run104_JanusLaB6_raw.hdf5"))
+     f=  hdftools.hdfPath(os.path.join("F:",  "LAPD_Mar2018", "RAW","run104_JanusLaB6_raw.hdf5"))
+     
+     
+    #isatRawToFull(f, ndest, verbose=True, grid=True)
+ 
      with h5py.File(f.file, 'a') as sf:
-          
+          resistor = 2.2
           shot = 400
           reps = 5
           time = sf['time'][:]*8
@@ -912,7 +914,7 @@ if __name__ == "__main__":
      density = esat/(area*1.6e-19*vthe)
      
      print("Density = " + '{:.2e}'.format(density)+ " cm^-3")
-     """
+
     
           
      

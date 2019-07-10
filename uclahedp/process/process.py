@@ -58,7 +58,7 @@ def process(data_dir, run, probe, overwrite=True,
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
-                                          offset_range=(0, -1000), offset_rel_t0 = [False, True])
+                                          offset_range=(0, 50), offset_rel_t0 = [False, False])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
@@ -133,17 +133,17 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("F:", "2019BIERMANN")
     #data_dir =  os.path.join("F:", "LAPD_Apr2017")
     #data_dir =  os.path.join("F:", "LAPD_Jan2019")
-    data_dir =  os.path.join("F:", "LAPD_Mar2018")
+    #data_dir =  os.path.join("F:", "LAPD_Mar2018")
     #OSX
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     
-    rawsource='LAPD'
-    #rawsource='HRR'
+    #rawsource='LAPD'
+    rawsource='HRR'
     
-    processMany(data_dir, overwrite=False, runs=[104], probes=['JanusBaO', 'JanusLaB6'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=True, runs=[36], probes=['PLL_B2'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

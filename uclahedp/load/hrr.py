@@ -128,6 +128,9 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         attrs['RESOURCE TYPE'] = (resource_type,'')
         resource_unit = digigrp['CHANNEL 0']['UNITS'][0].decode('utf-8')
         
+        attrs['motion_unit'] = ('mm', '')
+        
+
         if resource_type == 'SCOPE':
             dataname = 'TRACE'
             nshots = digigrp['CHANNEL 0'][dataname].shape[0]
@@ -171,6 +174,8 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
         
+        
+        
         #Write the attrs dictioanry into attributes of the new data group
         hdftools.writeAttrs(attrs, grp)
 
@@ -203,7 +208,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                 for i, a in enumerate(ax):
                     if pos_chan[a] is not None:
                         resname = 'RESOURCE ' + str(pos_chan[a][0])
-                        channame = 'CHANNEL 0'
+                        channame = 'CHANNEL ' + str(int(pos_chan[a][1]))
                         grp['pos'][:, i] = sf[resname][channame]['POSITION'][:]
                     else:
                         grp['pos'][:, i] = 0.0

@@ -53,12 +53,12 @@ def process(data_dir, run, probe, overwrite=True,
     if not os.path.exists(fullfile.file):
         if probe[1] == 'tdiode':
             print("Running tdiodeRawToFull")
-            fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True, fatal_badshot_percentage=.2, badshotratio=10)
+            fullfile = tdiode.tdiodeRawToFull(rawfile, fullfile, verbose=True, fatal_badshot_percentage=.2, badshotratio=3)
         elif probe[1] == 'bdot':
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
-                                          offset_range=(0, 50), offset_rel_t0 = [False, False])
+                                          remove_offset=True, offset_range=(0, 50), offset_rel_t0 = [False, False])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     #rawsource='LAPD'
     rawsource='HRR'
     
-    processMany(data_dir, overwrite=True, runs=[36], probes=['PLL_B2'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=True, runs=[40], probes=['PLL_B2'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

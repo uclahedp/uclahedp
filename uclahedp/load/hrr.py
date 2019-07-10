@@ -60,6 +60,9 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     csvtools.missingKeys(attrs, req_keys, fatal_error=True)
 
 
+    print(hdf_dir)
+    print(attrs['datafile'])
+    print(attrs['datafile'][0] +  '.hdf5')
     #TODO: Should this file take a data_dir and determine the filename
     #automatically, or should a source hdf file be given, leaving the program
     #that calls this one to determine the HDF file name?
@@ -106,9 +109,6 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
 
     #Determine the number of channels from the channel array
     nchan = len(channel_arr)
-    
-    print(channel_arr)
-    print(pos_chan)
     
         
     #Read some variables from the src file
@@ -174,10 +174,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         
         grp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
         
-        
-        
-        #Write the attrs dictioanry into attributes of the new data group
-        hdftools.writeAttrs(attrs, grp)
+    
 
         #Open the hdf5 file and copy the data over
         with h5py.File(src) as sf:
@@ -203,13 +200,27 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                     
             
             if pos_chan['x'] is not None or pos_chan['y'] is not None or pos_chan['z'] is not None:
+                
+                #Load the probe origin in cm
+                req_keys = [ 'probe_origin_x', 'probe_origin_y', 'probe_origin_z']
+                csvtools.missingKeys(attrs, req_keys, fatal_error=True)
+                origin = np.zeros(3)
+                origin[0] = (attrs['probe_origin_x'][0]*u.Unit(attrs['probe_origin_x'][1])).to(u.cm).value
+                origin[1] = (attrs['probe_origin_y'][0]*u.Unit(attrs['probe_origin_y'][1])).to(u.cm).value
+                origin[2] = (attrs['probe_origin_z'][0]*u.Unit(attrs['probe_origin_z'][1])).to(u.cm).value
+
+                
                 grp.require_dataset('pos', (nshots, 3), np.float32)
                 ax = ['x', 'y', 'z']
+                
+                unit_factor = (1.0*u.Unit(attrs['motion_unit'][0])).to(u.cm).value
+                attrs['motion_unit'] = ('cm', '')
+
                 for i, a in enumerate(ax):
                     if pos_chan[a] is not None:
                         resname = 'RESOURCE ' + str(pos_chan[a][0])
                         channame = 'CHANNEL ' + str(int(pos_chan[a][1]))
-                        grp['pos'][:, i] = sf[resname][channame]['POSITION'][:]
+                        grp['pos'][:, i] = sf[resname][channame]['POSITION'][:]*unit_factor + origin[i]
                     else:
                         grp['pos'][:, i] = 0.0
 
@@ -225,6 +236,10 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             t = np.arange(nti)*dt
             grp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = t.value
             grp['time'].attrs['unit'] =  str(t.unit)
+            
+            
+        #Write the attrs dictioanry into attributes of the new data group
+        hdftools.writeAttrs(attrs, grp)
         
     return dest
     

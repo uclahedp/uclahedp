@@ -201,6 +201,15 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             
             if pos_chan['x'] is not None or pos_chan['y'] is not None or pos_chan['z'] is not None:
                 
+                dir_pol = np.ones(3)
+                if 'xdir_pol' in attrs.keys():
+                    dir_pol[0] = attrs['xdir_pol'][0]
+                if 'ydir_pol' in attrs.keys():
+                    dir_pol[1] = attrs['ydir_pol'][0]
+                if 'zdir_pol' in attrs.keys():
+                    dir_pol[2] = attrs['zdir_pol'][0]
+                
+                
                 #Load the probe origin in cm
                 req_keys = [ 'probe_origin_x', 'probe_origin_y', 'probe_origin_z']
                 csvtools.missingKeys(attrs, req_keys, fatal_error=True)
@@ -220,7 +229,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                     if pos_chan[a] is not None:
                         resname = 'RESOURCE ' + str(pos_chan[a][0])
                         channame = 'CHANNEL ' + str(int(pos_chan[a][1]))
-                        grp['pos'][:, i] = sf[resname][channame]['POSITION'][:]*unit_factor + origin[i]
+                        grp['pos'][:, i] = sf[resname][channame]['POSITION'][:]*unit_factor*dir_pol[i] + origin[i]
                     else:
                         grp['pos'][:, i] = 0.0
 

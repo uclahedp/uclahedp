@@ -237,6 +237,16 @@ def readPosArray(src, controls, motion_attrs):
     #Not a problem for now, but just FYI
     motion_attrs['motion_unit'] = ("cm", '')
     
+    
+    
+    #Load the probe origin in cm
+    req_keys = [ 'probe_origin_x', 'probe_origin_y', 'probe_origin_z']
+    csvtools.missingKeys(attrs, req_keys, fatal_error=True)
+    origin = np.zeros(3)
+    origin[0] = (attrs['probe_origin_x'][0]*u.Unit(attrs['probe_origin_x'][1])).to(u.cm).value
+    origin[1] = (attrs['probe_origin_y'][0]*u.Unit(attrs['probe_origin_y'][1])).to(u.cm).value
+    origin[2] = (attrs['probe_origin_z'][0]*u.Unit(attrs['probe_origin_z'][1])).to(u.cm).value
+    
     print("Reading position array: " + str(controls[0][0]))
     
     control = controls[0][0]
@@ -250,6 +260,10 @@ def readPosArray(src, controls, motion_attrs):
             if control in sf.controls.keys():
                 src_controls = sf.controls
                 pos = sf.read_controls(controls)['xyz']
+                #Adjust pos array to be in the correct coordinates
+                pos[:,0] = pos[:,0] + origin[0]
+                pos[:,1] = pos[:,1] + origin[1]
+                pos[:,2] = pos[:,2] + origin[2]
                 
                 #Extract some other parameters
                 #This is currently ALL the motion lists in the file
@@ -278,7 +292,8 @@ def readPosArray(src, controls, motion_attrs):
                  
                 
                 
-
+    #TODO: bapsflib now supports the XZ drive, so this should be converted to work
+    #like the 6K Compumotor above
     #If the controlling drive is the NI_XZ drive...
     elif control == 'NI_XZ':
         motion_attrs['motion_format'] = ('fixed_pivot', '')   #Defines how to correct angles
@@ -300,9 +315,9 @@ def readPosArray(src, controls, motion_attrs):
             nshots = len(xpos)
             ypos = np.zeros([nshots])
             pos = np.zeros([nshots, 3])
-            pos[:,0] = xpos
-            pos[:,1] = ypos
-            pos[:,2] = zpos
+            pos[:,0] = xpos + origin[0]
+            pos[:,1] = ypos + origin[1]
+            pos[:,2] = zpos + origin[2]
             del(xpos, ypos, zpos)
 
             
@@ -331,9 +346,9 @@ def readPosArray(src, controls, motion_attrs):
             zpos =   runtimelist['z']
             nshots = len(xpos)
             pos = np.zeros([nshots, 3])
-            pos[:,0] = xpos
-            pos[:,1] = ypos
-            pos[:,2] = zpos
+            pos[:,0] = xpos + origin[0]
+            pos[:,1] = ypos + origin[1]
+            pos[:,2] = zpos + origin[2]
             del(xpos, ypos, zpos)
     
             

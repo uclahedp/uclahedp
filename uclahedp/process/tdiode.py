@@ -14,7 +14,7 @@ def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
         #Get an array of all the t0 indices
         t0indarr = calcT0ind(srcgrp, verbose=verbose)
         #Get an array of all the good shots and badshots (indices)
-        badshots, goodshots = findBadShots(srcgrp, verbose=verbose, 
+        badshots, goodshots = findBadShots(srcgrp, t0indarr, verbose=verbose, 
                                            badshotratio=badshotratio,
                                            fatal_badshot_percentage=fatal_badshot_percentage)
         #Replace any bad shots with a standin avg value
@@ -99,7 +99,7 @@ def calcT0(srcgrp, verbose=False):
 
 
 
-def findBadShots(srcgrp, verbose=False, badshotratio=None, fatal_badshot_percentage=None):
+def findBadShots(srcgrp, t0indarr, verbose=False, badshotratio=None, fatal_badshot_percentage=None):
     try:
         nshots, nti, nchan = srcgrp['data'].shape
     except KeyError:
@@ -123,7 +123,13 @@ def findBadShots(srcgrp, verbose=False, badshotratio=None, fatal_badshot_percent
         if verbose:
                 tr.updateTimeRemaining(i)
         #TODO: trying using the mean of the last 500 points rather than the median as the reference
-        max_median_ratio = np.max( srcgrp['data'][i,:,0]) / np.mean(srcgrp['data'][i,-500:,0])
+        pret0 = int(t0indarr[i]*0.75)
+        
+        #Remove offset
+        arr = srcgrp['data'][i,:,0] - np.median(srcgrp['data'][i,:,0])
+        #Ratio is between the stdev of the early stuff and the maximum value
+        max_median_ratio = np.max(arr) / np.abs(np.std(arr[0:pret0]))
+        print(max_median_ratio)
         #This defines a 'bad shot' where the laser diode was indistinct,
         #indicating a possible misfire
         if (max_median_ratio < badshotratio):

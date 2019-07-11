@@ -6,6 +6,96 @@ import h5py
 
 from uclahedp.tools import hdf as hdftools
 
+
+def grid(pos, attrs, strict_axes=False, strict_grid=False ):
+
+    req_keys = []
+        
+    #Determine the motion format: default is cartesian
+    if 'motion_format' in attrs.keys():
+        motion_format = attrs['motion_format'][0]
+    else:
+        attrs['motion_format'] = 'cartesian'
+      
+    #Require any necessary keywords
+    if motion_format == 'cartesian':
+        pass
+    elif motion_format == 'fixed_pivot':
+        req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
+        
+        
+    #Set default values for keywords if they aren't present
+    
+    #origin is the location of the probe's origin in the main coordinates system
+    origin = np.zeros(3)
+    if not 'probe_origin_x' in attrs.keys():
+        origin[0] = 0.0
+    if not 'probe_origin_y' in attrs.keys():
+        origin[1] = 0.0
+    if not 'probe_origin_z' in attrs.keys():
+        origin[2] = 0.0
+        
+    #probe_ax pol is the polarization of the probe's axes relative to the main
+    #coordinates. 1 means they are aligned, -1 means anti-aligned.
+    ax_pol = np.ones(3)
+    if not 'ax_pol_x' in attrs.keys():
+        ax_pol[0] = 1
+    if not 'ax_pol_y' in attrs.keys():
+        ax_pol[1] = 1
+    if not 'ax_pol_z' in attrs.keys():
+        ax_pol[2] = 1
+    
+
+    #Generate the grid axes
+    if strict_axes is True:
+        try:
+            print("Applying stric axis creation")
+            nx = attrs['nx'][0]
+            ny = attrs['ny'][0]
+            nz = attrs['nz'][0]
+            dx = attrs['dx'][0]
+            dy = attrs['dy'][0]
+            dz = attrs['dz'][0]
+            x0 = attrs['x0'][0]
+            y0 = attrs['y0'][0]
+            z0 = attrs['z0'][0]
+            xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
+                                                    dx,dy,dz,
+                                                    x0,y0,z0)
+        except KeyError:
+            print("Missing axis parameters: attempting fuzzy axis creation")
+            #Continue through to the strict_axes =False case if this happens
+            strict_axes = False
+                    
+    if strict_axes is False:
+        print("Applying fuzzy axis creation")
+        xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+                
+    #Calculate length of axes
+    nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+            
+
+            
+    #This line SHOULD be redundent, but sometimes it's necessary.
+    #It is possible, when combining two motion lists, to get
+    #some extra shots at the end of the datarun that don't have
+    #positions associated. Recalculating this here ensures we only
+    #take the ones relevant to this grid
+    nshots = nx*ny*nz*nreps
+            
+    #If grid precision is zero, apply strict gridding
+    #Otherwise, apply fuzzy gridding
+    if strict_grid:
+        print("Applying strict gridding")
+        shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
+    else:
+        print("Applying fuzzy gridding")
+        shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
+                                         precision=grid_precision)
+            
+
+
+
 def shotClosestTo(pos, point=(0,0,0) ):
     dist = np.sqrt( (pos[:,0] - point[0])**2 + 
                   (pos[:,1] - point[1])**2 + 
@@ -148,6 +238,15 @@ def invertShotGrid(shotgridind, xaxis, yaxis, zaxis):
           ri = shotgridind[i,3]
           shots[xi,yi,zi,ri] = i
      return shots
+
+
+
+
+
+
+
+
+
      
     
 

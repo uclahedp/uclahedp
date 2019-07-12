@@ -5,6 +5,7 @@ import os
 import h5py
 
 from uclahedp.tools import hdf as hdftools
+from uclahedp.tools import csv as csvtools
 
 
 def grid(pos, attrs, strict_axes=False, strict_grid=False ):
@@ -22,6 +23,10 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False ):
         pass
     elif motion_format == 'fixed_pivot':
         req_keys = req_keys + ['rot_center_x', 'rot_center_y', 'rot_center_z']
+        
+        
+        
+    csvtools.missingKeys(attrs, req_keys, fatal_error=True)
         
         
     #Set default values for keywords if they aren't present
@@ -44,9 +49,17 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False ):
         ax_pol[1] = 1
     if not 'ax_pol_z' in attrs.keys():
         ax_pol[2] = 1
-    
+        
+        
+        
+    #Adjust the probe for the origin and possible direction reversal
+    pos[:,0] = pos[:,0]*ax_pol[0] + origin[0]
+    pos[:,1] = pos[:,1]*ax_pol[1] + origin[1]
+    pos[:,2] = pos[:,2]*ax_pol[2] + origin[2]
+        
 
     #Generate the grid axes
+    #TODO support non-cartesian axis gridding here? With a keyword or something?
     if strict_axes is True:
         try:
             print("Applying stric axis creation")
@@ -69,10 +82,10 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False ):
                     
     if strict_axes is False:
         print("Applying fuzzy axis creation")
-        xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
+        xaxis,yaxis,zaxis = guessAxes(pos, precision=grid_precision)
                 
     #Calculate length of axes
-    nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
+    nx, ny, nz, nreps = calcNpoints(pos, xaxis, yaxis, zaxis)
             
 
             
@@ -87,11 +100,19 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False ):
     #Otherwise, apply fuzzy gridding
     if strict_grid:
         print("Applying strict gridding")
-        shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
+        shotgridind = strictGrid(nx,ny,nz,nreps)  
     else:
         print("Applying fuzzy gridding")
-        shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
+        shotgridind = fuzzyGrid(pos, xaxis, yaxis, zaxis, 
                                          precision=grid_precision)
+        
+        
+        
+    return shotgridind, xaxis, yaxis, zaxis, nx, ny, nz, nreps, nshots
+        
+        
+        
+        
             
 
 

@@ -129,7 +129,6 @@ def findBadShots(srcgrp, t0indarr, verbose=False, badshotratio=None, fatal_badsh
         arr = srcgrp['data'][i,:,0] - np.median(srcgrp['data'][i,:,0])
         #Ratio is between the stdev of the early stuff and the maximum value
         max_median_ratio = np.max(arr) / np.abs(np.std(arr[0:pret0]))
-        print(max_median_ratio)
         #This defines a 'bad shot' where the laser diode was indistinct,
         #indicating a possible misfire
         if (max_median_ratio < badshotratio):

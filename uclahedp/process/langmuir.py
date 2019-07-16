@@ -700,8 +700,8 @@ def isatRawToFull(src, dest,
         #source file is open at the same time.
         
         #remove files if they already exist
-        if os.path.exists(tdest.file):
-            os.remove(tdest.file)
+        if os.path.exists(dest.file):
+            os.remove(dest.file)
             
             
         with h5py.File(dest.file, 'a') as df:
@@ -757,36 +757,19 @@ def isatRawToFull(src, dest,
 
                 #If a tdiode hdf was supplied, calculate the index correction
                 #here
-                if tdiode_hdf is not None and remove_offset:
+                if tdiode_hdf is not None:
                     #Calculate the starting and ending arrays for the data
                     ta = t0indarr[i] - min_t0ind
                     tb = ta + nti
 
-                    #Calculate the range over which to calculate the offset
-                    #for each shot
-                    #If offset_rel_t0 is set for either point, add the t0 array
-                    if offset_rel_t0[0]:
-                        offset_a = offset_range[0] + t0indarr[i] - ta
-                    else:
-                        offset_a = offset_range[0]
-                        
-                    if offset_rel_t0[1]:
-                        offset_b = offset_range[1] + t0indarr[i] - ta
-                    else:
-                        offset_b = offset_range[1]
-                    
                 else:
                     #By default, read in the entire dataset
                     ta = None
                     tb = None
-                    offset_a = offset_range[0]
-                    offset_b = offset_range[1]
-                    
+          
                 if debug:
                     print("Data range: [" + str(ta) + "," + str(tb) + "]")
-                    print("Offset range: [" + str(offset_a) + "," + 
-                                          str(offset_b) + "]")
-                    
+   
                     
                 
                 #Read in the data from the source file

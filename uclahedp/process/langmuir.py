@@ -608,7 +608,7 @@ def isatRawToFull(src, dest,
         else:
             #If no position information is given, a single explicit position
             #is required. 
-            req_keys = req_keys + ['xpos', 'ypos', 'zpos']
+            req_keys = req_keys + ['probe_xpos', 'probe_ypos', 'probe_zpos']
             grid = False #Can't grid data if there's no pos array!
             
         #Process the required keys, throwing an error if any cannot be found

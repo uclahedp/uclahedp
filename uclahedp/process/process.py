@@ -58,7 +58,7 @@ def process(data_dir, run, probe, overwrite=True,
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
-                                          remove_offset=True, offset_range=(0, 50), offset_rel_t0 = [False, False])
+                                          remove_offset=True, offset_range=(1000, -1), offset_rel_t0 = [False, False])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
@@ -100,10 +100,11 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
         probelist = csv.getProbeList(csv_dir, run)
         #If a tdiode exists, bring it to the front of the list so it gets called first
         
-        if ('tdiode','tdiode') in probelist and 'tdiode' in probes:
-            #Pop the tdiode to the front of the list, since others depend on it
-            probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
-            #This is where the tdiode full should end up...
+        if ('tdiode','tdiode') in probelist:
+            if 'tdiode' in probes:
+                #Pop the tdiode to the front of the list, since others depend on it
+                probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
+            #Tell it to include the tdiode in analysis
             tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
         else:
             print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
@@ -131,19 +132,19 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
 if __name__ == "__main__":
     #Windows
     #data_dir =  os.path.join("F:", "2019BIERMANN")
-    data_dir =  os.path.join("F:", "LAPD_Apr2017")
+    #data_dir =  os.path.join("F:", "LAPD_Apr2017")
     #data_dir =  os.path.join("F:", "LAPD_Jan2019")
     #data_dir =  os.path.join("F:", "LAPD_Mar2018")
     #OSX
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     
     rawsource='LAPD'
-    #rawsource='HRR'
+    rawsource='HRR'
     
-    processMany(data_dir, overwrite=True, runs=[11], probes=['tdiode','Lang01', 'Lang02', 'Lang03'], rawsource=rawsource) 
+    processMany(data_dir, overwrite=True, runs=[51], probes=['PLL_B2'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

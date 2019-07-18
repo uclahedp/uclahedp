@@ -10,7 +10,8 @@ from uclahedp.process import tdiode, bdot, langmuir
 
 
 
-def process(data_dir, run, probe, overwrite=True,
+def process(data_dir, run, probe, 
+            overwrite_raw=True, overwrite_full=True,
             csv_dir=None, hdf_dir=None, tdiode_hdf=None, rawsource=None):
 
     if csv_dir is None:
@@ -33,7 +34,7 @@ def process(data_dir, run, probe, overwrite=True,
 
     #Make the raw file
     if os.path.exists(rawfile.file):
-        if overwrite:
+        if overwrite_raw:
             os.remove(rawfile.file)
     if not os.path.exists(rawfile.file):
         if rawsource == 'LAPD':
@@ -48,7 +49,7 @@ def process(data_dir, run, probe, overwrite=True,
     print(tdiode_hdf)
     #Make the full file
     if os.path.exists(fullfile.file):
-        if overwrite:
+        if overwrite_full:
             os.remove(fullfile.file)
     if not os.path.exists(fullfile.file):
         if probe[1] == 'tdiode':
@@ -58,7 +59,7 @@ def process(data_dir, run, probe, overwrite=True,
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
-                                          remove_offset=True, offset_range=(1000, -1), offset_rel_t0 = [False, False])
+                                          remove_offset=True, offset_range=(0, -50), offset_rel_t0 = [False, True])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
@@ -76,8 +77,9 @@ def process(data_dir, run, probe, overwrite=True,
         
         
 
-def processMany(data_dir, overwrite=True, runs=None, probes=None, 
-            csv_dir=None, hdf_dir=None, rawsource=None):
+def processMany(data_dir, runs=None, probes=None, 
+                overwrite_raw=True, overwrite_full=True,
+                csv_dir=None, hdf_dir=None, rawsource=None):
     
 
     if csv_dir is None:
@@ -90,6 +92,7 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
         runlist = csv.getRunList(csv_dir)
     else:
         runlist = runs
+        
 
 
     for run in runlist:
@@ -123,7 +126,8 @@ def processMany(data_dir, overwrite=True, runs=None, probes=None,
                 print("SKIPPING: " + probe[0] + ', NOT IN PROBE LIST!')
                 continue
             print("Processing probe: " + str(probe))
-            process(data_dir, run, probe, overwrite=overwrite, 
+            process(data_dir, run, probe, 
+                    overwrite_raw=overwrite_raw, overwrite_full=overwrite_full,
                     csv_dir=csv_dir, hdf_dir=hdf_dir, tdiode_hdf=tdiode_full,
                     rawsource=rawsource)
                 
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     rawsource='LAPD'
     rawsource='HRR'
     
-    processMany(data_dir, overwrite=True, runs=[51], probes=['PLL_B2'], rawsource=rawsource) 
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[51], probes=['PLL_B2'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

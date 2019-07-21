@@ -103,15 +103,17 @@ def processMany(data_dir, runs=None, probes=None,
         probelist = csv.getProbeList(csv_dir, run)
         #If a tdiode exists, bring it to the front of the list so it gets called first
         
-        if ('tdiode','tdiode') in probelist:
-            if 'tdiode' in probes:
-                #Pop the tdiode to the front of the list, since others depend on it
-                probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
-            #Tell it to include the tdiode in analysis
-            tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
+         if ('tdiode','tdiode') in probelist:
+            #Pop the tdiode to the front of the list, since others depend on it
+            probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
+            
+        tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
+        file_exists = os.path.exists(tdiode_full.file)
+        if ('tdiode','tdiode') in probelist or file_exists:
+             pass
         else:
-            print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
-            tdiode_full = None
+             print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
+             tdiode_full = None
 
         
         if len(probelist) == 0:

@@ -71,8 +71,9 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
  
     #Create an array of channels
     #channel_arr = tuples of form (resource number, channel number)
+    #Indexd from 1, to match load/LAPD.py
     channel_arr = []
-    nchan = 0
+    nchan = 1
     while True:
         digistr = 'resource' + str(int(nchan))
         chanstr = 'chan' + str(int(nchan))
@@ -90,7 +91,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     #channel_arr = tuples of form (resource number, channel number)
     ax = ['x', 'y', 'z']
     pos_chan = {}
-    nchan = 0
+    nchan = 1
     for i in range(3):
         digistr = ax[i] + 'pos_resource'
         chanstr = ax[i] + 'pos_chan'

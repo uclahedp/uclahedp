@@ -1,0 +1,30 @@
+% Coarse Scan of LAPD Lens, Peter's July 2019 Experiment
+% Author: Scott Feister
+%
+% Sequence file created 2019-07-23 14:54
+% Steps: 21, Reps/step: 1.
+RESOURCE ID=145	
+CHANNEL ID=0	
+UNIT=MM	
+###
+260.0	
+280.0	
+300.0	
+320.0	
+340.0	
+360.0	
+380.0	
+400.0	
+420.0	
+440.0	
+460.0	
+480.0	
+500.0	
+520.0	
+540.0	
+560.0	
+580.0	
+600.0	
+620.0	
+640.0	
+660.0	

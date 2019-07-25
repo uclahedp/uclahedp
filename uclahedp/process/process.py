@@ -6,7 +6,7 @@ process.py
 import os
 from uclahedp.load import lapd, hrr
 from uclahedp.tools import hdf, csv
-from uclahedp.process import tdiode, bdot, langmuir
+from uclahedp.process import tdiode, bdot, langmuir, monochromator
 
 
 
@@ -68,7 +68,12 @@ def process(data_dir, run, probe,
              print("Running vsweepRawToFull")
              nfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_density.hdf5') )
              tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_temperature.hdf5') )
-             fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True)                                 
+             fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True)      
+
+        elif probe[1] == 'monochromator':
+            print("Running monochromatorRawToFull")
+            fullfile = monochromator.monochromatorRawToFull(rawfile, fullfile, port=14, tdiode_hdf=tdiode_hdf,
+                  verbose=False, debug = False)                           
                                         
         else:
             print("NO MATCHING PROBE TYPE ROUTINE EXISTS: SKIPPING!")
@@ -140,17 +145,18 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("F:", "2019BIERMANN")
     #data_dir =  os.path.join("F:", "LAPD_Apr2017")
     #data_dir =  os.path.join("F:", "LAPD_Jan2019")
-    data_dir =  os.path.join("F:", "LAPD_Mar2018")
+    #data_dir =  os.path.join("F:", "LAPD_Mar2018")
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
     
-    rawsource='LAPD'
-    #rawsource='HRR'
+    #rawsource='LAPD'
+    rawsource='HRR'
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[76], probes=['LAPD10'], rawsource=rawsource) 
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[2], probes=['monochromator'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

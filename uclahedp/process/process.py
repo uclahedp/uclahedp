@@ -59,7 +59,7 @@ def process(data_dir, run, probe,
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
-                                          remove_offset=True, offset_range=(0, -50), offset_rel_t0 = [False, True])
+                                          remove_offset=True, offset_range=(0, -1), offset_rel_t0 = [False, True])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
@@ -112,21 +112,30 @@ def processMany(data_dir, runs=None, probes=None,
             #Pop the tdiode to the front of the list, since others depend on it
             probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
             
-        tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
-        file_exists = os.path.exists(tdiode_full.file)
-        if ('tdiode','tdiode') in probelist or file_exists:
-             pass
-        else:
-             print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
-             tdiode_full = None
-
+            
         
+
         if len(probelist) == 0:
             print("WARNING: NO PROBES FOUND FOR RUN " + str(run))
         
         
         for probe in probelist:
             
+            if probe[0] ==  'monochromator':
+                tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_scope_tdiode_full.hdf5') )
+            else:
+                tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
+                
+            file_exists = os.path.exists(tdiode_full.file)
+            if ('tdiode','tdiode') in probelist or file_exists:
+                print("Using tdiode file: " + str(tdiode_full.file))
+            else:
+                print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
+                tdiode_full = None
+                
+                
+            
+
             #If the probes array is set but doesn't include this probe,
             #skip it
             if probes is not None and probe[0] not in probes:
@@ -156,7 +165,10 @@ if __name__ == "__main__":
     #rawsource='LAPD'
     rawsource='HRR'
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[2], probes=['monochromator'], rawsource=rawsource) 
+    
+    #'tdiode', 'scope_tdiode', 'LAPD3','monochromator'
+    
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[7],probes=['monochromator'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

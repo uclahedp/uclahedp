@@ -26,7 +26,7 @@ from uclahedp.tools import math
 
 
 def monochromatorRawToFull(src, dest, port=14, tdiode_hdf=None,
-                  verbose=False, debug = False):
+                  verbose=False, debug = False, vdist=False):
     """ 
 
     Parameters
@@ -131,8 +131,7 @@ def monochromatorRawToFull(src, dest, port=14, tdiode_hdf=None,
             if tdiode_hdf is not None:
                 t = t[0:nti] - t[min_t0ind]
     
-          
-            
+         
 
             #Initialize time-remaining printout
             tr = util.timeRemaining(nshots)
@@ -161,29 +160,32 @@ def monochromatorRawToFull(src, dest, port=14, tdiode_hdf=None,
                     
                 if debug:
                     print("Data range: [" + str(ta) + "," + str(tb) + "]")
-                    
-                
+
                 #Read in the data from the source file
-                signal = np.squeeze(srcgrp['data'][i,ta:tb])
-                destgrp['data'][i,:] = -np.flip(signal)
+                signal = - np.squeeze(srcgrp['data'][i,ta:tb])
                 
-        
+                if vdist:
+                    destgrp['data'][i,:] = np.flip(signal)
+                else:
+                    destgrp['data'][i,:] = signal
+                    
             destgrp['data'].attrs['unit'] = ''
-            
-            
+                       
             destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
             destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
             
 
-            d = (port-13)*.325            
-            t = np.where(t > 0, t, -1)
-            v = d/t
-            v = np.where(v > 0, v, 0)
+            if vdist:
+                d = (port-13)*.325    
+                v = np.where(t!=0, d/t,0)
+                dimlabels = ['shots', 'velocity']
+                destgrp.require_dataset('velocity', (nti,), np.float32, chunks=True)[:] = np.flip(v)
+                destgrp['velocity'].attrs['unit'] = 'm/s'
+            else:
+                dimlabels = ['shots', 'time']
+                destgrp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = t
+                destgrp['time'].attrs['unit'] = 's'
             
-            destgrp.require_dataset('velocity', (nti,), np.float32, chunks=True)[:] = v
-            destgrp['velocity'].attrs['unit'] = 'm/s'
-            
-            dimlabels = ['shots', 'velocity']
             destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]
             
 

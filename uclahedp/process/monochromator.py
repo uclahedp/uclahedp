@@ -165,7 +165,7 @@ def monochromatorRawToFull(src, dest, port=14, tdiode_hdf=None,
                 
                 #Read in the data from the source file
                 signal = np.squeeze(srcgrp['data'][i,ta:tb])
-                destgrp['data'][i,:] = np.flip(signal)
+                destgrp['data'][i,:] = -np.flip(signal)
                 
         
             destgrp['data'].attrs['unit'] = ''
@@ -174,12 +174,14 @@ def monochromatorRawToFull(src, dest, port=14, tdiode_hdf=None,
             destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
             destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']
             
-        
-            d = (port-13)*.325*1e-3 #distance in km
-            t[0] = t[1]
-            velocity = np.flip(d/t)
-            destgrp.require_dataset('velocity', (nti,), np.float32, chunks=True)[:] = velocity
-            destgrp['velocity'].attrs['unit'] = 'km/s'
+
+            d = (port-13)*.325            
+            t = np.where(t > 0, t, -1)
+            v = d/t
+            v = np.where(v > 0, v, 0)
+            
+            destgrp.require_dataset('velocity', (nti,), np.float32, chunks=True)[:] = v
+            destgrp['velocity'].attrs['unit'] = 'm/s'
             
             dimlabels = ['shots', 'velocity']
             destgrp['data'].attrs['dimensions'] = [s.encode('utf-8') for s in dimlabels]

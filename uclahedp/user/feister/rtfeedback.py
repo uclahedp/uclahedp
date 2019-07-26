@@ -16,20 +16,19 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-
 if __name__ == "__main__":
     print("Beginning synchonization.")
-    h5name = "run003_lens_scan_v5_07-24-2019.hdf5"
+    h5name = "run006_lens_scan_07-25-2019.hdf5"
     workdir = "/home/scott/myouts/RTFeedback" # Working directory
     h5fn = os.path.join(workdir, h5name)
     
-    os.system('rsync -v sfeister@128.97.13.200:"/home/shared/Phoenix\ Terminal/Data/HRR/' + h5name + '" "' + workdir + '/"')
+    #os.system('rsync -v sfeister@128.97.13.200:"/home/shared/Phoenix\ Terminal/Data/HRR/' + h5name + '" "' + workdir + '/"')
     print("Beginning analysis.")
         
     with h5py.File(h5fn, 'r') as f:
         nsteps = f.attrs["RUN ITERATIONS"]
         
-        # Monochrometer
+        # Monochromator
         data = f['/RESOURCE 133/CHANNEL 0/TRACE']
         tgv = np.arange(np.size(data,1)) * data.attrs['WAVEFORM DT']
         shotgv = np.arange(np.size(data,0))
@@ -43,9 +42,9 @@ if __name__ == "__main__":
                            norm=colors.LogNorm(vmin=1e-1, vmax=1e1),
                            cmap='viridis')
         cb = fig.colorbar(im, label='-Volts')
-        ax.set_xlim([8, 12])
-        ax.set_ylim([0, 300])
-        ax.set_title("Monochrometer")
+        #ax.set_xlim([8, 12])
+        #ax.set_ylim([0, 300])
+        ax.set_title("Monochromator PMT")
         ax.set_xlabel("Time (us)")
         ax.set_ylabel("Shot number")
 

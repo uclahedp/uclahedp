@@ -17,13 +17,13 @@ if __name__ == "__main__":
     # Initialize sequence
     
     ds = 5
-    dstart = 100
+    dstart = 400
     dstop = 720
   
-    nreps = 6
+    nreps = 10
     comment = "Coarse Scan of LAPD Lens, Peter's July 2019 Experiment"
     comment += "\nAuthor: Scott Feister"
-    tseq = TSequence(npos, nreps=nreps, comment=comment)
+    tseq = TSequence(npos, nreps=1, comment=comment)
 
 
     lens = TDevice(145, unit="mm", channel=0)    

@@ -43,16 +43,16 @@ if __name__ == "__main__":
                            norm=colors.LogNorm(vmin=1e-1, vmax=1e1),
                            cmap='viridis')
         cb = fig.colorbar(im, label='-Volts')
-        ax.set_xlim([8, 20])
+        ax.set_xlim([8, 12])
         ax.set_ylim([0, 300])
         ax.set_title("Monochrometer")
         ax.set_xlabel("Time (us)")
         ax.set_ylabel("Shot number")
 
         # Magnetic field components
-        titles = ['Bx', 'By', 'Bz']
-        vmaxes = np.array([0.5,0.5,0.5])*1e3
-        chans = [1,2,3]
+        titles = ['Bx', 'By', 'Bz'] # B components
+        vmaxes = np.array([0.5,0.5,0.5])*1e3 # For each B component, colorbar +/- limits in millivolts
+        chans = [1,2,3] # For each B component, colorbar limit
         for i in range(3):
             data = f['/RESOURCE 123/CHANNEL ' + str(chans[i]) + '/TRACE']
             tgv = np.arange(np.size(data,1)) * data.attrs['WAVEFORM DT']
@@ -66,8 +66,6 @@ if __name__ == "__main__":
                                norm=colors.Normalize(vmin=-vmaxes[i], vmax=vmaxes[i]),
                                cmap='RdBu')
             cb = fig.colorbar(im, label='mV')
-            #ax.set_ylim([0, nsteps - 1])
-            #ax.set_xlim([7,12])
             ax.set_title(titles[i])
             ax.set_xlabel("Time (us)")
             ax.set_ylabel("Shot number")

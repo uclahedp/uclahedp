@@ -41,9 +41,11 @@ def indexed_roll(a, shift):
 
 if __name__ == "__main__":
     workdir = "/home/scott/myouts/RTFeedback" # Working directory; both where the HDF5 file is located and where the plot is saved.
-    h5name = "run006_lens_scan_07-25-2019.hdf5" # HDF5 file to analyze (located in workdir)
+    h5name = "run002_lens_scan_07-24-2019.hdf5" # HDF5 file to analyze (located in workdir)
     h5fn = os.path.join(workdir, h5name)
-            
+
+    #os.system('rsync -v sfeister@128.97.13.200:"/home/shared/Phoenix\ Terminal/Data/HRR/' + h5name + '" "' + workdir + '/"')
+    
     with h5py.File(h5fn, 'r') as f:     
         portTarg = 13 # Target port number at LAPD
         portPMT = 14 # PMT port number at LAPD
@@ -74,6 +76,7 @@ if __name__ == "__main__":
         ax.set_ylabel("Lens position (mm)")
         ax.set_xlabel("Step number")
         plt.grid(b=True,which='both')
+        fig.text(0.99, 0.01, h5name, horizontalalignment='right') # Lower right in figure units
         fig.savefig(os.path.join(workdir, "POS.png"), dpi=150)
 
         # PMT Raw Graph
@@ -114,6 +117,7 @@ if __name__ == "__main__":
         ax.set_ylabel("Shot number")
 
         plt.tight_layout()
+        fig.text(0.99, 0.01, h5name, horizontalalignment='right') # Lower right in figure units
         fig.savefig(os.path.join(workdir, "RAW.png"), dpi=150)
         
         # Velocity Graph
@@ -124,13 +128,14 @@ if __name__ == "__main__":
         fig = plt.figure(3)
         fig.clear()
         ax = fig.add_subplot(111)
-        im = ax.pcolorfast(velgv*1e-3, shotgv, A2[:-1,:-1]*1e-5, cmap='viridis', vmin=0, vmax=7) # The 1e5 is an arbitrary reduction to make smaller A.U. values
+        im = ax.pcolorfast(velgv*1e-3, shotgv, A2[:-1,:-1]*1e-5, cmap='viridis', vmin=0, vmax=20) # The 1e5 is an arbitrary reduction to make smaller A.U. values
         cb = fig.colorbar(im, label='photons/dv (A.U.)')
         ax.set_xlim([0, 400])
         ax.set_title("Velocity Distribution")
         ax.set_xlabel("Velocity (km/s)")
         ax.set_ylabel("Shot number")
-        
+
+        fig.text(0.99, 0.01, h5name, horizontalalignment='right') # Lower right in figure units
         fig.savefig(os.path.join(workdir, "VEL.png"), dpi=150)
 
         print("Analysis complete.")

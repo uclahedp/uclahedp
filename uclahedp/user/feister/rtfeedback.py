@@ -18,7 +18,7 @@ import matplotlib.colors as colors
 
 if __name__ == "__main__":
     print("Beginning synchonization.")
-    h5name = "run006_lens_scan_07-25-2019.hdf5"
+    h5name = "run007_lens_scan_07-25-2019.hdf5"
     workdir = "/home/scott/myouts/RTFeedback" # Working directory
     h5fn = os.path.join(workdir, h5name)
     

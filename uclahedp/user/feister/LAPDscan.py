@@ -16,9 +16,11 @@ from hrrseq import TSequence, TDevice
 if __name__ == "__main__":
     # Initialize sequence
     
-    ds = 5
-    dstart = 400
+    ds = 10
+    dstart = 0
     dstop = 720
+    
+    npos = int((dstop-dstart)/ds)+1
   
     nreps = 10
     comment = "Coarse Scan of LAPD Lens, Peter's July 2019 Experiment"

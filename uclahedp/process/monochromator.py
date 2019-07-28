@@ -176,8 +176,8 @@ def monochromatorRawToFull(src, dest, port=14, tdiode_hdf=None,
             
 
             if vdist:
-                d = (port-13)*.325    
-                v = np.where(t!=0, d/t,0)
+                dist = (port-13)*.325    
+                v = np.where(t!=0, dist/t,0)
                 dimlabels = ['shots', 'velocity']
                 destgrp.require_dataset('velocity', (nti,), np.float32, chunks=True)[:] = np.flip(v)
                 destgrp['velocity'].attrs['unit'] = 'm/s'

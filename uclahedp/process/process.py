@@ -111,9 +111,7 @@ def processMany(data_dir, runs=None, probes=None,
         if ('tdiode','tdiode') in probelist:
             #Pop the tdiode to the front of the list, since others depend on it
             probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
-            
-            
-        
+
 
         if len(probelist) == 0:
             print("WARNING: NO PROBES FOUND FOR RUN " + str(run))
@@ -126,8 +124,10 @@ def processMany(data_dir, runs=None, probes=None,
             else:
                 tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
                 
+                
+            print(tdiode_full.file)  
             file_exists = os.path.exists(tdiode_full.file)
-            if ('tdiode','tdiode') in probelist or file_exists:
+            if file_exists:
                 print("Using tdiode file: " + str(tdiode_full.file))
             else:
                 print("NO TDIODE FOUND: WILL NOT CORRECT FOR TIMING!")
@@ -166,9 +166,10 @@ if __name__ == "__main__":
     rawsource='HRR'
     
     
-    #'tdiode', 'scope_tdiode', 'LAPD3','monochromator'
+    #'tdiode', 'LAPD3', 'LAPD_C2'
+    #10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27
     
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[7],probes=['monochromator'], rawsource=rawsource) 
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27],probes=['scope_tdiode', 'monochromator'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

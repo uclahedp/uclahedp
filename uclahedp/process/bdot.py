@@ -673,7 +673,7 @@ def hfCoil(freq, nturns, hturns, gain, area, Rp, r, tau, tdelay):
 
      return np.concatenate((real,im))
     
-def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e2,1e6]):
+def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e2,1e6], mag_phase=False):
      """
      csvfile -> Bdot calibration csv file with the following columns...
      
@@ -694,181 +694,200 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
      
      Rp -> Resistance of the resistor used for measuring the coil current.
      r -> Radius of the Helmholtz coil in meters
+     
+     mag_phase-> If True, data is assumed to be provided as magnitude/phase.
+     If false, program will attempt to determine this itself, defaulting to
+     interpreting the data as being real/imaginary parts.
+     
      """
+
+     
+     #Determine the type of file being supplied
+     ext = os.path.splitext(file)[1].lower()
+     print(ext)
+     if ext == '.dat':
+         with open(file, 'rb') as bfile:
+             content = bfile.read()
+
     
-     #Figure out the number of lines in the file, assuming one header row
-     #There really doesn't seem to be a better way of doing this?
-     with open(file) as csvfile:
-          reader = csv.DictReader(csvfile)
-          nlines = sum(1 for row in reader) - 1
+     elif ext == '.csv':
+         #Figure out the number of lines in the file, assuming one header row
+         #There really doesn't seem to be a better way of doing this?
+         with open(file) as csvfile:
+              reader = csv.DictReader(csvfile)
+              nlines = sum(1 for row in reader) - 1
 
-     freq = np.zeros(nlines)
-     #Signal contains mag, phase, real, imaginary in that order for each 
-     # of the three channels
-     sig = np.zeros([nlines, 4, 3])
-     
-     lf_fit = np.zeros([nlines,3])
-     hf_fit_real = np.zeros([nlines,3])
-     hf_fit_im = np.zeros([nlines,3])
-     
-     with open(file) as csvfile:
-          reader = csv.DictReader(csvfile)
-          keys = reader.fieldnames
-          
+         freq = np.zeros(nlines)
+         #Signal contains mag, phase, real, imaginary in that order for each 
+         # of the three channels
+         sig = np.zeros([nlines, 4, 3])
+         lf_fit = np.zeros([nlines,3])
+         hf_fit_real = np.zeros([nlines,3])
+         hf_fit_im = np.zeros([nlines,3])
 
-          #Determine whether the file contains magnitude/phase data
-          #or real/imaginary data
-          #The network analyzer stores both...
-          if 'xmag' in keys:
-               mag_phase = True
-          elif 'xreal' in keys:
-               mag_phase = False
-          else:
-               raise(KeyError("No mag/phase or real/im keys found!"))
-               
-          #Adjust index because of header
-          header = next(reader)
-          for i, row in enumerate(reader):
-               #This is assumed to be in Hz
-               freq[i] = float(row['freq'])
-               
-               if mag_phase:
-                    #Magnitudes are all assumed to be in dB
-                    sig[i, 0, 0] = pow(10.0, float(row['xmag'])/20.0)
-                    sig[i, 0, 1] = pow(10.0, float(row['ymag'])/20.0)
-                    sig[i, 0, 2] = pow(10.0, float(row['zmag'])/20.0)
-               
-                    #Phase is assumed to be in degrees
-                    #Why ths network analyzer does this...who knows
-                    sig[i, 1, 0] = np.radians(  float(row['xphase'])  )
-                    sig[i, 1, 1] = np.radians(  float(row['xphase'])  )
-                    sig[i, 1, 2] = np.radians(  float(row['xphase'])  )
-     
-               else:
-                    #TODO: test this part? (I don't have a file like this handy)
-                    #Real and imaginary parts are all assumed to be in dB
-                    sig[i, 2, 0] = pow(10.0, float(row['xreal'])/20.0)
-                    sig[i, 2, 1] = pow(10.0, float(row['yreal'])/20.0)
-                    sig[i, 2, 2] = pow(10.0, float(row['zreal'])/20.0)
-                    sig[i, 3, 0] = pow(10.0, float(row['xim'])/20.0)
-                    sig[i, 3, 1] = pow(10.0, float(row['yim'])/20.0)
-                    sig[i, 3, 2] = pow(10.0, float(row['zim'])/20.0)
+         #Read the file as a dictionary
+         with open(file) as csvfile:
+              reader = csv.DictReader(csvfile)
+              keys = reader.fieldnames
+              
+              #Determine whether the file contains magnitude/phase data
+              #or real/imaginary data
+              #The network analyzer stores both...
+              if 'xmag' in keys:
+                   mag_phase = True
+              elif 'xreal' in keys:
+                   mag_phase = False
+              else:
+                   raise(KeyError("No mag/phase or real/im keys found!"))
+                   
+              #Adjust index because of header
+              header = next(reader)
+              for i, row in enumerate(reader):
+                   #This is assumed to be in Hz
+                   freq[i] = float(row['freq'])
+                   
+                   if mag_phase:
+                        #Magnitudes are all assumed to be in dB
+                        sig[i, 0, 0] = pow(10.0, float(row['xmag'])/20.0)
+                        sig[i, 0, 1] = pow(10.0, float(row['ymag'])/20.0)
+                        sig[i, 0, 2] = pow(10.0, float(row['zmag'])/20.0)
+                   
+                        #Phase is assumed to be in degrees
+                        #Why ths network analyzer does this...who knows
+                        sig[i, 1, 0] = np.radians(  float(row['xphase'])  )
+                        sig[i, 1, 1] = np.radians(  float(row['xphase'])  )
+                        sig[i, 1, 2] = np.radians(  float(row['xphase'])  )
+         
+                   else:
+                        #TODO: test this part? (I don't have a file like this handy)
+                        #Real and imaginary parts are all assumed to be in dB
+                        sig[i, 2, 0] = pow(10.0, float(row['xreal'])/20.0)
+                        sig[i, 2, 1] = pow(10.0, float(row['yreal'])/20.0)
+                        sig[i, 2, 2] = pow(10.0, float(row['zreal'])/20.0)
+                        sig[i, 3, 0] = pow(10.0, float(row['xim'])/20.0)
+                        sig[i, 3, 1] = pow(10.0, float(row['yim'])/20.0)
+                        sig[i, 3, 2] = pow(10.0, float(row['zim'])/20.0)
           
-          #Whichever data wasn't read in, calculate it          
-          if mag_phase:
-               #real = mag*cos(phase)
-               sig[:,2,:] = sig[:,0,:]*np.cos(sig[:,1,:])
-               #imaginary = mag*sin(phase)
-               sig[:,3,:] = sig[:,0,:]*np.sin(sig[:,1,:])
-          else:
-               #mag = sqrt(real^2 + im^2)
-               sig[:,0,:] = np.sqrt(np.power(sig[:,2,:],2)  + np.power(sig[:,3,:],2))
-               #phase = arctan(im/real)
-               sig[:,1,:] = np.arctan(sig[:,3,:]/sig[:,2,:])
-               
-               
-          sig = np.array(sig)
-          
+              
+        
+     else:
+         print("File extension not supported:" + ext)
+         
+         
+         
+     #Whichever data wasn't read in, calculate it          
+     if mag_phase:
+        #real = mag*cos(phase)
+        sig[:,2,:] = sig[:,0,:]*np.cos(sig[:,1,:])
+        #imaginary = mag*sin(phase)
+        sig[:,3,:] = sig[:,0,:]*np.sin(sig[:,1,:])
+     else:
+        #mag = sqrt(real^2 + im^2)
+        sig[:,0,:] = np.sqrt(np.power(sig[:,2,:],2)  + np.power(sig[:,3,:],2))
+        #phase = arctan(im/real)
+        sig[:,1,:] = np.arctan(sig[:,3,:]/sig[:,2,:])
+       
                   
+     """
 
-          area = np.zeros(3)
-          tau = np.zeros(3)
-          tdelay = np.zeros(3)
-          
-          
-          a = np.argmin(np.abs(freq - area_freq_range[0]))
-          b = np.argmin(np.abs(freq - area_freq_range[1] ))
-          
-          for i in range(3):
-               #Calculate the area of the coil data from just the specified
-               #frequency range
-               #area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
-               #                        nturns, hturns,gain, Rp, r))
-               
-               fcn = lambda freq, area: lfCoil(freq,
-                                               nturns, hturns, gain, area, 
-                                               Rp, r)
-               
-               #Fit over the range a:b to find the area
-               popt, pcov = curve_fit(fcn, freq[a:b], sig[a:b,3,i], 
-                                                     p0=[ 1])
-               area[i] = popt[0]
-               
-               lf_fit[:,i] = fcn(freq,  area[i])
-               
-               
-               #Now fit the full signal (with the area fixed) for the impedence 
-               #time constant tau
-               fcn = lambda freq, tau, tdelay: hfCoil(freq, 
-                                                      nturns, hturns, gain, 
-                                                      area[i], 
-                                                      Rp, r, tau, tdelay) 
-               
-               concat_data = np.concatenate((sig[:,1,i],sig[:,2,i]))
+      area = np.zeros(3)
+      tau = np.zeros(3)
+      tdelay = np.zeros(3)
+      
+      
+      a = np.argmin(np.abs(freq - area_freq_range[0]))
+      b = np.argmin(np.abs(freq - area_freq_range[1] ))
+      
+      for i in range(3):
+           #Calculate the area of the coil data from just the specified
+           #frequency range
+           #area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
+           #                        nturns, hturns,gain, Rp, r))
+           
+           fcn = lambda freq, area: lfCoil(freq,
+                                           nturns, hturns, gain, area, 
+                                           Rp, r)
+           
+           #Fit over the range a:b to find the area
+           popt, pcov = curve_fit(fcn, freq[a:b], sig[a:b,3,i], 
+                                                 p0=[ 1])
+           area[i] = popt[0]
+           
+           lf_fit[:,i] = fcn(freq,  area[i])
+           
+           
+           #Now fit the full signal (with the area fixed) for the impedence 
+           #time constant tau
+           fcn = lambda freq, tau, tdelay: hfCoil(freq, 
+                                                  nturns, hturns, gain, 
+                                                  area[i], 
+                                                  Rp, r, tau, tdelay) 
+           
+           concat_data = np.concatenate((sig[:,1,i],sig[:,2,i]))
 
-               popt, pcov = curve_fit(fcn, freq, concat_data, 
-                                                     p0=[ 5e-8,-1e-7])
-               tau[i] = popt[0]
-               tdelay[i] = popt[1]
-               
-               hf_fit_real[:,i] = fcn(freq,  tau[i], tdelay[i])[0:nlines]
-               hf_fit_im[:,i] = fcn(freq,  tau[i], tdelay[i])[nlines:2*nlines]
-               
+           popt, pcov = curve_fit(fcn, freq, concat_data, 
+                                                 p0=[ 5e-8,-1e-7])
+           tau[i] = popt[0]
+           tdelay[i] = popt[1]
+           
+           hf_fit_real[:,i] = fcn(freq,  tau[i], tdelay[i])[0:nlines]
+           hf_fit_im[:,i] = fcn(freq,  tau[i], tdelay[i])[nlines:2*nlines]
+           
 
-          print("**** Bdot Calibration Report *****")
-          for i in range(3):
-               axes = ['x', 'y', 'z']
-               print("************")
-               print(axes[i] + 'area: ' + str(np.round(area[i]*1e6, decimals=3)) + ' mm^2')
-               print(axes[i] + 'tau: ' + str(np.round(tau[i]*1e9, decimals=3)) + ' ns')
-               print(axes[i] + 'tdelay: ' + str(np.round(tdelay[i]*1e9, decimals=3)) + ' ns')
-               
-               
-          fig, ax = plt.subplots( nrows=3, ncols=3, figsize = [8,8])
-          fig.subplots_adjust( hspace=.35, wspace=.35)
-          
-          
-          fontsize = 12
-          
-          for i in range(3):
-               lf_xrange = (area_freq_range[0]*1e-3,area_freq_range[1]*1e-3)
-               hf_xrange = (np.min(freq)*1e-3,np.max(freq)*1e-3)
-               #hf_xrange = (20, 5000)
-     
-               if i ==2:
-                    ax[i,0].set_xlabel('Frequency (kHz)', fontsize=fontsize)
-                    ax[i,1].set_xlabel('Frequency (kHz)', fontsize=fontsize)
-                    ax[i,2].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+      print("**** Bdot Calibration Report *****")
+      for i in range(3):
+           axes = ['x', 'y', 'z']
+           print("************")
+           print(axes[i] + 'area: ' + str(np.round(area[i]*1e6, decimals=3)) + ' mm^2')
+           print(axes[i] + 'tau: ' + str(np.round(tau[i]*1e9, decimals=3)) + ' ns')
+           print(axes[i] + 'tdelay: ' + str(np.round(tdelay[i]*1e9, decimals=3)) + ' ns')
+           
+           
+      fig, ax = plt.subplots( nrows=3, ncols=3, figsize = [8,8])
+      fig.subplots_adjust( hspace=.35, wspace=.35)
+      
+      
+      fontsize = 12
+      
+      for i in range(3):
+           lf_xrange = (area_freq_range[0]*1e-3,area_freq_range[1]*1e-3)
+           hf_xrange = (np.min(freq)*1e-3,np.max(freq)*1e-3)
+           #hf_xrange = (20, 5000)
+ 
+           if i ==2:
+                ax[i,0].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+                ax[i,1].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+                ax[i,2].set_xlabel('Frequency (kHz)', fontsize=fontsize)
 
-               ax[i,0].set_title(axes[i] + ' Low Freq.')
-               ax[i,0].plot(freq[a:b]*1e-3, sig[a:b:,3,i], linewidth=3)
-               ax[i,0].plot(freq[a:b]*1e-3, lf_fit[a:b,i])
-               ax[i,0].set_xlim(lf_xrange)
-               ax[i,0].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
-               
-               
-               ax[i,1].set_title(axes[i] + ' High Freq. Real')
-               ax[i,1].plot(freq*1e-3, sig[:,2,i], linewidth=3)
-               ax[i,1].plot(freq*1e-3, hf_fit_real[0:nlines,i])
-               ax[i,1].set_xlim(hf_xrange)
-               ax[i,1].set_xscale('log')
-               ax[i,1].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
-               
-               ax[i,2].set_title(axes[i] + ' High Freq. Imaginary')
-               ax[i,2].plot(freq*1e-3, sig[:,3,i], linewidth=3)
-               ax[i,2].plot(freq*1e-3, hf_fit_im[0:nlines,i])
-               ax[i,2].set_xlim(hf_xrange)
-               ax[i,2].set_xscale('log')
-               ax[i,2].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
-               
+           ax[i,0].set_title(axes[i] + ' Low Freq.')
+           ax[i,0].plot(freq[a:b]*1e-3, sig[a:b:,3,i], linewidth=3)
+           ax[i,0].plot(freq[a:b]*1e-3, lf_fit[a:b,i])
+           ax[i,0].set_xlim(lf_xrange)
+           ax[i,0].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+           
+           
+           ax[i,1].set_title(axes[i] + ' High Freq. Real')
+           ax[i,1].plot(freq*1e-3, sig[:,2,i], linewidth=3)
+           ax[i,1].plot(freq*1e-3, hf_fit_real[0:nlines,i])
+           ax[i,1].set_xlim(hf_xrange)
+           ax[i,1].set_xscale('log')
+           ax[i,1].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+           
+           ax[i,2].set_title(axes[i] + ' High Freq. Imaginary')
+           ax[i,2].plot(freq*1e-3, sig[:,3,i], linewidth=3)
+           ax[i,2].plot(freq*1e-3, hf_fit_im[0:nlines,i])
+           ax[i,2].set_xlim(hf_xrange)
+           ax[i,2].set_xscale('log')
+           ax[i,2].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+    """
               
                
 
 if __name__ == "__main__":
      
-     csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
-     #csvfile = os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019","bdot_calibrations", "LAPD_C6.csv")
-     #csvfile = os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     #csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
      
      calibrateProbe(csvfile, 10, 100)
      

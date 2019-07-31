@@ -673,7 +673,7 @@ def hfCoil(freq, nturns, hturns, gain, area, Rp, r, tau, tdelay):
 
      return np.concatenate((real,im))
     
-def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e2,1e6], mag_phase=False):
+def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_range = [1e2,1e6]):
      """
      csvfile -> Bdot calibration csv file with the following columns...
      
@@ -695,9 +695,6 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
      Rp -> Resistance of the resistor used for measuring the coil current.
      r -> Radius of the Helmholtz coil in meters
      
-     mag_phase-> If True, data is assumed to be provided as magnitude/phase.
-     If false, program will attempt to determine this itself, defaulting to
-     interpreting the data as being real/imaginary parts.
      
      """
 

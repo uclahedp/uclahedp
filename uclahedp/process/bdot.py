@@ -706,8 +706,8 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
      ext = os.path.splitext(file)[1].lower()
      print(ext)
      if ext == '.dat':
-         with open(file, 'rb') as bfile:
-             content = bfile.read()
+         print("Binary files not currently supported here: ask Pat for his" +
+               " converted script.")
 
     
      elif ext == '.csv':
@@ -886,8 +886,9 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
 if __name__ == "__main__":
      
      #csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
-     csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
      csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
+     csvfile = os.path.join("G:","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
      
      calibrateProbe(csvfile, 10, 100)
      

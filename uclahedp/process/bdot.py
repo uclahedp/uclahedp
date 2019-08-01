@@ -701,7 +701,8 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
      
      #Determine the type of file being supplied
      ext = os.path.splitext(file)[1].lower()
-     print(ext)
+
+
      if ext == '.dat':
          print("Binary files not currently supported here: ask Pat for his" +
                " converted script.")
@@ -770,8 +771,7 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
      else:
          print("File extension not supported:" + ext)
          
-         
-         
+
      #Whichever data wasn't read in, calculate it          
      if mag_phase:
         #real = mag*cos(phase)
@@ -784,108 +784,101 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
         #phase = arctan(im/real)
         sig[:,1,:] = np.arctan(sig[:,3,:]/sig[:,2,:])
        
-                  
-     """
 
-      area = np.zeros(3)
-      tau = np.zeros(3)
-      tdelay = np.zeros(3)
+     area = np.zeros(3)
+     tau = np.zeros(3)
+     tdelay = np.zeros(3)
       
       
-      a = np.argmin(np.abs(freq - area_freq_range[0]))
-      b = np.argmin(np.abs(freq - area_freq_range[1] ))
+     a = np.argmin(np.abs(freq - area_freq_range[0]))
+     b = np.argmin(np.abs(freq - area_freq_range[1] ))
       
-      for i in range(3):
-           #Calculate the area of the coil data from just the specified
-           #frequency range
-           #area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
-           #                        nturns, hturns,gain, Rp, r))
+     for i in range(3):
+          #Calculate the area of the coil data from just the specified
+          #frequency range
+          #area[i] = np.median( lfProbeArea(freq[a:b], sig[a:b,0,i], 
+          #                        nturns, hturns,gain, Rp, r))
            
-           fcn = lambda freq, area: lfCoil(freq,
-                                           nturns, hturns, gain, area, 
-                                           Rp, r)
+          fcn = lambda freq, area: lfCoil(freq,
+                                          nturns, hturns, gain, area, 
+                                          Rp, r)
            
-           #Fit over the range a:b to find the area
-           popt, pcov = curve_fit(fcn, freq[a:b], sig[a:b,3,i], 
-                                                 p0=[ 1])
-           area[i] = popt[0]
-           
-           lf_fit[:,i] = fcn(freq,  area[i])
-           
-           
-           #Now fit the full signal (with the area fixed) for the impedence 
-           #time constant tau
-           fcn = lambda freq, tau, tdelay: hfCoil(freq, 
-                                                  nturns, hturns, gain, 
-                                                  area[i], 
-                                                  Rp, r, tau, tdelay) 
-           
-           concat_data = np.concatenate((sig[:,1,i],sig[:,2,i]))
-
-           popt, pcov = curve_fit(fcn, freq, concat_data, 
-                                                 p0=[ 5e-8,-1e-7])
-           tau[i] = popt[0]
-           tdelay[i] = popt[1]
-           
-           hf_fit_real[:,i] = fcn(freq,  tau[i], tdelay[i])[0:nlines]
-           hf_fit_im[:,i] = fcn(freq,  tau[i], tdelay[i])[nlines:2*nlines]
-           
-
-      print("**** Bdot Calibration Report *****")
-      for i in range(3):
-           axes = ['x', 'y', 'z']
-           print("************")
-           print(axes[i] + 'area: ' + str(np.round(area[i]*1e6, decimals=3)) + ' mm^2')
-           print(axes[i] + 'tau: ' + str(np.round(tau[i]*1e9, decimals=3)) + ' ns')
-           print(axes[i] + 'tdelay: ' + str(np.round(tdelay[i]*1e9, decimals=3)) + ' ns')
+          #Fit over the range a:b to find the area
+          popt, pcov = curve_fit(fcn, freq[a:b], sig[a:b,3,i], 
+                                                p0=[ 1])
+          area[i] = popt[0]
+          
+          lf_fit[:,i] = fcn(freq,  area[i])
            
            
-      fig, ax = plt.subplots( nrows=3, ncols=3, figsize = [8,8])
-      fig.subplots_adjust( hspace=.35, wspace=.35)
-      
-      
-      fontsize = 12
-      
-      for i in range(3):
-           lf_xrange = (area_freq_range[0]*1e-3,area_freq_range[1]*1e-3)
-           hf_xrange = (np.min(freq)*1e-3,np.max(freq)*1e-3)
-           #hf_xrange = (20, 5000)
+          #Now fit the full signal (with the area fixed) for the impedence 
+          #time constant tau
+          fcn = lambda freq, tau, tdelay: hfCoil(freq, 
+                                                 nturns, hturns, gain, 
+                                                 area[i], 
+                                                 Rp, r, tau, tdelay) 
+           
+          concat_data = np.concatenate((sig[:,2,i],sig[:,3,i]))
+          
+          popt, pcov = curve_fit(fcn, freq, concat_data, 
+                                                 p0=[ 1e-7,-1e-7])
+          tau[i] = popt[0]
+          tdelay[i] = popt[1]
+          
+          hf_fit_real[:,i] = fcn(freq,  tau[i], tdelay[i])[0:nlines]
+          hf_fit_im[:,i] = fcn(freq,  tau[i], tdelay[i])[nlines:2*nlines]
  
-           if i ==2:
-                ax[i,0].set_xlabel('Frequency (kHz)', fontsize=fontsize)
-                ax[i,1].set_xlabel('Frequency (kHz)', fontsize=fontsize)
-                ax[i,2].set_xlabel('Frequency (kHz)', fontsize=fontsize)
 
-           ax[i,0].set_title(axes[i] + ' Low Freq.')
-           ax[i,0].plot(freq[a:b]*1e-3, sig[a:b:,3,i], linewidth=3)
-           ax[i,0].plot(freq[a:b]*1e-3, lf_fit[a:b,i])
-           ax[i,0].set_xlim(lf_xrange)
-           ax[i,0].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+     print("**** Bdot Calibration Report *****")
+     print("File:" + str(file))
+     for i in range(3):
+          axes = ['x', 'y', 'z']
+          print("************")
+          print(axes[i] + 'area: ' + str(np.round(area[i]*1e6, decimals=3)) + ' mm^2')
+          print(axes[i] + 'tau: ' + str(np.round(tau[i]*1e9, decimals=3)) + ' ns')
+          print(axes[i] + 'tdelay: ' + str(np.round(tdelay[i]*1e9, decimals=3)) + ' ns')
            
            
-           ax[i,1].set_title(axes[i] + ' High Freq. Real')
-           ax[i,1].plot(freq*1e-3, sig[:,2,i], linewidth=3)
-           ax[i,1].plot(freq*1e-3, hf_fit_real[0:nlines,i])
-           ax[i,1].set_xlim(hf_xrange)
-           ax[i,1].set_xscale('log')
-           ax[i,1].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+     fig, ax = plt.subplots( nrows=3, ncols=3, figsize = [8,8])
+     fig.subplots_adjust( hspace=.35, wspace=.35)
+     fontsize = 12
+     for i in range(3):
+          lf_xrange = (area_freq_range[0]*1e-3,area_freq_range[1]*1e-3)
+          hf_xrange = (np.min(freq)*1e-3,np.max(freq)*1e-3)
+          #hf_xrange = (20, 5000)
+
+          if i ==2:
+               ax[i,0].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+               ax[i,1].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+               ax[i,2].set_xlabel('Frequency (kHz)', fontsize=fontsize)
+          ax[i,0].set_title(axes[i] + ' Low Freq.')
+          ax[i,0].plot(freq[a:b]*1e-3, sig[a:b:,3,i], linewidth=3)
+          ax[i,0].plot(freq[a:b]*1e-3, lf_fit[a:b,i])
+          ax[i,0].set_xlim(lf_xrange)
+          ax[i,0].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
            
-           ax[i,2].set_title(axes[i] + ' High Freq. Imaginary')
-           ax[i,2].plot(freq*1e-3, sig[:,3,i], linewidth=3)
-           ax[i,2].plot(freq*1e-3, hf_fit_im[0:nlines,i])
-           ax[i,2].set_xlim(hf_xrange)
-           ax[i,2].set_xscale('log')
-           ax[i,2].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
-    """
-              
+          ax[i,1].set_title(axes[i] + ' High Freq. Real')
+          ax[i,1].plot(freq*1e-3, sig[:,2,i], linewidth=3)
+          ax[i,1].plot(freq*1e-3, hf_fit_real[0:nlines,i])
+          ax[i,1].set_xlim(hf_xrange)
+          ax[i,1].set_xscale('log')
+          ax[i,1].set_ylabel('Re( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+           
+          ax[i,2].set_title(axes[i] + ' High Freq. Imaginary')
+          ax[i,2].plot(freq*1e-3, sig[:,3,i], linewidth=3)
+          ax[i,2].plot(freq*1e-3, hf_fit_im[0:nlines,i])
+          ax[i,2].set_xlim(hf_xrange)
+          ax[i,2].set_xscale('log')
+          ax[i,2].set_ylabel('Im( V$_{m}$ / V$_{o}$ )', fontsize=fontsize)
+
                
 
 if __name__ == "__main__":
      
-     #csvfile = os.path.join("F:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     #csvfile = os.path.join("G:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
      #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
-     csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
-     csvfile = os.path.join("G:","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
+     #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
+     csvfile = os.path.join("G:","LAPD_Jul2019","bdot_calibration", "LAPD_C2_jeff.csv")
      
      calibrateProbe(csvfile, 10, 100)
      

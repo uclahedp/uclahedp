@@ -151,11 +151,11 @@ def processMany(data_dir, runs=None, probes=None,
 
 if __name__ == "__main__":
     #Windows
-    #data_dir =  os.path.join("F:", "2019BIERMANN")
+    data_dir =  os.path.join("G:", "2019BIERMANN")
     #data_dir =  os.path.join("F:", "LAPD_Apr2017")
-    #data_dir =  os.path.join("F:", "LAPD_Jan2019")
+    #data_dir =  os.path.join("G:", "LAPD_Jan2019")
     #data_dir =  os.path.join("F:", "LAPD_Mar2018")
-    data_dir =  os.path.join("G:", "LAPD_Jul2019")
+    #data_dir =  os.path.join("G:", "LAPD_Jul2019")
     
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
@@ -165,13 +165,13 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
     
     rawsource='LAPD'
-    #rawsource='HRR'
+    rawsource='HRR'
     
     
     #'tdiode', 'LAPD3', 'LAPD_C2'
     #10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[34],probes=['LAPD_C5', 'LAPD_C2'], rawsource=rawsource) 
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[42],probes=['tdiode','PLL_B2'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

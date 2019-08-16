@@ -297,62 +297,10 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
         
         #If requested by keyword, apply gridding
         if grid:
-            
-            #If grid parameters exist in the attrs, generate an exact grid
-            #If not, generate a guess
-            if strict_axes:
-                try:
-                    print("Applying stric axis creation")
-                    nx = attrs['nx'][0]
-                    ny = attrs['ny'][0]
-                    nz = attrs['nz'][0]
-                    dx = attrs['dx'][0]
-                    dy = attrs['dy'][0]
-                    dz = attrs['dz'][0]
-                    x0 = attrs['x0'][0]
-                    y0 = attrs['y0'][0]
-                    z0 = attrs['z0'][0]
-                    xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
-                                                            dx,dy,dz,
-                                                            x0,y0,z0)
-               
-                except KeyError:
-                    print("Missing axis parameters: attempting fuzzy axis creation")
-                    xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
-            else:
-                print("Applying fuzzy axis creation")
-                xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
-                
-            #Calculate length of axes
-            nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
-            
-            if debug:
-                print("** Gridding parameters **")
-                print('nshots: ' + str(nshots))
-                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
-                if strict_axes:
-                     print('dx, dy, dz: ' + str((dx, dy, dz)))
-                     print('x0, y0, z0: ' + str((x0, y0, z0)))
-            
-            #This line SHOULD be redundent, but sometimes it's necessary.
-            #It is possible, when combining two motion lists, to get
-            #some extra shots at the end of the datarun that don't have
-            #positions associated. Recalculating this here ensures we only
-            #take the ones relevant to this grid
-            nshots = nx*ny*nz*nreps
-            
-            #If grid precision is zero, apply strict gridding
-            #Otherwise, apply fuzzy gridding
-            if strict_grid:
-                print("Applying strict gridding")
-                shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
-            else:
-                print("Applying fuzzy gridding")
-                shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
-                                                 precision=grid_precision)
-                
-                
-            shotlist = postools.invertShotGrid(shotgridind, xaxis, yaxis, zaxis)
+           shotlist, xaxis, yaxis, zaxis, nx, ny, nz, nreps, nshots = postools.grid(
+                     pos, attrs, strict_axes=strict_axes, 
+                     strict_grid=strict_grid, grid_precision=grid_precision, 
+                     invert=True)
 
         if verbose:
             print("Opening destination HDF files")
@@ -620,59 +568,10 @@ def isatRawToFull(src, dest,
         
         #If requested by keyword, apply gridding
         if grid:
-            
-            #If grid parameters exist in the attrs, generate an exact grid
-            #If not, generate a guess
-            if strict_axes:
-                try:
-                    print("Applying stric axis creation")
-                    nx = attrs['nx'][0]
-                    ny = attrs['ny'][0]
-                    nz = attrs['nz'][0]
-                    dx = attrs['dx'][0]
-                    dy = attrs['dy'][0]
-                    dz = attrs['dz'][0]
-                    x0 = attrs['x0'][0]
-                    y0 = attrs['y0'][0]
-                    z0 = attrs['z0'][0]
-                    xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
-                                                            dx,dy,dz,
-                                                            x0,y0,z0)
-               
-                except KeyError:
-                    print("Missing axis parameters: attempting fuzzy axis creation")
-                    xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
-            else:
-                print("Applying fuzzy axis creation")
-                xaxis,yaxis,zaxis = postools.guessAxes(pos, precision=grid_precision)
-                
-            #Calculate length of axes
-            nx, ny, nz, nreps = postools.calcNpoints(pos, xaxis, yaxis, zaxis)
-            
-            if debug:
-                print("** Gridding parameters **")
-                print('nshots: ' + str(nshots))
-                print('nx, ny, nz, nreps: ' + str((nx, ny, nz, nreps)))
-                if strict_axes:
-                     print('dx, dy, dz: ' + str((dx, dy, dz)))
-                     print('x0, y0, z0: ' + str((x0, y0, z0)))
-            
-            #This line SHOULD be redundent, but sometimes it's necessary.
-            #It is possible, when combining two motion lists, to get
-            #some extra shots at the end of the datarun that don't have
-            #positions associated. Recalculating this here ensures we only
-            #take the ones relevant to this grid
-            nshots = nx*ny*nz*nreps
-            
-            #If grid precision is zero, apply strict gridding
-            #Otherwise, apply fuzzy gridding
-            if strict_grid:
-                print("Applying strict gridding")
-                shotgridind = postools.strictGrid(nx,ny,nz,nreps)  
-            else:
-                print("Applying fuzzy gridding")
-                shotgridind = postools.fuzzyGrid(pos, xaxis, yaxis, zaxis, 
-                                                 precision=grid_precision)
+           shotgridind, xaxis, yaxis, zaxis, nx, ny, nz, nreps, nshots = postools.grid(
+                     pos, attrs, strict_axes=strict_axes, 
+                     strict_grid=strict_grid, grid_precision=grid_precision, 
+                     invert=False)
 
         #If tdiode_hdf is set, load the pre-processed tdiode data
         if tdiode_hdf is not None:
@@ -795,7 +694,7 @@ def isatRawToFull(src, dest,
                     except ValueError as e:
                         print("ERROR!")
                         print(destgrp['data'].shape)
-                        print(bx.shape)
+                        print(voltage.shape)
                         print([xi, yi, zi, repi])
                         raise(e)
                 else:

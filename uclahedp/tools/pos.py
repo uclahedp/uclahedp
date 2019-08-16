@@ -1,14 +1,45 @@
 import numpy as np
 import h5py
-
 import os
-import h5py
 
-from uclahedp.tools import hdf as hdftools
 from uclahedp.tools import csv as csvtools
 
 
-def grid(pos, attrs, strict_axes=False, strict_grid=False ):
+def grid(pos, attrs, strict_axes=False, strict_grid=False, grid_precision=0.1,
+         invert=False):
+    """
+    This program is a high-level encapsulation of all of the gridding typically
+    used by one of the probe programs. 
+    
+    The default output of this function is: 
+         shotgridind, xaxis, yaxis, zaxis, nx, ny, nz, nreps, nshots
+         
+    Where shotgridind is an array [nshots, 4]
+    where each shot entry contains [xind, yind, zind, irep]. These indicies can
+    then be used to place shot data in the correct grid locations.
+    
+    pos (array): Position array from the source file [nshots, 3] where the
+    third dimension is xyz
+
+    attrs (dict): Attribute dictionary for the dataset. Used to get probe
+    origin, etc.
+    
+    strict_axes: If true, strict axis creation will be used.
+    
+    strict_grid: If true, strict gridding will be used. 
+    
+    grid_precision (float): If fuzzy gridding is used, values will be rounded
+    to this precision before sorting into the grid.
+    
+    invert (bool): If true, returns an 'inverted' version of the shotgridind
+    array which has size [nx, ny, nz, nreps], and each value in the array is
+    the shot number that belongs there. This is useful when you need to load
+    all reps at once, eg. if you need to average Langmuir traces prior to 
+    the full analysis phase.
+    
+    
+    
+    """
 
     req_keys = []
         
@@ -72,7 +103,7 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False ):
             x0 = attrs['x0'][0]
             y0 = attrs['y0'][0]
             z0 = attrs['z0'][0]
-            xaxis, yaxis, zaxis = postools.makeAxes(nx,ny,nz,
+            xaxis, yaxis, zaxis = makeAxes(nx,ny,nz,
                                                     dx,dy,dz,
                                                     x0,y0,z0)
         except KeyError:
@@ -107,7 +138,9 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False ):
                                          precision=grid_precision)
         
         
-        
+    if invert:
+         shotgridind = invertShotGrid(shotgridind, xaxis, yaxis, zaxis)
+
     return shotgridind, xaxis, yaxis, zaxis, nx, ny, nz, nreps, nshots
         
         

@@ -6,7 +6,7 @@ process.py
 import os
 from uclahedp.load import lapd, hrr
 from uclahedp.tools import hdf, csv
-from uclahedp.process import tdiode, bdot, langmuir, monochromator
+from uclahedp.process import tdiode, bdot, langmuir, scope
 
 
 
@@ -70,9 +70,9 @@ def process(data_dir, run, probe,
              tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_temperature.hdf5') )
              fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True)      
 
-        elif probe[1] == 'monochromator':
-            print("Running monochromatorRawToFull")
-            fullfile = monochromator.monochromatorRawToFull(rawfile, fullfile, port=14, tdiode_hdf=tdiode_hdf,
+        elif probe[1] == 'scoper':
+            print("Running scopeRawToFull")
+            fullfile = scope.scopeRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf,
                   verbose=False, debug = False)                           
                                         
         else:

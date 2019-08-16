@@ -1,9 +1,12 @@
-#Metadata Key Dictionary
+# Metadata Key Dictionary
 
 **Metadata format**
 
 **Types of Metadata files**
--> Experiment Data (no run or probe key)
+
+Type |Has "run" key?|Has "probe" key?|Example Metadata
+-----|--------------|-----------------|---------------
+Experiment Data|No|No|Experiment name, chamber used
 
 
 

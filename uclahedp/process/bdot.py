@@ -329,16 +329,11 @@ def bdotRawToFull(src, dest,
                           bz = bz + calBz*dbz
 
                      #Apply the low-frequency calibration factors
+                     #Probe pol dir is included in these
                      bx = bx*calAx
                      by = by*calAy
                      bz = bz*calAz
                 
-                
-
-                     
- 
-                     
-                     
                 
                 #If a motion_format is set, apply the appropriate probe angle correction
                 if motion_format == 'cartesian' and angle_correction:

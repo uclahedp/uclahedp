@@ -64,25 +64,24 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False, grid_precision=0.1,
     
     #origin is the location of the probe's origin in the main coordinates system
     origin = np.zeros(3)
-    if not 'probe_origin_x' in attrs.keys():
-        origin[0] = 0.0
-    if not 'probe_origin_y' in attrs.keys():
-        origin[1] = 0.0
-    if not 'probe_origin_z' in attrs.keys():
-        origin[2] = 0.0
-        
+    origin_keys = ['probe_origin_x','probe_origin_y','probe_origin_z']
+    for i, key in enumerate(origin_keys):
+         if key in attrs.keys():
+              origin[i] = attrs[key][0]
+         else:
+              origin[i] = 0.0
+
     #probe_ax pol is the polarization of the probe's axes relative to the main
     #coordinates. 1 means they are aligned, -1 means anti-aligned.
     ax_pol = np.ones(3)
-    if not 'ax_pol_x' in attrs.keys():
-        ax_pol[0] = 1
-    if not 'ax_pol_y' in attrs.keys():
-        ax_pol[1] = 1
-    if not 'ax_pol_z' in attrs.keys():
-        ax_pol[2] = 1
-        
-        
-        
+    ax_pol_keys = ['ax_pol_x','ax_pol_y','ax_pol_z']
+    for i, key in enumerate(ax_pol_keys):
+         if key in attrs.keys():
+              ax_pol[i] = attrs[key][0]
+         else:
+              ax_pol[i] = 1
+    
+
     #Adjust the probe for the origin and possible direction reversal
     pos[:,0] = pos[:,0]*ax_pol[0] + origin[0]
     pos[:,1] = pos[:,1]*ax_pol[1] + origin[1]

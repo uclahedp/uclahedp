@@ -286,7 +286,10 @@ def readPosArray(src, controls, motion_attrs):
     elif control == 'NI_XZ':
         motion_attrs['motion_format'] = ('fixed_pivot', '')   #Defines how to correct angles
         with h5py.File(src, "r") as sf:
-            motion_group = sf['Raw data + config/NI_XZ']
+            try:
+                 motion_group = sf['Raw data + config/NI_XZ']
+            except KeyError:
+                 raise KeyError("Expected an NI_XZ drive based on metadata, but didn't find one!")
             for item in motion_group.items():
                 if isinstance(item[1], h5py.Group):
                     motion_list = str(item[0])
@@ -316,7 +319,7 @@ def readPosArray(src, controls, motion_attrs):
             try:
                 motion_group = sf['Raw data + config/NI_XYZ']
             except KeyError:
-                return None
+                 raise KeyError("Expected an NI_XYZ drive based on metadata, but didn't find one!")
             
             for item in motion_group.items():
                 if isinstance(item[1], h5py.Group):

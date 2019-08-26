@@ -106,6 +106,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                 pos_chan[ax[i]] = None
         
     
+    print(pos_chan)
 
 
     #Determine the number of channels from the channel array
@@ -212,9 +213,20 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                     if pos_chan[a] is not None:
                         resname = 'RESOURCE ' + str(pos_chan[a][0])
                         channame = 'CHANNEL ' + str(int(pos_chan[a][1]))
-                        grp['pos'][:, i] = sf[resname][channame]['POSITION'][:]*unit_factor
+                        
+                        
+                        posdata = sf[resname][channame]['POSITION'][:]*unit_factor
+                        
+                        #Handle the case where the multiple data points were
+                        #taken at a position so npos!=nshots
+                        npos = posdata.size
+                        if npos != nshots:
+                            posdata = np.repeat(posdata, int(nshots/npos))
+
+                        grp['pos'][:, i] = posdata
+                    
                     else:
-                        grp['pos'][:, i] = 0.0
+                        grp['pos'][:, i] = np.zeros(nshots)
 
         
         #Create the axes

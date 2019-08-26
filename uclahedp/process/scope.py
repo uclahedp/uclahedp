@@ -167,6 +167,12 @@ def scopeRawToFull(src, dest, port=14, tdiode_hdf=None,
                 destgrp['data'][i,:] = signal
                     
             destgrp['data'].attrs['unit'] = ''
+            
+            
+            
+            if 'pos' in srcgrp:
+                destgrp.copy(srcgrp['pos'], 'pos')
+            
                        
             destgrp.require_dataset('shots', (nshots,), np.int32, chunks=True)[:] = srcgrp['shots'][:]
             destgrp['shots'].attrs['unit'] = srcgrp['shots'].attrs['unit']

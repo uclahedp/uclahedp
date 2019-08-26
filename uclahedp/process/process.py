@@ -70,7 +70,7 @@ def process(data_dir, run, probe,
              tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_temperature.hdf5') )
              fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True)      
 
-        elif probe[1] == 'scoper':
+        elif probe[1] == 'scope':
             print("Running scopeRawToFull")
             fullfile = scope.scopeRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf,
                   verbose=False, debug = False)                           
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("G:", "2019BIERMANN")
     #data_dir =  os.path.join("F:", "LAPD_Apr2017")
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
-    data_dir =  os.path.join("G:", "LAPD_Mar2018")
+    #data_dir =  os.path.join("G:", "LAPD_Mar2018")
     #data_dir =  os.path.join("G:", "LAPD_Jul2019")
     
     #OSX
@@ -162,16 +162,16 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
     
-    rawsource='LAPD'
-    #rawsource='HRR'
+    #rawsource='LAPD'
+    rawsource='HRR'
     
     
     #'tdiode', 'LAPD3', 'LAPD_C2'
     #10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[98,99,72,73,78,66,71,70,69,68,67,80,81],probes=['tdidoe','PL11B'], rawsource=rawsource) 
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[2,3,5,6],probes=['monochromator'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

@@ -565,7 +565,7 @@ def fullToCurrent(src, dest, verbose=False):
             nchunks = int(np.ceil(nti/chunksize))
             
             #Initialize time-remaining printout
-            tr = util.timeRemaining(nchunks)
+            tr = util.timeRemaining(nchunks, reportevery=10)
             
             for i in range(nchunks):
                 #Update time remaining
@@ -825,9 +825,14 @@ if __name__ == "__main__":
      #csvfile = os.path.join("G:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
      #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
      #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
-     csvfile = os.path.join("G:","LAPD_Jul2019","bdot_calibration", "LAPD_C2_jeff.csv")
+     #csvfile = os.path.join("G:","LAPD_Jul2019","bdot_calibration", "LAPD_C2_jeff.csv")
      
-     calibrateProbe(csvfile, 10, 100)
+     #calibrateProbe(csvfile, 10, 100)
+     
+     
+     src = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "run34_LAPD_C2_full.hdf5"))
+     dest = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "run34_LAPD_C2_current.hdf5"))
+     fullToCurrent(src, dest, verbose=False)
      
      
      """

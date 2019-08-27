@@ -368,13 +368,16 @@ def thinBinOp(src_dset, dest_dset, sl, axind, args):
     bin = args['bin']
     s = src_dset[tuple(sl)]
     nelm = s.shape[axind]
-    nbins = int( np.ceil(nelm/bin) )
+    nbins = int( np.ceil(nelm/bin) - 1 )
     
     dsl = np.copy(sl)
 
     
     for i in range(nbins):
-        indrange = np.arange(i*bin, (i+1)*bin)
+        a = i*bin
+        b = (i+1)*bin
+        b = np.min([nelm-1, b]) #Shorten final bin: necessary if non-divisible
+        indrange = np.arange(a,b)
         x = np.take(s, indrange, axis=axind)
         x = np.mean(x, axis=axind)
         #Should this maybe be (i, i+1, None)?
@@ -448,7 +451,8 @@ def chunked_array_op(src, dest, ax, op, newshape, delsrc=False, verbose=False, *
             
             #Create new data array
             destgrp.require_dataset('data', newshape, np.float32, chunks=True, compression='gzip')
-            hdftools.copyAttrs(srcgrp['data'], destgrp['data'])
+            destgrp['data'].attrs['unit'] = srcgrp['data'].attrs['unit']
+            
             
             #Copy the axes over, except the one being operated on
             #That axis will be copied over later, with changes
@@ -456,10 +460,17 @@ def chunked_array_op(src, dest, ax, op, newshape, delsrc=False, verbose=False, *
                 if axis != ax:
                     srcgrp.copy(axis, destgrp)
                     
-            #Create the axis being operated on
+            #Create the axis being operated on...unless it is now trivial
             #Newshape was determined above, and is specific to the op
-            destgrp.require_dataset(ax, (newshape[axind],), np.float32, chunks=True)
-            destgrp[ax].attrs['unit'] = srcgrp[ax].attrs['unit']
+            if newshape[axind] > 1:
+                destgrp.require_dataset(ax, (newshape[axind],), np.float32, chunks=True)
+                destgrp[ax].attrs['unit'] = srcgrp[ax].attrs['unit']
+                new_dimlabels = dimlabels #No changes
+            else:
+                new_dimlabels = dimlabels.pop(axind) #Trivial: remove this dim
+                
+            destgrp['data'].attrs['dimensions'] = hdftools.strListToArr(new_dimlabels)
+                
             
             
             #Initialize time-remaining printout
@@ -514,9 +525,21 @@ if __name__ == '__main__':
     #x = avgDim(full, avged, 'shots', verbose=True)
     
     
+    src = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "run34_LAPD_C2_full.hdf5"))
+    trimmed = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "trimmed.hdf5"))
+    avgreps = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "avgreps.hdf5"))
+    dest = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "run34_LAPD_C2_full_thinned.hdf5"))
     
-    axes=[{'ax':np.arange(10), 'name':'ax1', 'unit':''},
-         {'ax':np.arange(20), 'name':'ax2', 'unit':''}]
-    data = np.zeros([10,20])
+    print("Trimming time dimension")
+    #x = trimDim(src, trimmed, 'time', val_bounds=[0,50e-6], verbose=True)
+    print("Averaging over reps dimension")
+    #x = avgDim(trimmed, avgreps, 'reps', verbose=True, delsrc=True)
+    print("Thinning time dimension")
+    x = thinBin(avgreps, dest, 'time', bin=30, verbose=True, delsrc=True)
     
-    createDataset(data, axes, testfile)
+    
+    
+    #axes=[{'ax':np.arange(10), 'name':'ax1', 'unit':''},
+    #     {'ax':np.arange(20), 'name':'ax2', 'unit':''}]
+    #data = np.zeros([10,20])
+   # createDataset(data, axes, testfile)

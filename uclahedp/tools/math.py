@@ -9,7 +9,7 @@ import numpy as np
 
 import h5py
 
-def curl(arr, xax, yax, zax, xaxis, yaxis, zaxis):
+def curl(arr, xax, yax, zax, xaxis, yaxis, zaxis, verbose=False):
     nx = xaxis.shape[0]
     ny = yaxis.shape[0]
     nz = zaxis.shape[0]
@@ -20,20 +20,23 @@ def curl(arr, xax, yax, zax, xaxis, yaxis, zaxis):
     c.fill(np.nan)
     
     if ny > 2 and nz > 2:
-        print('Compute curl x component')
+        if verbose:
+            print('Compute curl x component')
         dy = np.mean(np.gradient(yaxis))
         dz = np.mean(np.gradient(zaxis))
         c[..., 0] = np.gradient(arr[..., 2], dy, axis=yax) - np.gradient(arr[..., 1], dz, axis=zax)
     
     if nx > 2 and nz > 2:
-        print('Compute curl y component')
+        if verbose:
+            print('Compute curl y component')
         dx = np.mean(np.gradient(xaxis))
         dz = np.mean(np.gradient(zaxis))
         c[..., 1] = np.gradient(arr[..., 0], dz, axis=zax) - np.gradient(arr[..., 2], dx, axis=xax)
 
         
     if nx > 2 and ny > 2:
-        print('Compute curl z component')
+        if verbose:
+            print('Compute curl z component')
         dx = np.mean(np.gradient(xaxis))
         dy = np.mean(np.gradient(yaxis))
         c[..., 2] = np.gradient(arr[..., 1], dx, axis=xax) - np.gradient(arr[..., 0], dy, axis=yax)

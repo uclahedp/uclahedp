@@ -549,6 +549,10 @@ def fullToCurrent(src, dest, verbose=False):
         #Create the destination file directory if necessary
         hdftools.requireDirs(dest.file)
         
+        #Delete destination file if it already exists
+        if os.path.exists(dest.file):
+          os.remove(dest.file)
+        
         with h5py.File(dest.file, 'w') as df:
             destgrp = df[dest.group]
             

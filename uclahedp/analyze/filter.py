@@ -27,7 +27,7 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     
     
     #Find endpoints of the bandpass window
-    if band[0] is None:
+    if band[0] is None or band[0] ==0 :
         a = 1
     else:
         a = np.argmin(np.abs(freq - band[0]))

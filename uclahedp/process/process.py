@@ -164,14 +164,14 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
     
-    #rawsource='LAPD'
-    rawsource='HRR'
+    rawsource='LAPD'
+    #rawsource='HRR'
     
     
     #'tdiode', 'LAPD3', 'LAPD_C2'
     #10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[5,6],probes=[ 'monochromator'], rawsource=rawsource) 
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[8],probes=[ 'tdiode', 'LAPD_C2'], rawsource=rawsource) 
     #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
     
     

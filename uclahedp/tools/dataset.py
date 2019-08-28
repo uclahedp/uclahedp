@@ -454,6 +454,11 @@ def chunked_array_op(src, dest, ax, op, newshape, delsrc=False, verbose=False, *
             destgrp['data'].attrs['unit'] = srcgrp['data'].attrs['unit']
             
             
+            if verbose:
+                print(srcgrp['data'].shape)
+                print(destgrp['data'].shape)
+            
+            
             #Copy the axes over, except the one being operated on
             #That axis will be copied over later, with changes
             for axis in dimlabels:

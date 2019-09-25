@@ -679,6 +679,7 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
               reader = csv.DictReader(csvfile)
               keys = reader.fieldnames
               
+
               #Determine whether the file contains magnitude/phase data
               #or real/imaginary data
               #The network analyzer stores both...
@@ -704,8 +705,8 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
                         #Phase is assumed to be in degrees
                         #Why ths network analyzer does this...who knows
                         sig[i, 1, 0] = np.radians(  float(row['xphase'])  )
-                        sig[i, 1, 1] = np.radians(  float(row['xphase'])  )
-                        sig[i, 1, 2] = np.radians(  float(row['xphase'])  )
+                        sig[i, 1, 1] = np.radians(  float(row['yphase'])  )
+                        sig[i, 1, 2] = np.radians(  float(row['zphase'])  )
          
                    else:
                         #TODO: test this part? (I don't have a file like this handy)
@@ -772,7 +773,7 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
           concat_data = np.concatenate((sig[:,2,i],sig[:,3,i]))
           
           popt, pcov = curve_fit(fcn, freq, concat_data, 
-                                                 p0=[ 1e-7,-1e-7])
+                                                 p0=[ 0,0])
           tau[i] = popt[0]
           tdelay[i] = popt[1]
           
@@ -827,19 +828,21 @@ def calibrateProbe(file, nturns, gain, hturns=32, Rp=10, r=0.055, area_freq_rang
 if __name__ == "__main__":
      
      #csvfile = os.path.join("G:","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
-     #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
+     csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Mar2018","Bdot Calibration Data", "LAPD7.csv")
      #csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","bdot_calibration", "LAPD_C2_BX.dat")
      #csvfile = os.path.join("G:","LAPD_Jul2019","bdot_calibration", "LAPD_C2_jeff.csv")
      
-     #calibrateProbe(csvfile, 10, 100)
+     csvfile = os.path.join("/Volumes","PVH_DATA","LAPD_Sept2019","bdot_calibration", "LAPD_C13.csv")
      
+     calibrateProbe(csvfile, 10, 100)
      
+     """
      src = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "run34_LAPD_C2_full.hdf5"))
      dest = hdftools.hdfPath(os.path.join("/Volumes","PVH_DATA","LAPD_Jul2019","FULL", "run34_LAPD_C2_current.hdf5"))
      fullToCurrent(src, dest, verbose=False)
      
      
-     """
+    
     #raw = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_raw.hdf5") )
     #tdiode_hdf = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_tdiode_raw.hdf5") )
     #full = hdftools.hdfPath( os.path.join("F:", "LAPD_Mar2018", "RAW", "run103_PL11B_full.hdf5") )

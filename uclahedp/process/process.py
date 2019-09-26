@@ -84,7 +84,8 @@ def process(data_dir, run, probe,
 
 def processMany(data_dir, runs=None, probes=None, 
                 overwrite_raw=True, overwrite_full=True,
-                csv_dir=None, hdf_dir=None, rawsource=None):
+                csv_dir=None, hdf_dir=None, rawsource=None,
+                use_tdiode='tdiode'):
     
 
     if csv_dir is None:
@@ -108,9 +109,9 @@ def processMany(data_dir, runs=None, probes=None,
         probelist = csv.getProbeList(csv_dir, run)
         #If a tdiode exists, bring it to the front of the list so it gets called first
         
-        if ('tdiode','tdiode') in probelist:
+        if (use_tdiode,'tdiode') in probelist:
             #Pop the tdiode to the front of the list, since others depend on it
-            probelist.insert(0, probelist.pop(probelist.index( ('tdiode', 'tdiode')  )))
+            probelist.insert(0, probelist.pop(probelist.index( (use_tdiode, 'tdiode')  )))
 
 
         if len(probelist) == 0:
@@ -118,13 +119,8 @@ def processMany(data_dir, runs=None, probes=None,
         
         
         for probe in probelist:
-            
-            if probe[0] ==  'monochromator':
-                tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_scope_tdiode_full.hdf5') )
-            else:
-                tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_tdiode_full.hdf5') )
-                
-                
+            tdiode_full = hdf.hdfPath(os.path.join(data_dir, "FULL", 'run'+str(run) + '_' + use_tdiode + '_full.hdf5') )
+
             print(tdiode_full.file)  
             file_exists = os.path.exists(tdiode_full.file)
             if file_exists:
@@ -156,6 +152,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
     #data_dir =  os.path.join("G:", "LAPD_Mar2018")
     data_dir =  os.path.join("G:", "LAPD_Jul2019")
+    data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
@@ -163,6 +160,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
+    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
     
     rawsource='LAPD'
     #rawsource='HRR'
@@ -171,7 +169,8 @@ if __name__ == "__main__":
     #'tdiode', 'LAPD3', 'LAPD_C2'
     #10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27
     
-    processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[34],probes=[ 'tdiode', 'LAPD3'], rawsource=rawsource) 
-    #processMany(data_dir, overwrite=False, runs=[18], probes=['LAPD_C6'], rawsource=rawsource) 
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[7], probes=[ 'tdiode_slow', 'C11_slow'], use_tdiode='tdiode_slow', rawsource=rawsource) 
+    
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[8],probes=[ 'tdiode_fast', 'C11'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
     

@@ -55,16 +55,21 @@ def find_sweeps(time, voltage, plots=False):
           ax_full.plot(time*1e3, voltage, 'k')
 
           
-     #Define a maximum height required to be a "peak"
-     req_height = 0.95
+     #Define a mainumum height required to be a "peak"
+     req_height = 0.9
      #Set a minimum spacing between "peaks" so only one index is returned for
      #each ramp
-     req_separation = 0.05*len(time)
+     req_separation = 0.01*len(time)
      #Find the peaks
      peaks, props = find_peaks(voltage, height=req_height, 
                                distance = req_separation)
      
-     npeaks = len(peaks)
+     npeaks = peaks.size
+ 
+     #Mark the peaks on the plot
+     if plots:
+         for p in peaks:
+             ax_full.axvline(x=time[p]*1e3)
      
      peaktime = np.zeros(npeaks)
      start = np.zeros(npeaks)
@@ -72,14 +77,24 @@ def find_sweeps(time, voltage, plots=False):
      for i,peak in enumerate(peaks):
           b = peaks[i]
           
+          
+          
           #Find all points deemed to be at "zero" prior to the b chosen
-          #3% was chosen as the threshold for this to account for some noise
-          zeros = np.where(voltage[0:b] < 0.03)[0]
+          #Increase threshold incrementally until some are found
+          
+          zeros = np.array([])
+          threshold = 0.001
+          while zeros.size == 0:
+              zeros = np.where(voltage[0:b] < threshold)[0]
+              
+              #If no zeros are found, bump up the threshold and try again.
+              threshold += 0.001
+          
           #a is the point on that array closest to b
           a = zeros[-1]
   
           if plots:
-               ax_full.plot(time[a:b]*1e3, voltage[a:b], color='blue', linewidth=3)
+               ax_full.plot(time[a:b]*1e3, voltage[a:b], color='blue', linewidth=1)
           
           peaktime[i] = time[int(np.mean([a,b]))]
           start[i] = int(a)
@@ -306,21 +321,25 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
             print("Opening destination HDF files")
         
         #Create the destination file directory if necessary
-        hdftools.requireDirs(ndest.file)
-        hdftools.requireDirs(tdest.file)
+        #hdftools.requireDirs(ndest.file)
+        #hdftools.requireDirs(tdest.file)
 
         #Open the destination file
         #This exists WITHIN the open statement for the source file, so the
         #source file is open at the same time.
         
-        
+        """ 
         #remove files if they already exist
-        if os.path.exists(ndest.file):
+        try:
             os.remove(ndest.file)
-            
-        if os.path.exists(tdest.file):
+        except ValueError:
+            pass
+        try:
             os.remove(tdest.file)
-        
+        except ValueError:
+            pass
+        """
+
         with h5py.File(ndest.file, 'a') as ndf:
             with h5py.File(tdest.file, 'a') as tdf:
             
@@ -346,7 +365,7 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                 #Assume first shot is representative of the vramp
                 vramp = srcgrp['data'][0,:, 1] 
                 time = srcgrp['time'][:]
-                peaktimes, start, end = find_sweeps(time, vramp, plots=False)
+                peaktimes, start, end = find_sweeps(time, vramp, plots=plots)
                 nti = len(peaktimes)
                 time = peaktimes
                    
@@ -396,10 +415,25 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                                     for ti in range(nti):
                                          a = int(start[ti])
                                          b = int(end[ti])
-                                         vpp, kTe, esat = vsweep_fit(vramp[a:b], current[a:b], 
-                                                      esat=None, exp=None)
-                                         vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
-                                         density = esat/(area*1.6e-19*vthe)
+                                         
+                                         #Try to fit
+                                         try:
+                                             vpp, kTe, esat = vsweep_fit(vramp[a:b], current[a:b], 
+                                                          esat_range=None, exp_range=None, plots=False)
+                                             
+                                             vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
+                                             density = esat/(area*1.6e-19*vthe)
+                                         
+                                         #If the fit is bad...
+                                         except TypeError:
+                                             vthe = 0
+                                             density=0
+                                             kTe = 0
+                                             
+                                        
+                                        
+                                        
+                                         
                                          
                                          ndestgrp['data'][ti, xi, yi, zi] = density
                                          tdestgrp['data'][ti, xi, yi, zi] = kTe
@@ -674,12 +708,13 @@ def isatRawToFull(src, dest,
                 #Read in the data from the source file
                 voltage = srcgrp['data'][i,ta:tb, 0]
                 
+     
                 #Calculate density
                 #Equation is 2 from this paper: 10.1119/1.2772282
                 #This is valid for the regime Te~Ti, which is approx true in
                 #LAPD
                 density = 1.6e9*np.sqrt(mu)*voltage/(resistor*area) #cm^-3
-
+             
 
                 if grid:
                     #Get location to write this datapoint from the shotgridind

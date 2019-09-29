@@ -63,12 +63,12 @@ def process(data_dir, run, probe,
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
-                                               verbose=True, grid=True, mu=4, ti=1)
+                                               verbose=True, grid=True, mu=1, ti=1)
         elif probe[1] == 'vsweep':
              print("Running vsweepRawToFull")
-             nfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_density.hdf5') )
-             tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_temperature.hdf5') )
-             fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True)      
+             nfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_ne.hdf5') )
+             tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_te.hdf5') )
+             fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True, plots=True)      
 
         elif probe[1] == 'scope':
             print("Running scopeRawToFull")
@@ -151,8 +151,8 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("F:", "LAPD_Apr2017")
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
     #data_dir =  os.path.join("G:", "LAPD_Mar2018")
-    data_dir =  os.path.join("G:", "LAPD_Jul2019")
-    data_dir =  os.path.join("G:", "LAPD_Sept2019")
+    #data_dir =  os.path.join("G:", "LAPD_Jul2019")
+    #data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
     
     rawsource='LAPD'
     #rawsource='HRR'
@@ -171,6 +171,7 @@ if __name__ == "__main__":
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[7], probes=[ 'tdiode_slow', 'C11_slow'], use_tdiode='tdiode_slow', rawsource=rawsource) 
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[8],probes=[ 'tdiode_fast', 'C11'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[8],probes=[ 'tdiode_fast', 'C11'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[14],probes=['C13'], use_tdiode='tdiode_fast', rawsource=rawsource)
     

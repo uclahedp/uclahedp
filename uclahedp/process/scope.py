@@ -161,7 +161,7 @@ def scopeRawToFull(src, dest, port=14, tdiode_hdf=None,
                     print("Data range: [" + str(ta) + "," + str(tb) + "]")
 
                 #Read in the data from the source file
-                signal = - np.squeeze(srcgrp['data'][i,ta:tb])
+                signal = np.squeeze(srcgrp['data'][i,ta:tb])
                 
           
                 destgrp['data'][i,:] = signal

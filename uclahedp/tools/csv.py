@@ -138,12 +138,16 @@ def getRowInd(csvdict, run=None, probe=None):
     if csvType(csvdict) == csvType(run=None, probe=None):
         return [0]
 
+    #Run data
     if run is not None and probe is None:
+        run = int(np.floor(run))
         rowind = [i for i, v in enumerate(csvdict['run']) if
                  v[0] == str(run)]
+    #Probe Data
     elif run is None and probe is not None:
         rowind = [i for i, v in enumerate(csvdict['probe']) if
                  str( v[0] ).lower().strip()  == str(probe).lower().strip()]
+    #Probe Run Data
     elif run is not None and probe is not None:
         rowind =  [i for i, v in enumerate(csvdict['run']) if 
                  (csvdict['run'][i][0] == str(run) and 
@@ -435,10 +439,9 @@ if __name__ == "__main__":
     #csv_dir = r"F:/LAPD_Mar2018/METADATA/"
     
     #OSX
-    fname = r"/Volumes/PVH_DATA/LAPD_Jan2019/METADATA/bdot_runs.csv"
-    csv_dir = r"/Volumes/PVH_DATA/LAPD_Jan2019/METADATA/"
+    csv_dir = r"/Volumes/PVH_DATA/LAPD_Sept2019/METADATA/"
 
-    csvdict = opencsv(fname)
+    #csvdict = opencsv(fname)
     
     #print( getRow(csvdict, run=102, probe=None) )
     
@@ -452,8 +455,8 @@ if __name__ == "__main__":
     
     #print( getRunLevelAttrs(csv_dir, 80))
     #print( getProbeLevelAttrs(csv_dir,80, 'PL11B'))
-    #print( getAllAttrs(csv_dir,8, 'PL11B'))
+    print( getAllAttrs(csv_dir,16.9, 'pimax4'))
     
-    print(getProbeList(csv_dir, run=1))
+    #print(getProbeList(csv_dir, run=16.01))
 
     #print( getRunList(csv_dir) )

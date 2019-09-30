@@ -54,6 +54,7 @@ def process(data_dir, run, probe,
     if os.path.exists(fullfile.file):
         if overwrite_full:
             os.remove(fullfile.file)
+            
     if not os.path.exists(fullfile.file):
         if probe[1] == 'tdiode':
             print("Running tdiodeRawToFull")
@@ -175,8 +176,8 @@ if __name__ == "__main__":
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[16],probes=['tdiode_fast', 'C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
 
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[18],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[18],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[20],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[20],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
     #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[17],probes=['PRO083_isat'], rawsource=rawsource)
 

@@ -59,9 +59,7 @@ def imgDirToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
         #Bands will include the names of the different channels
         nchan = len(img.getbands())
         
-        print(nchan)
 
-        
         #Create the dest group, throw error if it exists
         if dest.group != '/' and dest.group in df.keys():
             raise hdftools.hdfGroupExists(dest)
@@ -73,7 +71,7 @@ def imgDirToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
             
         #Create the dataset + associated attributes
         grp.require_dataset("data", (nframes, nxpx, nypx, nchan), np.float32, 
-                            chunks=True, 
+                            chunks=(1, nxpx, nypx, 1), 
                             compression='gzip')
         grp['data'].attrs['unit'] = ''
         

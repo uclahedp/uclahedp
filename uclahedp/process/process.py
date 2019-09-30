@@ -154,7 +154,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
     #data_dir =  os.path.join("G:", "LAPD_Mar2018")
     #data_dir =  os.path.join("G:", "LAPD_Jul2019")
-    data_dir =  os.path.join("G:", "LAPD_Sept2019")
+    #data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
     #OSX
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
     
     rawsource='LAPD'
     #rawsource='HRR'
@@ -176,5 +176,5 @@ if __name__ == "__main__":
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[15],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[17],probes=['PRO083_vsweep'], rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[17],probes=['PRO083_isat'], rawsource=rawsource)
 

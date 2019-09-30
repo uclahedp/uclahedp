@@ -139,8 +139,7 @@ def getRowInd(csvdict, run=None, probe=None):
         return [0]
 
     #Run data
-    if run is not None and probe is None:
-        run = int(np.floor(run))
+    if run is not None and probe is None:        
         rowind = [i for i, v in enumerate(csvdict['run']) if
                  v[0] == str(run)]
     #Probe Data
@@ -285,8 +284,17 @@ def getAllAttrs(csv_dir, run, probe):
      valid_probe_run = False
 
      for csv_file in csvs:
+         
          csvdict = opencsv(csv_file)
-         csv_attrs = getRow( csvdict, run=run, probe=probe)
+         
+         
+         #Round decimal run numbers in run-ordered sheets
+         #This is the supported function of sub-runs
+         
+         if csvType(csvdict) == csvType(run=True, probe=None):
+             csv_attrs = getRow( csvdict, run=int(np.floor(run)), probe=probe)
+         else:
+             csv_attrs = getRow( csvdict, run=run, probe=probe)
          
          #Check to see if this sheet is a probe_runs sheet that shows this
          #probe, run combination is valid. This function is the point where
@@ -345,6 +353,8 @@ def getProbeList(csv_dir, run):
     
     for csv_file in csvs:
         csvdict = opencsv(csv_file)
+        
+        print(csv_file)
         
         #If the CSV file is a probe_run file, add all the probes for the run
         #to the probelist
@@ -455,8 +465,8 @@ if __name__ == "__main__":
     
     #print( getRunLevelAttrs(csv_dir, 80))
     #print( getProbeLevelAttrs(csv_dir,80, 'PL11B'))
-    print( getAllAttrs(csv_dir,16.9, 'pimax4'))
+    #print( getAllAttrs(csv_dir,16, 'C12'))
     
     #print(getProbeList(csv_dir, run=16.01))
 
-    #print( getRunList(csv_dir) )
+    print( getRunList(csv_dir) )

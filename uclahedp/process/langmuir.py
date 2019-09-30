@@ -425,15 +425,11 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                                              density = esat/(area*1.6e-19*vthe)
                                          
                                          #If the fit is bad...
-                                         except TypeError:
-                                             vthe = 0
-                                             density=0
-                                             kTe = 0
-                                             
-                                        
-                                        
-                                        
-                                         
+                                         except (TypeError, RuntimeError):
+                                             vthe = 1
+                                             density=1
+                                             kTe = 1
+                                                
                                          
                                          ndestgrp['data'][ti, xi, yi, zi] = density
                                          tdestgrp['data'][ti, xi, yi, zi] = kTe

@@ -13,7 +13,17 @@ from uclahedp.tools import hdf as hdftools
 from uclahedp.tools import csv as csvtools
 from uclahedp.tools import util
 
-def imgSeqToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
+#Used for natural sorting filenames
+import re
+
+#Nice regex natural sorting algorithm found on stack overflow:
+#https://stackoverflow.com/questions/4836710/does-python-have-a-built-in-function-for-string-natural-sort
+def natural_sort(l): 
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
+
+def imgDirToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
      
      
      if csv_dir is not None and (run is not None or probe is not None):
@@ -21,28 +31,19 @@ def imgSeqToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
      else:
          attrs = {}
 
-     for root, dirs, files in os.walk(src):
-         imgfiles = []
-         imginds = []
+     imgfiles = []
+     
+     for root, dirs, files in os.walk(src):  
          files = [f for f in files if f[0] != '.'] #Exclude files beginning in .
          for file in files:
-             #We generate this integer for the purpose of sorting the images
-             #This requires that the numbers in the filenames become more
-             #specific as the name goes on, eg. run preceeds frame number
-             strs= [s for s in file if s.isdigit()]
-             sortint = int(''.join(strs))
-             #Append both to the list of images
-             imgfiles.append( os.path.join(src, file))
-             imginds.append(sortint)
-             
-     #Sort the image list
-     inds = np.argsort(np.array(imginds))
-     imgfiles = [imgfiles[i] for i in inds]
+             imgfiles.append(os.path.join(src, file))
+
+     imgfiles = natural_sort(imgfiles)
      
      
      nframes = len(imgfiles)
 
-  
+     
      #remove files if they already exist
      if os.path.exists(dest.file):
         os.remove(dest.file)
@@ -57,6 +58,8 @@ def imgSeqToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
         nxpx, nypx = img.size
         #Bands will include the names of the different channels
         nchan = len(img.getbands())
+        
+        print(nchan)
 
         
         #Create the dest group, throw error if it exists
@@ -78,13 +81,19 @@ def imgSeqToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
         #Initialize time-remaining printout
         tr = util.timeRemaining(nframes, reportevery=5)
 
+
         #Actually put the images into the file
         for i,f in enumerate(imgfiles):
             tr.updateTimeRemaining(i)
-            img = PIL.Image.open(f)
-            #TODO: FIX THIS SO IMAGES ARE ROTATED RIGHT!
-            img = img.transpose(PIL.Image.TRANSPOSE) #Images are initially flipped
-            grp['data'][i, :,:,:] = np.reshape(img, [nxpx, nypx, nchan])
+            img = np.array(PIL.Image.open(f))
+            
+            img = np.reshape(img, [nxpx, nypx, nchan])
+        
+            #Rotate images
+            for chan in range(nchan):
+                img[:,:,chan] = np.rot90(img[:,:,chan], k=3)
+            
+            grp['data'][i, :,:,:] = img
          
             
         dimlabels = ['frames', 'xpixels', 'ypixels', 'chan']
@@ -112,13 +121,16 @@ def imgSeqToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
 
 
 if __name__ == "__main__":
-     src = os.path.join('/Volumes','PVH_DATA','LAPD_Jul2019','PIMAX', 'run006')
-     dest = hdftools.hdfPath(os.path.join('/Volumes','PVH_DATA','LAPD_Jul2019',"RAW", "run32_pimax006.hdf5"))
+    
+     #data_dir = os.path.join("F:","LAPD_Jul2019")
+     data_dir = os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
      
-     #csv_dir = os.path.join("F:","LAPD_Jul2019","METADATA", "CSV")
-     csv_dir = os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019","METADATA")
+     src = os.path.join(data_dir, 'PIMAX', 'run15.01')
+     dest = hdftools.hdfPath(os.path.join(data_dir ,"RAW", "run15.01_pimax4.hdf5"))
+     csv_dir = os.path.join(data_dir,"METADATA")
      
-     run = 32
-     probe = 'pimax006'
+     run = 15.01
+     probe = 'pimax4'
      
-     imgSeqToRaw(src, dest, csv_dir=csv_dir, run=run, probe=probe)
+
+     imgDirToRaw(src, dest, csv_dir=csv_dir, run=run, probe=probe)

@@ -13,6 +13,7 @@ from uclahedp.tools import hdf as hdftools
 from uclahedp.tools import csv as csvtools
 from uclahedp.tools import util
 
+
 #Used for natural sorting filenames
 import re
 
@@ -23,21 +24,27 @@ def natural_sort(l):
     alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
     return sorted(l, key = alphanum_key)
 
-def imgDirToRaw(src, dest, run=None, probe=None, csv_dir=None, verbose=False):
-     
-     
-     if csv_dir is not None and (run is not None or probe is not None):
-         attrs = csvtools.getAllAttrs(csv_dir, run, probe)
-     else:
-         attrs = {}
+def imgDirToRaw(run, probe, img_dir, dest, csv_dir, verbose=False):
 
-     imgfiles = []
+     #Import attributes for this run/probe
+     attrs = csvtools.getAllAttrs(csv_dir, run, probe)
+  
+         
+     #Check for keys always required by this function
+     req_keys = [ 'run_folder']
+     csvtools.missingKeys(attrs, req_keys, fatal_error=True)
      
+     run_folder = attrs['run_folder'][0]
+     src = os.path.join(img_dir, run_folder)
+     
+     #Go through the directory and fine all the image files
+     imgfiles = []
      for root, dirs, files in os.walk(src):  
          files = [f for f in files if f[0] != '.'] #Exclude files beginning in .
          for file in files:
              imgfiles.append(os.path.join(src, file))
 
+     #Natural-sort the images by filename
      imgfiles = natural_sort(imgfiles)
      
      
@@ -123,12 +130,14 @@ if __name__ == "__main__":
      #data_dir = os.path.join("F:","LAPD_Jul2019")
      data_dir = os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
      
-     src = os.path.join(data_dir, 'PIMAX', 'run15.01')
-     dest = hdftools.hdfPath(os.path.join(data_dir ,"RAW", "run15.01_pimax4.hdf5"))
+     
+     
+     img_dir = os.path.join(data_dir, 'PIMAX')
+     dest = hdftools.hdfPath(os.path.join(data_dir ,"RAW", "run22.01_pimax4.hdf5"))
      csv_dir = os.path.join(data_dir,"METADATA")
      
-     run = 15.01
+     run = 22.01
      probe = 'pimax4'
      
 
-     imgDirToRaw(src, dest, csv_dir=csv_dir, run=run, probe=probe)
+     imgDirToRaw(run, probe, img_dir, dest, csv_dir, verbose=False)

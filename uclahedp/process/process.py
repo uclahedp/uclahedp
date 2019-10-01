@@ -6,19 +6,23 @@ process.py
 import os
 from uclahedp.load import lapd, hrr, imgdir
 from uclahedp.tools import hdf, csv
-from uclahedp.process import tdiode, bdot, langmuir, scope
+from uclahedp.process import tdiode, bdot, langmuir, scope, imgseq
 
 
 
 def process(data_dir, run, probe, 
             overwrite_raw=True, overwrite_full=True,
-            csv_dir=None, hdf_dir=None, tdiode_hdf=None, rawsource=None):
+            csv_dir=None, hdf_dir=None, 
+            img_dir=None, tdiode_hdf=None, rawsource=None):
 
     if csv_dir is None:
         csv_dir = os.path.join(data_dir, "METADATA")
         
     if hdf_dir is None:
         hdf_dir = os.path.join(data_dir, "HDF")
+        
+    if img_dir is None:
+        img_dir = os.path.join(data_dir, "PIMAX")
         
     if rawsource is None:
         rawsource = 'LAPD'
@@ -45,7 +49,8 @@ def process(data_dir, run, probe,
             rawfile =  hrr.hrrToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
         if rawsource == 'imgdir':
             print("Running ImgDirToRaw")
-            rawfile =  imgdir.imgdirToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
+            rawfile =  imgdir.imgDirToRaw(run, probe[0], img_dir, rawfile, csv_dir, verbose=True)
+
     else:
         print("Raw file exist: skipping")
     
@@ -79,7 +84,11 @@ def process(data_dir, run, probe,
         elif probe[1] == 'scope':
             print("Running scopeRawToFull")
             fullfile = scope.scopeRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf,
-                  verbose=False, debug = False)                           
+                  verbose=False, debug = False)         
+        
+        elif probe[1] == 'camera':
+            print("Running imgseqRawToFull")
+            fullfile = imgseq.imgSeqRawToFull(rawfile, fullfile)                     
                                         
         else:
             print("NO MATCHING PROBE TYPE ROUTINE EXISTS: SKIPPING!")
@@ -171,13 +180,17 @@ if __name__ == "__main__":
     rawsource='LAPD'
     #rawsource='HRR'
     
+    
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[22.02], probes=['pimax4'], rawsource='imgdir')
+
+    
 
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[16],probes=['tdiode_slow', 'C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[16],probes=['tdiode_fast', 'C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
 
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[20],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[20],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[21],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[21],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[17],probes=['PRO083_isat'], rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[17],probes=['PRO083_isat'], rawsource=rawsource)
 

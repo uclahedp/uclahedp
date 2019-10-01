@@ -6,7 +6,7 @@ Created on Mon Sep 30 14:50:31 2019
 @author: peter
 """
 
-import os
+import os, h5py
 import numpy as np
 
 
@@ -15,6 +15,7 @@ from uclahedp.tools import csv as csvtools
 from uclahedp.tools import util
 
 import astropy.units as u
+
 
 
 def imgSeqRawToFull(src, dest):
@@ -31,7 +32,7 @@ def imgSeqRawToFull(src, dest):
             
             csvtools.missingKeys(attrs, req_keys, fatal_error=True)
             
-            nti, nxpx, nypx, nchan = srcgrp['data'].shape
+            nframes, nxpx, nypx, nchan = srcgrp['data'].shape
             
             
             #Convert dt
@@ -44,6 +45,9 @@ def imgSeqRawToFull(src, dest):
                 nreps = attrs['nreps'][0]
             else:
                 nreps = 1
+                
+                
+            nti = int(nframes/nreps)
             
             #t0 is the time of the first frame in the set
             if 't0' in attrs.keys():
@@ -97,9 +101,19 @@ def imgSeqRawToFull(src, dest):
                 for i in range(nti):
                     tr.updateTimeRemaining(i)
                     
+                    a = i*nreps
+                    b = (i+1)*nreps
+                    
+                    #print(str(a) + ":" + str(b))
+                    
                     #Copy, re-shape, and write data to array
-                    arr = srcgrp['data'][i,...]
-                    arr = np.reshape(arr, [nxpx, nypx, nreps, nchan])
+                    arr = srcgrp['data'][a:b,...]
+
+                    
+                    arr = np.moveaxis(arr, 0, 2)
+
+                    
+                    #arr = np.reshape(arr, [nreps, nxpx, nypx, nchan])
                     destgrp['data'][i,...] = arr
                 
                 
@@ -111,6 +125,7 @@ def imgSeqRawToFull(src, dest):
             
                 dimlabels = []
                 
+             
                 time = np.arange(nti)*dt + t0 - laser_t0
                 destgrp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = time
                 destgrp['time'].attrs['unit'] = 's'

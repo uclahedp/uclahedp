@@ -83,7 +83,8 @@ def calcT0ind(srcgrp, verbose=False):
         #Update time remaining
         if verbose:
                 tr.updateTimeRemaining(i)
-        t0ind_array[i] =  np.argmax( np.gradient( srcgrp['data'][i,:,0] ) ) 
+        maxind = np.argmax(srcgrp['data'][i,:,0])
+        t0ind_array[i] =  np.argmax( np.gradient( srcgrp['data'][i,0:maxind,0] ) ) 
 
     del(nshots,nti,nchan)
     return t0ind_array.astype(int)

@@ -181,16 +181,12 @@ if __name__ == "__main__":
     #rawsource='HRR'
     
     
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[22.02], probes=['pimax4'], rawsource='imgdir')
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[15.01, 21.01], probes=['pimax4'], rawsource='imgdir')
 
     
 
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[16],probes=['tdiode_slow', 'C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[16],probes=['tdiode_fast', 'C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
-    
-
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[21],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[21],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[22,23],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[22,23],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[17],probes=['PRO083_isat'], rawsource=rawsource)
 

@@ -81,6 +81,41 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     return f
         
    
+   
+    
+
+def lowpassFilter2D(arr, dx, dy, cutoff=10, plots=False):
+
+    
+    nx, ny = arr.shape
+    fft = np.fft.fft2(arr)
+    fft = np.fft.fftshift(fft)
+    
+    
+    xfreq = np.fft.fftfreq(nx, d=dx)[0:int(nx/2.0)]
+    yfreq = np.fft.fftfreq(ny, d=dy)[0:int(ny/2.0)]
+    
+    xi = np.argmin(np.abs(xfreq - cutoff))
+    yi = np.argmin(np.abs(yfreq - cutoff))
+    
+    a = xfreq[0:xi].size*2
+    b = yfreq[0:yi].size*2
+    
+    mask = np.outer(np.hanning(a), np.hanning(b))
+    
+    xpad = int((nx - a)/ 2)
+    ypad = int((ny- b)/2)
+    mask = np.pad(mask, pad_width=((xpad,xpad), (ypad,ypad)), mode='constant')
+    
+    fft = np.fft.fftshift(mask*fft)
+    
+    arr = np.fft.ifft2(fft)
+
+
+    return arr
+
+
+    
     
 
     
@@ -90,6 +125,11 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
 if __name__ == '__main__':
     
     
+    dk, x, y, arr = synthdata.wavey2D()
+    
+    lowpassFilter2D(arr, dk, dk, cutoff = 15)
+    
+    """
     dk, x, y, arr = synthdata.wavey2D()
     
     fig, ax = plt.subplots(figsize = [4, 4])
@@ -102,7 +142,7 @@ if __name__ == '__main__':
     cplot = ax.contourf(x, y, arr.T, levels=50, vmin=-1, vmax=1)
     
     
-    """
+    
     dt, t, arr = synthdata.twoWavePackets()
     
     f = fftFilter(arr, dt, band=(4e6, 8e6), mode='none', axis=0, plots=True)

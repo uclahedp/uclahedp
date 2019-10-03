@@ -10,6 +10,13 @@ from uclahedp.tools import csv as csvtools
 from uclahedp.tools import hdf as hdftools
 
 
+
+def copyDataset(sf, df, name):
+    num = sf[name].shape
+    dtype = sf[name].dtype
+    df.require_dataset(name, num, dtype, chunks=True)[:] = sf[name][:]
+    copyAttrs(sf[name], df[name])
+
 def requireDirs(destfile):
     """
     Checks to see if the folder associated with a filepath exists, and creates

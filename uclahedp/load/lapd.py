@@ -25,7 +25,8 @@ from bapsflib import lapd as bapsf_lapd
 import h5py
 
 
-def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
+def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False,
+               trange=[0, -1]):
     """ Retreives the appropriate metadata for a run and probe in a given data
     directory, then reads in the data using the bapsflib module and saves
     it in a new hdf5 file.
@@ -52,6 +53,10 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
             Set this flag to true to enable print statements throughout the
             code, including a runtime-until-completion estimate during the
             data reading loop.
+            
+        trange: [start_index, end_index]
+            Time range IN INDICES over which to load the data. -1 in the second
+            index will be translated to nti-1
 
     Returns
     -------
@@ -118,6 +123,13 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         nti = info['nt']
         #clock_rate = info['clock rate'].to(u.Hz)
         #dt =  (  1.0 / clock_rate  ).to(u.s)
+        
+
+        if trange[1] == -1:
+            trange[1] = nti-1
+        
+        nti = trange[1] - trange[0]
+        
 
     
     #Check if keys are provided to specify a motion list
@@ -194,7 +206,8 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                                         adc = channel[1], config_name = daq_config, 
                                         silent=True, shotnum=shot+1)
                     
-                    grp['data'][shot,:,chan] = data['signal']
+            
+                    grp['data'][shot,:,chan] = data['signal'][0, trange[0]:trange[1]]
                     
                     if shot == 0:
                         dt = data.dt #Adusted in bapsflib for clock rate, avging, etc.

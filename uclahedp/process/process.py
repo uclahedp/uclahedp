@@ -13,7 +13,8 @@ from uclahedp.process import tdiode, bdot, langmuir, scope, imgseq
 def process(data_dir, run, probe, 
             overwrite_raw=True, overwrite_full=True,
             csv_dir=None, hdf_dir=None, 
-            img_dir=None, tdiode_hdf=None, rawsource=None):
+            img_dir=None, tdiode_hdf=None, 
+            trange=None, rawsource=None):
 
     if csv_dir is None:
         csv_dir = os.path.join(data_dir, "METADATA")
@@ -43,7 +44,8 @@ def process(data_dir, run, probe,
     if not os.path.exists(rawfile.file):
         if rawsource == 'LAPD':
             print("Running lapdToRaw")
-            rawfile =  lapd.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
+            rawfile =  lapd.lapdToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, 
+                                      trange=trange, verbose=True)
         if rawsource == 'HRR':
             print("Running hrrToRaw")
             rawfile =  hrr.hrrToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
@@ -101,6 +103,7 @@ def process(data_dir, run, probe,
 def processMany(data_dir, runs=None, probes=None, 
                 overwrite_raw=True, overwrite_full=True,
                 csv_dir=None, hdf_dir=None, rawsource=None,
+                trange = [0,-1],
                 use_tdiode='tdiode'):
     
 
@@ -157,7 +160,7 @@ def processMany(data_dir, runs=None, probes=None,
             process(data_dir, run, probe, 
                     overwrite_raw=overwrite_raw, overwrite_full=overwrite_full,
                     csv_dir=csv_dir, hdf_dir=hdf_dir, tdiode_hdf=tdiode_full,
-                    rawsource=rawsource)
+                    trange=trange, rawsource=rawsource)
                 
 
 
@@ -186,10 +189,12 @@ if __name__ == "__main__":
 
     #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[22],probes=['dipole_I'], rawsource=rawsource)
 
-    processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[34,35],probes=['tdiode_fast','C13_fast'], use_tdiode='tdiode_fast', rawsource=rawsource)
-    processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[34,35],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[38],probes=['tdiode_fast','C13_fast'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[38],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
     
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[34],probes=['tdiode_fast','C13_fast'], use_tdiode='tdiode_fast', 
+                rawsource=rawsource, trange=[0,30000])
     
     #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[29],probes=['PRO083_vsweep','PRO083_isat'], rawsource=rawsource)
 
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[25,26,27,28],probes=['dipole_I', 'C13'], rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[36,37],probes=['dipole_I', 'C13'], rawsource=rawsource)

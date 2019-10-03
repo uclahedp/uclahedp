@@ -79,6 +79,7 @@ def process(data_dir, run, probe,
              print("Running vsweepRawToFull")
              nfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_ne.hdf5') )
              tfile = hdf.hdfPath(os.path.join(data_dir, "FULL", probe_string + '_te.hdf5') )
+             
              fullfile = langmuir.vsweepLangmuirRawToFull(rawfile, nfile, tfile, verbose=True, grid=True, plots=True)      
 
         elif probe[1] == 'scope':
@@ -183,10 +184,12 @@ if __name__ == "__main__":
     
     #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[15.01, 21.01], probes=['pimax4'], rawsource='imgdir')
 
-    
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[22],probes=['dipole_I'], rawsource=rawsource)
 
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[22,23],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[22,23],probes=['tdiode_fast','C13_fast', 'C12'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[34,35],probes=['tdiode_fast','C13_fast'], use_tdiode='tdiode_fast', rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[34,35],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
     
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[17],probes=['PRO083_isat'], rawsource=rawsource)
+    
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[29],probes=['PRO083_vsweep','PRO083_isat'], rawsource=rawsource)
 
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[25,26,27,28],probes=['dipole_I', 'C13'], rawsource=rawsource)

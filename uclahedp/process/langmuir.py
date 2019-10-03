@@ -31,7 +31,7 @@ def expFcn(V, A, B, kT):
      
 
 def normalize(f):
-     offset = np.min(f)
+     offset = np.median(f[0:100])
      f = f - offset
      factor = 1/np.max(f)
      f = f*factor
@@ -53,6 +53,7 @@ def find_sweeps(time, voltage, plots=False):
           ax_full.set_xlabel("Time (ms)")
           ax_full.set_ylabel("Voltage Sweep (V)")
           ax_full.plot(time*1e3, voltage, 'k')
+         
 
           
      #Define a mainumum height required to be a "peak"
@@ -74,24 +75,15 @@ def find_sweeps(time, voltage, plots=False):
      peaktime = np.zeros(npeaks)
      start = np.zeros(npeaks)
      end = np.zeros(npeaks)
+     
      for i,peak in enumerate(peaks):
           b = peaks[i]
+
+          slope = np.mean(np.gradient(voltage[b-100:b]))
+          a = b - int(1/slope)
           
+          #print(str(a) + ':' + str(b))
           
-          
-          #Find all points deemed to be at "zero" prior to the b chosen
-          #Increase threshold incrementally until some are found
-          
-          zeros = np.array([])
-          threshold = 0.001
-          while zeros.size == 0:
-              zeros = np.where(voltage[0:b] < threshold)[0]
-              
-              #If no zeros are found, bump up the threshold and try again.
-              threshold += 0.001
-          
-          #a is the point on that array closest to b
-          a = zeros[-1]
   
           if plots:
                ax_full.plot(time[a:b]*1e3, voltage[a:b], color='blue', linewidth=1)
@@ -328,17 +320,10 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
         #This exists WITHIN the open statement for the source file, so the
         #source file is open at the same time.
         
-        """ 
-        #remove files if they already exist
-        try:
-            os.remove(ndest.file)
-        except ValueError:
-            pass
-        try:
-            os.remove(tdest.file)
-        except ValueError:
-            pass
-        """
+
+        
+    
+        
 
         with h5py.File(ndest.file, 'a') as ndf:
             with h5py.File(tdest.file, 'a') as tdf:
@@ -429,6 +414,9 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                                              vthe = 1
                                              density=1
                                              kTe = 1
+                                        
+                                            
+                    
                                                 
                                          
                                          ndestgrp['data'][ti, xi, yi, zi] = density

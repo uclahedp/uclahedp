@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+
 def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     """
     band -> (start, end)
@@ -101,14 +102,23 @@ def lowpassFilter2D(arr, dx, dy, cutoff=10, plots=False):
     a = xfreq[0:xi].size*2
     b = yfreq[0:yi].size*2
     
+    #Deal with odd/even sizes here so padding will be integers
+    if nx % 2 == 1:
+        a = a - 1 
+    if ny % 2 == 1:
+        b = b - 1 
+    
     mask = np.outer(np.hanning(a), np.hanning(b))
+    
+    if plots:
+        plt.pcolormesh(mask)
+        plt.show()
     
     xpad = int((nx - a)/ 2)
     ypad = int((ny- b)/2)
     mask = np.pad(mask, pad_width=((xpad,xpad), (ypad,ypad)), mode='constant')
     
-    fft = np.fft.fftshift(mask*fft)
-    
+    fft = np.fft.ifftshift(mask*fft)
     arr = np.fft.ifft2(fft)
 
 

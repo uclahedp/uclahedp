@@ -70,8 +70,8 @@ def process(data_dir, run, probe,
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           verbose=True, highfreq_calibrate=True,
-                                          strict_axes=True, strict_grid=True,
-                                          #grid_precision = 0.25,
+                                          #strict_axes=True, strict_grid=True,
+                                          grid_precision = 0.25,
                                           remove_offset=True, offset_range=(0, -1), offset_rel_t0 = [False, True])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
@@ -184,16 +184,14 @@ if __name__ == "__main__":
     rawsource='LAPD'
     #rawsource='HRR'
     
-    
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[15.01, 21.01], probes=['pimax4'], rawsource='imgdir')
+  
+    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[34.01, 34.02], probes=['pimax4'], rawsource='imgdir')
 
     #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[22],probes=['dipole_I'], rawsource=rawsource)
 
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[38],probes=['tdiode_fast','C13_fast'], use_tdiode='tdiode_fast', rawsource=rawsource)
+
     #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[38],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[34],probes=['tdiode_fast','C13_fast'], use_tdiode='tdiode_fast', 
-                rawsource=rawsource, trange=[0,30000])
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[40],probes=[ 'C13_fast'], use_tdiode='tdiode_fast', rawsource=rawsource, trange=[0,25000])
     
     #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[29],probes=['PRO083_vsweep','PRO083_isat'], rawsource=rawsource)
 

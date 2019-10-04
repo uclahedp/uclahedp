@@ -13,7 +13,7 @@ import numpy as np
 
 
 
-def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
+def fancyFFTFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     """
     band -> (start, end)
     mode -> 
@@ -80,7 +80,28 @@ def fftFilter(f, dt, band=(None,None), axis=0, mode='pass', plots=False):
     f = np.fft.ifft(fft, axis=axis)
 
     return f
-        
+
+
+
+
+def fftFilter(f, dt, band=(None,None), mode='pass', plots=False):
+    """
+    band -> (start, end)
+    mode -> 
+        'pass' -> Allow through only frequencies in band
+        'block' -> Block filters in band
+    
+    """
+    nf = f.size
+    
+    f = np.pad(f, pad_width=nf, mode='wrap')
+    #Put a hamming window over the whole padded array
+
+    
+    plt.plot(f)
+    plt.show()
+    
+    
    
    
     
@@ -137,7 +158,11 @@ if __name__ == '__main__':
     
     dk, x, y, arr = synthdata.wavey2D()
     
-    lowpassFilter2D(arr, dk, dk, cutoff = 15)
+    #lowpassFilter2D(arr, dk, dk, cutoff = 15)
+    
+    f = arr[:,0]
+    
+    fftFilter(f, 1)
     
     """
     dk, x, y, arr = synthdata.wavey2D()

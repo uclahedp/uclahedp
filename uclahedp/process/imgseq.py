@@ -41,7 +41,7 @@ def imgSeqRawToFull(src, dest):
             
             
             #Reps is assumed to be 1 unless otherwise set
-            if 'nreps' in attrs.keys():
+            if 'nreps' in attrs.keys() and not np.isnan(attrs['nreps'][0]):
                 nreps = attrs['nreps'][0]
             else:
                 nreps = 1
@@ -50,37 +50,39 @@ def imgSeqRawToFull(src, dest):
             nti = int(nframes/nreps)
             
             #t0 is the time of the first frame in the set
-            if 't0' in attrs.keys():
+            if 't0' in attrs.keys() and not np.isnan(attrs['t0'][0]):
                 t0 = (attrs['t0'][0]*u.Unit(attrs['t0'][1])).to(u.s).value
             else:
                 t0 = 0
             
             #Laser t0 is the time when the laser fires
             #Time array will be shifted so this time is zero
-            if 'laser_t0' in attrs.keys():
+            if 'laser_t0' in attrs.keys() and not np.isnan(attrs['laser_t0'][0]):
                 laser_t0 = (attrs['laser_t0'][0]*u.Unit(attrs['laser_t0'][1])).to(u.s).value
             else:
                 laser_t0 = 0
                 
-                
+      
+            
+            
             #dxdp is the pixel spacing in cm/px
-            if'dxdp' in attrs.keys():
+            if'dxdp' in attrs.keys() and not np.isnan(attrs['dxdp'][0]):
                 dxdp = (attrs['dxdp'][0]*u.Unit(attrs['dxdp'][1])).to(u.cm).value
             else:
                 dxdp = None
                 
-            if'dydp' in attrs.keys():
+            if'dydp' in attrs.keys() and not np.isnan(attrs['dydp'][0]):
                 dydp = (attrs['dydp'][0]*u.Unit(attrs['dydp'][1])).to(u.cm).value
             else:
                 dydp = None
                 
             
-            if'x0px' in attrs.keys():
+            if'x0px' in attrs.keys() and not np.isnan(attrs['x0px'][0]):
                 x0px = (attrs['x0px'][0]*u.Unit(attrs['x0px'][1])).to(u.cm).value
             else:
                 x0px = 0
                 
-            if'y0px' in attrs.keys():
+            if'y0px' in attrs.keys() and not np.isnan(attrs['y0px'][0]):
                 y0px = (attrs['y0px'][0]*u.Unit(attrs['y0px'][1])).to(u.cm).value
             else:
                 y0px = 0

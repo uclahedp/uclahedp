@@ -94,12 +94,54 @@ def fftFilter(f, dt, band=(None,None), mode='pass', plots=False):
     """
     nf = f.size
     
+    #Pad
     f = np.pad(f, pad_width=nf, mode='wrap')
     #Put a hamming window over the whole padded array
-
+    f = np.hanning(3*nf)*f
     
-    plt.plot(f)
-    plt.show()
+    fft = np.fft.fft(f)
+    
+    freq = np.fft.fftfreq(3*nf, d=dt)
+    pfreq = freq[0:int(1.5*nf)]
+    
+    if band[0] is None:
+        a = 0
+    else:
+        a = np.argmin(np.abs(band[0] - pfreq))
+        
+    if band[1] is None:
+        b = int(1.5*nf)
+    else:
+        b = np.argmin(np.abs(band[1] - pfreq))
+        
+    mask = np.zeros(3*nf) 
+    mask[a:b] =  np.hanning(b-a)
+    mask[3*nf-b:3*nf-a] =  np.hanning(b-a)
+    
+    
+    if plots:
+        fig, ax = plt.subplots()
+        ax.plot(freq)
+        ax.plot(mask)
+        ax.axvline(x=a, color='green')
+        ax.axvline(x=b, color='red')
+        
+        ax.plot(fft)
+        plt.show()
+        
+    f = np.real(np.fft.ifft(fft*mask))
+    #Divide back out the mask that was originally applied in time space
+    
+    f = f/np.hanning(3*nf)
+    f = f[nf:2*nf] #Trim
+    
+    if plots:
+        plt.plot(f)
+        plt.show()
+    
+    return f
+    
+    
     
     
    
@@ -162,7 +204,7 @@ if __name__ == '__main__':
     
     f = arr[:,0]
     
-    fftFilter(f, 1)
+    fftFilter(f, .1, plots=True, band=(1, 4))
     
     """
     dk, x, y, arr = synthdata.wavey2D()

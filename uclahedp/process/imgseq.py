@@ -75,15 +75,15 @@ def imgSeqRawToFull(src, dest):
                 dydp = None
                 
             
-            if'x0' in attrs.keys():
-                x0 = (attrs['x0'][0]*u.Unit(attrs['x0'][1])).to(u.cm).value
+            if'x0px' in attrs.keys():
+                x0px = (attrs['x0px'][0]*u.Unit(attrs['x0px'][1])).to(u.cm).value
             else:
-                x0 = 0
+                x0px = 0
                 
-            if'y0' in attrs.keys():
-                y0 = (attrs['y0'][0]*u.Unit(attrs['y0'][1])).to(u.cm).value
+            if'y0px' in attrs.keys():
+                y0px = (attrs['y0px'][0]*u.Unit(attrs['y0px'][1])).to(u.cm).value
             else:
-                y0 = 0
+                y0px = 0
                 
             
             with h5py.File(dest.file, 'a') as df:
@@ -133,7 +133,7 @@ def imgSeqRawToFull(src, dest):
                 
                 
                 if dxdp is not None:
-                    xaxis = np.arange(nxpx)*dxdp + x0
+                    xaxis = np.arange(nxpx)*dxdp + x0px
                     destgrp.require_dataset('xaxis', (nxpx,), np.float32, chunks=True)[:] = xaxis
                     destgrp['xaxis'].attrs['unit'] = 'cm'
                     dimlabels.append('xaxis')
@@ -144,7 +144,7 @@ def imgSeqRawToFull(src, dest):
         
         
                 if dydp is not None:
-                    yaxis = np.arange(nypx)*dydp + y0
+                    yaxis = np.arange(nypx)*dydp + y0px
                     destgrp.require_dataset('yaxis', (nypx,), np.float32, chunks=True)[:] = yaxis
                     destgrp['yaxis'].attrs['unit'] = 'cm'
                     dimlabels.append('yaxis')

@@ -57,10 +57,10 @@ def imgSeqRawToFull(src, dest):
             
             #Laser t0 is the time when the laser fires
             #Time array will be shifted so this time is zero
-            if 'laser_t0' in attrs.keys() and not np.isnan(attrs['laser_t0'][0]):
-                laser_t0 = (attrs['laser_t0'][0]*u.Unit(attrs['laser_t0'][1])).to(u.s).value
+            if 'camera_delay' in attrs.keys() and not np.isnan(attrs['camera_delay'][0]):
+                camera_delay = (attrs['camera_delay'][0]*u.Unit(attrs['camera_delay'][1])).to(u.s).value
             else:
-                laser_t0 = 0
+                camera_delay = 0
                 
       
             
@@ -128,7 +128,7 @@ def imgSeqRawToFull(src, dest):
                 dimlabels = []
                 
              
-                time = np.arange(nti)*dt + t0 - laser_t0
+                time = np.arange(nti)*dt + camera_delay - t0
                 destgrp.require_dataset('time', (nti,), np.float32, chunks=True)[:] = time
                 destgrp['time'].attrs['unit'] = 's'
                 dimlabels.append('time')

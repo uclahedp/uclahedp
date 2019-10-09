@@ -196,10 +196,6 @@ def lowpassFilter2D(arr, dx, dy, cutoff=10, plots=False):
          mask = np.pad(mask, pad_width=((0,0), (ypad,ypad)), mode='constant')
     else:
          mask = mask[:,int(b/2 - ny/2):int(b/2 + ny/2)]
-
-    print(arr.shape)
-    print(mask.shape)
-    
     
     if plots:
         plt.pcolormesh(mask)

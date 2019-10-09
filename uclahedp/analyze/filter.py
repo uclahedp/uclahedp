@@ -159,27 +159,51 @@ def lowpassFilter2D(arr, dx, dy, cutoff=10, plots=False):
     xfreq = np.fft.fftfreq(nx, d=dx)[0:int(nx/2.0)]
     yfreq = np.fft.fftfreq(ny, d=dy)[0:int(ny/2.0)]
     
+    #Calculate the width of the hanning window that would cutoff 
+    #at the cutoff frequency for this array
+    dxfreq = np.mean(np.gradient(xfreq))
+    a = (cutoff/dxfreq)*2
+    dyfreq = np.mean(np.gradient(yfreq))
+    b = (cutoff/dyfreq)*2
+    
+
+    """
     xi = np.argmin(np.abs(xfreq - cutoff))
     yi = np.argmin(np.abs(yfreq - cutoff))
-    
     a = xfreq[0:xi].size*2
     b = yfreq[0:yi].size*2
-    
+    """
+
     #Deal with odd/even sizes here so padding will be integers
-    if nx % 2 == 1:
+    if a % 2 == 1:
         a = a - 1 
-    if ny % 2 == 1:
+    if b % 2 == 1:
         b = b - 1 
     
     mask = np.outer(np.hanning(a), np.hanning(b))
     
+    #Trim or pad the mask as necessary to make it fit the data array
+    if a < nx:
+         xpad = int((nx - a)/ 2)
+         mask = np.pad(mask, pad_width=((xpad,xpad), (0,0)), mode='constant')
+    else:
+
+         mask = mask[int(a/2 - nx/2):int(a/2 + nx/2), :]
+
+         
+    if b < ny:
+         ypad = int((ny- b)/2)
+         mask = np.pad(mask, pad_width=((0,0), (ypad,ypad)), mode='constant')
+    else:
+         mask = mask[:,int(b/2 - ny/2):int(b/2 + ny/2)]
+
+    print(arr.shape)
+    print(mask.shape)
+    
+    
     if plots:
         plt.pcolormesh(mask)
         plt.show()
-    
-    xpad = int((nx - a)/ 2)
-    ypad = int((ny- b)/2)
-    mask = np.pad(mask, pad_width=((xpad,xpad), (ypad,ypad)), mode='constant')
     
     fft = np.fft.ifftshift(mask*fft)
     arr = np.fft.ifft2(fft)
@@ -200,11 +224,11 @@ if __name__ == '__main__':
     
     dk, x, y, arr = synthdata.wavey2D()
     
-    #lowpassFilter2D(arr, dk, dk, cutoff = 15)
+    lowpassFilter2D(arr, dk, dk, cutoff =.2/dk, plots=True)
     
-    f = arr[:,0]
+    #f = arr[:,0]
     
-    fftFilter(f, .1, plots=True, band=(1, 4))
+    #fftFilter(f, .1, plots=True, band=(1, 4))
     
     """
     dk, x, y, arr = synthdata.wavey2D()

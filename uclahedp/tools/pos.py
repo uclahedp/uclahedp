@@ -105,6 +105,12 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False, grid_precision=0.1,
             xaxis, yaxis, zaxis = makeAxes(nx,ny,nz,
                                                     dx,dy,dz,
                                                     x0,y0,z0)
+            
+            #Apply these transformations to the made axes
+            xaxis = xaxis*ax_pol[0] + origin[0]
+            yaxis = yaxis*ax_pol[1] + origin[1]
+            zaxis = zaxis*ax_pol[2] + origin[2]
+            
         except KeyError:
             print("Missing axis parameters: attempting fuzzy axis creation")
             #Continue through to the strict_axes =False case if this happens
@@ -113,6 +119,7 @@ def grid(pos, attrs, strict_axes=False, strict_grid=False, grid_precision=0.1,
     if strict_axes is False:
         print("Applying fuzzy axis creation")
         xaxis,yaxis,zaxis = guessAxes(pos, precision=grid_precision)
+        
                 
     #Calculate length of axes
     nx, ny, nz, nreps = calcNpoints(pos, xaxis, yaxis, zaxis)

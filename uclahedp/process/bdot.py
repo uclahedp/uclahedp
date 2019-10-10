@@ -589,6 +589,94 @@ def fullToCurrent(src, dest, verbose=False):
                     xax, yax, zax, xaxis, yaxis, zaxis)
                 
         return dest
+   
+     
+def fullToBmag(src, dest, verbose=False):
+    with h5py.File(src.file, 'r') as sf:
+        srcgrp = sf[src.group]
+        try:
+            dimlabels = hdftools.arrToStrList( srcgrp['data'].attrs['dimensions'][:] )
+            shape =  np.array(srcgrp['data'].shape)
+            #Same as the old shape, but now without the channels dimension...
+            shape[-1] = 1
+
+        except KeyError: 
+            raise KeyError("bdot.fullToBmag requires the data array to have an attribute 'dimensions' and 'shape'")
+            
+        #We will duplicate the chunking on the new array
+        chunks = srcgrp['data'].chunks
+        
+
+        try:
+            xax = dimlabels.index("xaxis") 
+            yax = dimlabels.index("yaxis") 
+            zax = dimlabels.index("zaxis") 
+            
+            xaxis = srcgrp['xaxis']
+            yaxis = srcgrp['yaxis']
+            zaxis = srcgrp['zaxis']
+            
+            nti = shape[ dimlabels.index("time")  ]
+            nx = shape[xax]
+            ny = shape[yax]
+            nz = shape[zax]
+            
+        except KeyError:
+            raise KeyError("bdot.fullToBmag requires dimensions 'time', 'xaxis', 'yaxis', 'zaxis'")
+            
+
+        
+        #Create the destination file directory if necessary
+        hdftools.requireDirs(dest.file)
+        
+        #Delete destination file if it already exists
+        if os.path.exists(dest.file):
+          os.remove(dest.file)
+        
+        with h5py.File(dest.file, 'w') as df:
+            destgrp = df[dest.group]
+            
+            destgrp.require_dataset('data', shape, np.float32, chunks=chunks, compression='gzip')
+            destgrp['data'].attrs['unit'] = 'G'
+            destgrp['data'].attrs['dimensions'] = hdftools.strListToArr(dimlabels)
+            
+            #Copy the axes over
+            for ax in dimlabels:
+                if ax != 'chan':
+                     srcgrp.copy(ax, destgrp)
+                else:
+                     destgrp.require_dataset('chan', (1,), np.int32, chunks=True)[:] = [0]
+                     destgrp['chan'].attrs['unit'] = ''
+                     
+                
+                
+            chunksize = 100
+            nchunks = int(np.ceil(nti/chunksize))
+            
+            #Initialize time-remaining printout
+            tr = util.timeRemaining(nchunks, reportevery=10)
+            
+            for i in range(nchunks):
+                #Update time remaining
+                if verbose:
+                        tr.updateTimeRemaining(i)
+
+                a = i*chunksize
+                if i == nchunks-1:
+                    b = None
+                else:
+                    b = (i+1)*chunksize
+                
+                bx = srcgrp['data'][a:b, ..., 0]
+                by = srcgrp['data'][a:b, ..., 1]
+                bz = srcgrp['data'][a:b, ..., 2]
+                
+                destgrp['data'][a:b, ...,0] = np.sqrt(np.power(bx,2) +
+                       np.power(by,2) + np.power(bz,2))
+
+           
+        return dest     
+     
 
 #These two functions are used in the calibrateProbe routine
 def lfProbeArea(freq, mag, nturns, hturns, gain,  Rp, r):

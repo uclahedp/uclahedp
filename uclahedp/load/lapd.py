@@ -264,6 +264,11 @@ def readPosArray(src, controls, motion_attrs):
             if control in sf.controls.keys():
                 src_controls = sf.controls
                 pos = sf.read_controls(controls)['xyz']
+                
+                #The pos values in the z component are not actually z values?
+                #The actual z position for an XY drive (in probe coordinates)
+                #should always be zero.
+                pos[:,2] = 0.0*pos[:,2]
    
                 
                 #Extract some other parameters

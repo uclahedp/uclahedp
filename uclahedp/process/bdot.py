@@ -171,11 +171,8 @@ def bdotRawToFull(src, dest,
                      pos, attrs, strict_axes=strict_axes, 
                      strict_grid=strict_grid, grid_precision=grid_precision, 
                      invert=False)
-          
-            
-        
+           
 
-            
             
         #If tdiode_hdf is set, load the pre-processed tdiode data
         if tdiode_hdf is not None:
@@ -246,10 +243,6 @@ def bdotRawToFull(src, dest,
                      calBx, calBy, calBz = calibrationFactorsHF(attrs)
                  else:
                       calBx, calBy, calBz = None,None,None
-                      
-                 print(calBx)
-            
-            
 
             #Initialize time-remaining printout
             tr = util.timeRemaining(nshots)
@@ -350,11 +343,20 @@ def bdotRawToFull(src, dest,
                     #pitch is the angle of the probe shaft to the xz plane
                     pitch = np.arctan( (y-ry) / (x-rx) )
                     #yaw is the angle of the probe shaft to the xy plane
-                    yaw = np.arctan( (z-rz) / (x-rx) ) 
+                    yaw = np.arctan( (z-rz) / (x-rx) )
+                    
+                    
+                    if debug:
+                         print("****Fixed Pivot Debug*******")
+                         print("(x,y,z) = ({:5.2f},{:5.2f},{:5.2f})".format(x,y,z))
+                         print("(rx,ry,rz) = ({:5.2f},{:5.2f},{:5.2f})".format(rx,ry,rz))
+                         print("Pitch: " + str(np.degrees(pitch)))
+                         print("Yaw: " + str(np.degrees(yaw)))
+                    
                     
                     #If the probe is coming from the -X direction, its calibrated Z axis is already off by 180 degrees.
                     #This is because the probes are calibrated to match the East side of LAPD
-                    if ((x-rx) > 0.0):
+                    if ((x-rx) < 0.0):
                         yaw = yaw + np.pi
                     
                     #Roll is rotation of the probe about its axis, with

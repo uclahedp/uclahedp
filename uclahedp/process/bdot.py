@@ -356,7 +356,7 @@ def bdotRawToFull(src, dest,
                     
                     #If the probe is coming from the -X direction, its calibrated Z axis is already off by 180 degrees.
                     #This is because the probes are calibrated to match the East side of LAPD
-                    if ((x-rx) < 0.0):
+                    if ((x-rx) > 0.0):
                         yaw = yaw + np.pi
                     
                     #Roll is rotation of the probe about its axis, with

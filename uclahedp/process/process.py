@@ -69,7 +69,8 @@ def process(data_dir, run, probe,
         elif probe[1] == 'bdot':
             print("Running bdotRawToFull")
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
-                                          verbose=True, highfreq_calibrate=True,
+                                          calibrate=True, integrate=True, angle_correction = True,
+                                          verbose=True, highfreq_calibrate=False,
                                           strict_axes=True, strict_grid=True,
                                           #grid_precision = 0.25,
                                           remove_offset=True, offset_range=(0, -1), offset_rel_t0 = [False, True])
@@ -168,9 +169,9 @@ if __name__ == "__main__":
     #Windows
     #data_dir =  os.path.join("G:", "2019BIERMANN")
     #data_dir =  os.path.join("G:", "LAPD_Apr2017")
-    data_dir =  os.path.join("G:", "LAPD_Aug2016")
+    #data_dir =  os.path.join("G:", "LAPD_Aug2016")
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
-    #data_dir =  os.path.join("G:", "LAPD_Mar2018")
+    data_dir =  os.path.join("G:", "LAPD_Mar2018")
     #data_dir =  os.path.join("G:", "LAPD_Jul2019")
     #data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
@@ -186,11 +187,11 @@ if __name__ == "__main__":
     #rawsource='HRR'
     
     
-        #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[40],probes=['tdiode'], rawsource=rawsource, set_trange=[0,3000])
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[40],probes=['LAPD4','LAPD10','LAPD11','LAPD6','LAPD5','LAPD7'], use_tdiode='tdiode',  rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[56],probes=['tdiode'], rawsource=rawsource, trange=[0,3000])
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[56],probes=['LAPD4'], use_tdiode='tdiode',  rawsource=rawsource)
     
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['tdiode'], rawsource=rawsource, trange=[0,3000])
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['LAPD10', 'LAPD5', 'LAPD8', 'LAPD30', 'LAPD3'], use_tdiode='tdiode',  rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['tdiode'], rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['LAPD10', 'LAPD5', 'LAPD8', 'LAPD30', 'LAPD3'], use_tdiode='tdiode',  rawsource=rawsource)
     
   
     #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[34.01, 34.02], probes=['pimax4'], rawsource='imgdir')

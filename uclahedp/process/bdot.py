@@ -215,6 +215,8 @@ def bdotRawToFull(src, dest,
                 #will be necessary
                 dt_ratio = float(attrs['dt'][0])/float(tdiode_attrs['dt'][0])
                 t0indarr = (t0indarr/dt_ratio).astype(np.int32)
+                print(dt_ratio)
+                print(t0indarr)
                     
                 #We will remove up to max_t0shift indices from each array such that
                 #the t0 indices all line up.
@@ -223,19 +225,10 @@ def bdotRawToFull(src, dest,
                 #Compute new nti
                 nti = nti - max_t0shift 
                 
+        
                 t = t[0:nti] - t[min_t0ind]
 
-
-
-
-
-
-
-
-
-
-
-
+        
 
 
             #Throw an error if this dataset already exists
@@ -251,15 +244,17 @@ def bdotRawToFull(src, dest,
             else:
                 destgrp.require_dataset('data', (nshots, nti, nchan), np.float32, chunks=(1, np.min([nti, 20000]), 1), compression='gzip')
             
-            
-    
+            # dt -> s
+            dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
           
             if calibrate:
-                 # dt -> s
-                 dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
-                
+                 
                  #First calculate the low frequency calibration factors
                  calAx, calAy, calAz = calibrationFactorsLF(attrs)
+                 
+                 print(calAx)
+                 print(calAy)
+                 print(calAz)
                  
                  #If HF calibration factors are provided, calculate those
                  #calibraton constants too
@@ -267,6 +262,10 @@ def bdotRawToFull(src, dest,
                      calBx, calBy, calBz = calibrationFactorsHF(attrs)
                  else:
                       calBx, calBy, calBz = None,None,None
+                      
+                 print(calBx)
+                 print(calBy)
+                 print(calBz)
 
             #Initialize time-remaining printout
             tr = util.timeRemaining(nshots)
@@ -314,7 +313,7 @@ def bdotRawToFull(src, dest,
                                           str(offset_b) + "]")
                     
                     
-                
+
                 #Read in the data from the source file
                 dbx = srcgrp['data'][i,ta:tb, 0]
                 dby = srcgrp['data'][i,ta:tb, 1]

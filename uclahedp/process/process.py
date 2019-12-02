@@ -188,7 +188,7 @@ if __name__ == "__main__":
     
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[56],probes=['tdiode'], rawsource=rawsource, trange=[0,3000])
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[56],probes=['LAPD4'], use_tdiode='tdiode',  rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[56],probes=['LAPD4', 'LAPD10', 'LAPD11', 'LAPD6', 'LAPD5', 'LAPD1'], use_tdiode='tdiode',  rawsource=rawsource)
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['tdiode'], rawsource=rawsource)
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['LAPD10', 'LAPD5', 'LAPD8', 'LAPD30', 'LAPD3'], use_tdiode='tdiode',  rawsource=rawsource)

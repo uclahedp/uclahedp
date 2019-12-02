@@ -591,20 +591,7 @@ def isatRawToFull(src, dest,
                      strict_grid=strict_grid, grid_precision=grid_precision, 
                      invert=False)
 
-        #If tdiode_hdf is set, load the pre-processed tdiode data
-        if tdiode_hdf is not None:
-            if verbose:
-                print("Loading tdiode array from file.")
-            with h5py.File(tdiode_hdf.file, 'r') as sf:
-                grp = sf[tdiode_hdf.group]
-                t0indarr = grp['t0indarr'][:]
-                goodshots = grp['goodshots'][:]
-            #We will remove up to max_t0shift indices from each array such that
-            #the t0 indices all line up.
-            min_t0ind = np.min(t0indarr[goodshots])
-            max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
-            #Compute new nti
-            nti = nti - max_t0shift 
+        
             
         if verbose:
             print("Opening destination HDF file")
@@ -632,6 +619,38 @@ def isatRawToFull(src, dest,
             #Copy over attributes
             hdftools.copyAttrs(srcgrp, destgrp)
 
+
+
+            #Load the time vector
+            t = srcgrp['time']
+            
+            #If tdiode_hdf is set, load the pre-processed tdiode data
+            if tdiode_hdf is not None:
+                if verbose:
+                    print("Loading tdiode array from file.")
+                with h5py.File(tdiode_hdf.file, 'r') as sf:
+                    grp = sf[tdiode_hdf.group]
+                    t0indarr = grp['t0indarr'][:]
+                    goodshots = grp['goodshots'][:]
+                    tdiode_attrs = hdftools.readAttrs(grp)
+                    
+                #If tdiode was digitized with a different dt, this correction
+                #will be necessary
+                dt_ratio = float(attrs['dt'][0])/float(tdiode_attrs['dt'][0])
+                t0indarr = (t0indarr/dt_ratio).astype(np.int32)
+                
+                #We will remove up to max_t0shift indices from each array such that
+                #the t0 indices all line up.
+                min_t0ind = np.min(t0indarr[goodshots])
+                max_t0shift = np.max(t0indarr[goodshots]) - min_t0ind
+                #Compute new nti
+                nti = nti - max_t0shift 
+
+                t = t[0:nti] - t[min_t0ind]
+
+
+
+
             #Throw an error if this dataset already exists
             if 'data' in destgrp.keys():
                     raise hdftools.hdfDatasetExists(str(dest) + ' -> ' + "'data'")
@@ -645,11 +664,7 @@ def isatRawToFull(src, dest,
             else:
                 destgrp.require_dataset('data', (nshots, nti), np.float32, chunks=(1, np.min([nti, 20000])), compression='gzip')
             
-            #Load the time vector
-            t = srcgrp['time']
-            #If a timing diode is being applied, correct the time vector here.
-            if tdiode_hdf is not None:
-                t = t[0:nti] - t[min_t0ind]
+            
     
           
             dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value

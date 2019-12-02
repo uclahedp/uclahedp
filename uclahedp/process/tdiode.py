@@ -26,14 +26,20 @@ def tdiodeRawToFull(src, dest, verbose=False, badshotratio=None,
         nti = srcgrp['time'].shape[0]
         nchan = srcgrp['chan'].shape[0]
         
+        #Find the t0 for each t0ind
+        t0arr = t[t0indarr.astype(int)]
+        
         #Create the destination file directory if necessary
         hdftools.requireDirs(dest.file)
         
         with h5py.File(dest.file) as df:
             destgrp = df[dest.group]
+            destgrp['t0arr'] = t0arr
             destgrp['t0indarr'] = t0indarr
             destgrp['badshots'] = badshots
             destgrp['goodshots'] = goodshots
+            
+            hdftools.copyAttrs(srcgrp, destgrp)
             
     
             #Apply the tdiode correction to the data, as a check

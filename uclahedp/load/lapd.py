@@ -121,14 +121,18 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False,
         #Read out some digitizer parameters
         nshots = info['nshotnum']
         nti = info['nt']
+        
         #clock_rate = info['clock rate'].to(u.Hz)
         #dt =  (  1.0 / clock_rate  ).to(u.s)
         
-
+        sti = trange[0]
         if trange[1] == -1:
-            trange[1] = nti-1
+            eti = nti-1
+        else:
+            eti = trange[1]
         
-        nti = trange[1] - trange[0]
+        nti = eti- sti
+
         
 
     
@@ -207,7 +211,7 @@ def lapdToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False,
                                         silent=True, shotnum=shot+1)
                     
             
-                    grp['data'][shot,:,chan] = data['signal'][0, trange[0]:trange[1]]
+                    grp['data'][shot,:,chan] = data['signal'][0, sti:eti]
                     
                     if shot == 0:
                         dt = data.dt #Adusted in bapsflib for clock rate, avging, etc.

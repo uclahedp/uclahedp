@@ -13,6 +13,8 @@ from uclahedp.tests.synthdata import cpWave as cpWave
 import matplotlib.pyplot as plt
 import h5py
 
+import os
+
 def polarization_decomp(bx,by, flipz=False):
     """
     INPUTS
@@ -67,7 +69,7 @@ def _test_polarization_decomp():
 
 def hodograph(ax, ay, indices=None):
     if indices is None:
-        indices = np.arange(ax.shape[0])
+        indices = np.arange(ax.shape[0]-1)
         
         
     x0 = np.zeros(indices.shape[0])
@@ -86,14 +88,22 @@ def hodograph(ax, ay, indices=None):
         
     return x0,y0,dx,dy
     
+
+
+
 def _test_hodograph():
     t, ax, ay = cpWave(rcp=True)
+    
     indices = np.arange(0, 15000, 500)
     x,y,u,v = hodograph(ax, ay, indices=indices)
     
     fig, ax = plt.subplots()
+    ax.set_aspect(1.0)
     
-    ax.quiver(x,y,u,v, pivot='tail')
+    for i in range(x.size):
+        ax.arrow(x[i], y[i], u[i], v[i])
+    
+    #ax.quiver(x,y,u,v, pivot='tail')
 
 
 
@@ -101,13 +111,40 @@ def _test_hodograph():
 
 if __name__ == '__main__':
     #_test_polarization_decomp()
-    #_test_hodograph()
+   _test_hodograph()
+   
+   
+   #Test Hodograph
+   """
+   f = os.path.join("G:", "LAPD_Mar2018", "FULL", "run40_LAPD7_full.hdf5")
+   
+   times = np.arange(5, 40, 0.5)
+   tinds = np.zeros([times.size], dtype=int)
+   
+   with h5py.File(f) as f:
+        bt = f['time'][:]*1e6
+        bx = f['data'][0,:,0]
+        by = f['data'][0,:,1]
+        
+   for i,t in enumerate(times):
+       tinds[i] = np.argmin(np.abs(bt - t))
+       
+        
+   x0,y0,dx,dy = hodograph(bx, by, indices=tinds)
+        
+   print(x0.shape)
+   
+   fig, ax = plt.subplots()
+   
+   for i in range(times.size):
+       ax.arrow(x0[i], y0[i], dx[i], dy[i])
+   """
     
-    
-    
+   """
+    #THIS IS ALL FOR TESTING DECOMP
     title='Parallel'
-    f =  '/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run40_LAPD7_full.hdf5'
-    f =  '/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run56_LAPD1_full.hdf5'
+    f = os.path.join("G:", "LAPD_Mar2018", "FULL", "run40_LAPD7_full.hdf5")
+    #f =  '/Volumes/PVH_DATA/LAPD_Mar2018/FULL/run56_LAPD1_full.hdf5'
     
     
     #title='Perpendicular'
@@ -117,12 +154,12 @@ if __name__ == '__main__':
         
         t = f['time'][:]
         
-        #bx = f['data'][0,:,0]
-        #by = f['data'][0,:,1]
-        bx = f['data'][:,30,0,0,0,0]
-        by = f['data'][:,30,0,0,0,1]
+        bx = f['data'][0,:,0]
+        by = f['data'][0,:,1]
+        #bx = f['data'][:,30,0,0,0,0]
+        #by = f['data'][:,30,0,0,0,1]
         
-        
+
         fig, ax = plt.subplots()
         br, bl = polarization_decomp(bx, by, flipz=True)
         ax.plot(t*1e6, br, 'b-', label='RCP' )
@@ -132,6 +169,9 @@ if __name__ == '__main__':
         ax.set_ylabel('dB (G)')
         ax.set_title(title)
         ax.legend(loc=4)
+
+    """ 
+        
         
    
         

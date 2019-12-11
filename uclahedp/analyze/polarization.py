@@ -70,21 +70,24 @@ def _test_polarization_decomp():
 def hodograph(ax, ay, indices=None):
     if indices is None:
         indices = np.arange(ax.shape[0]-1)
+    
         
-        
-    x0 = np.zeros(indices.shape[0])
-    y0 = np.zeros(indices.shape[0])
-    dx = np.zeros(indices.shape[0])
-    dy = np.zeros(indices.shape[0])
+    x0 = np.zeros(indices.shape[0]-1)
+    y0 = np.zeros(indices.shape[0]-1)
+    dx = np.zeros(indices.shape[0]-1)
+    dy = np.zeros(indices.shape[0]-1)
 
     
-    for i, ind in enumerate(indices):
+    for i in range(indices.size - 1):
+        
+        ind = indices[i]
+        nind = indices[i+1]
 
         x0[i] = ax[ind]
         y0[i] = ay[ind]
             
-        dx[i] = ax[ind+1] - x0[i]
-        dy[i] = ay[ind+1] - y0[i]
+        dx[i] = ax[nind] - x0[i]
+        dy[i] = ay[nind] - y0[i]
         
     return x0,y0,dx,dy
     
@@ -94,14 +97,23 @@ def hodograph(ax, ay, indices=None):
 def _test_hodograph():
     t, ax, ay = cpWave(rcp=True)
     
-    indices = np.arange(0, 15000, 500)
+    indices = np.arange(0, 25000, 500)
     x,y,u,v = hodograph(ax, ay, indices=indices)
     
+
     fig, ax = plt.subplots()
     ax.set_aspect(1.0)
     
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1,1)
+    
+    print(x)
+    print(y)
+    print(u)
+    print(v)
+    
     for i in range(x.size):
-        ax.arrow(x[i], y[i], u[i], v[i])
+        ax.arrow(x[i], y[i], u[i], v[i], head_width=0.04, linewidth=None)
     
     #ax.quiver(x,y,u,v, pivot='tail')
 
@@ -110,15 +122,15 @@ def _test_hodograph():
 
 
 if __name__ == '__main__':
-    #_test_polarization_decomp()
-   _test_hodograph()
+   #_test_polarization_decomp()
+   #_test_hodograph()
    
    
    #Test Hodograph
-   """
+   
    f = os.path.join("G:", "LAPD_Mar2018", "FULL", "run40_LAPD7_full.hdf5")
    
-   times = np.arange(5, 40, 0.5)
+   times = np.arange(10, 13, 0.1)
    tinds = np.zeros([times.size], dtype=int)
    
    with h5py.File(f) as f:
@@ -132,13 +144,16 @@ if __name__ == '__main__':
         
    x0,y0,dx,dy = hodograph(bx, by, indices=tinds)
         
-   print(x0.shape)
    
    fig, ax = plt.subplots()
    
-   for i in range(times.size):
-       ax.arrow(x0[i], y0[i], dx[i], dy[i])
-   """
+   s = 5
+   ax.set_xlim(-s, s)
+   ax.set_ylim(-s, s)
+   
+   for i in range(x0.size):
+        ax.arrow(x0[i], y0[i], dx[i], dy[i], head_width=0.3)
+   
     
    """
     #THIS IS ALL FOR TESTING DECOMP

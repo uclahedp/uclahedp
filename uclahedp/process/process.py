@@ -48,7 +48,7 @@ def process(data_dir, run, probe,
                                       trange=trange, verbose=True)
         if rawsource == 'HRR':
             print("Running hrrToRaw")
-            rawfile =  hrr.hrrToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True)
+            rawfile =  hrr.hrrToRaw(run, probe[0], hdf_dir, csv_dir, rawfile, verbose=True, debug=False)
         if rawsource == 'imgdir':
             print("Running ImgDirToRaw")
             rawfile =  imgdir.imgDirToRaw(run, probe[0], img_dir, rawfile, csv_dir, verbose=True)
@@ -171,12 +171,12 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("G:", "LAPD_Apr2017")
     #data_dir =  os.path.join("G:", "LAPD_Aug2016")
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
-    data_dir =  os.path.join("G:", "LAPD_Mar2018")
+    #ata_dir =   os.path.join("G:", "LAPD_Mar2018")
     #data_dir =  os.path.join("G:", "LAPD_Jul2019")
     #data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
     #OSX
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
@@ -184,24 +184,9 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
     
     rawsource='LAPD'
-    #rawsource='HRR'
+    rawsource='HRR'
     
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[56],probes=['tdiode'], rawsource=rawsource, trange=[0,3000])
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[56],probes=['LAPD4', 'LAPD10', 'LAPD11', 'LAPD6', 'LAPD5', 'LAPD1'], use_tdiode='tdiode',  rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[51],probes=['tdiode', 'PLL_B2'], use_tdiode='tdiode',  rawsource=rawsource)
     
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['tdiode'], rawsource=rawsource)
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[68,70],probes=['LAPD10', 'LAPD5', 'LAPD8', 'LAPD30', 'LAPD3'], use_tdiode='tdiode',  rawsource=rawsource)
-    
-  
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[34.01, 34.02], probes=['pimax4'], rawsource='imgdir')
-
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[22],probes=['dipole_I'], rawsource=rawsource)
-
-
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[38],probes=['tdiode_slow','C13_slow'], use_tdiode='tdiode_slow', rawsource=rawsource)
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[51],probes=['tdiode_fast', 'C13'], use_tdiode='tdiode_fast', rawsource=rawsource, trange=[0,25000])
-    
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[29],probes=['PRO083_vsweep','PRO083_isat'], rawsource=rawsource)
-
-    #processMany(data_dir, overwrite_raw=False, overwrite_full=False, runs=[36,37],probes=['dipole_I', 'C13'], rawsource=rawsource)

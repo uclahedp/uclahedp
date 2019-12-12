@@ -19,7 +19,7 @@ from uclahedp.tools import util
 import h5py
 
 
-def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
+def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False, debug=False):
     """ Retreives the appropriate metadata for a run and probe in a given data
     directory, then reads in the data from the HRR hdf5 output file.
     
@@ -54,15 +54,13 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     #Create a dictionary of attributes from the entire directory of CSV
     #files that applies to this probe and run
     attrs = csvtools.getAllAttrs(csv_dir, run, probe)
+    
   
     #Check that some required keys are present, throw a fatal error if not
     req_keys = ['datafile']
     csvtools.missingKeys(attrs, req_keys, fatal_error=True)
 
 
-    print(hdf_dir)
-    print(attrs['datafile'])
-    print(attrs['datafile'][0] +  '.hdf5')
     #TODO: Should this file take a data_dir and determine the filename
     #automatically, or should a source hdf file be given, leaving the program
     #that calls this one to determine the HDF file name?
@@ -77,6 +75,7 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
     while True:
         digistr = 'resource' + str(int(nchan))
         chanstr = 'chan' + str(int(nchan))
+        
         if chanstr in attrs.keys() and digistr in attrs.keys():
             #Check to make sure channel has actual non-nan values
             if not np.isnan(attrs[digistr][0]) and not np.isnan(attrs[chanstr][0]):
@@ -86,6 +85,8 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
         else:
             break
     
+    if debug:
+        print("{:.0f} Data Channels found in csv".format( len(channel_arr)))
 
     #Create a dictionary of position channels
     #channel_arr = tuples of form (resource number, channel number)
@@ -106,13 +107,14 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False):
                 pos_chan[ax[i]] = None
         
     
-    print(pos_chan)
+    if debug:
+        print("{:.0f} Pos Channels found in csv".format(len(pos_chan)))
 
 
     #Determine the number of channels from the channel array
     nchan = len(channel_arr)
     
-        
+    
     #Read some variables from the src file
     with h5py.File(src, 'r')  as sf:
         

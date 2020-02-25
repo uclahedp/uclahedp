@@ -91,7 +91,7 @@ def leftPropGuess(k):
 
 
 
-def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, mc=None, krange = None, guessFcn = None):
+def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, mc=None, krange = None, guessFcn = bestGuess):
     
     #Create kspace and output w vectors
     if krange is None:

@@ -27,7 +27,9 @@ def vbLab_to_vb(nb, vblab, qb, qc):
 
 
 def calc_vc(nb, vb, qb, qc):
-    return (qb/qc)*nb*vb/(1-qb*nb)
+    #Note: Changed sign of vc back to negatie b/c otherwise -k solutions 
+    #don't exist
+    return -(qb/qc)*nb*vb/(1-qb*nb)
 
 def calc_nc(nb, qb):
      return 1.00 - qb*nb
@@ -78,11 +80,11 @@ def dispRel(z,k, vb=None, nb=None, qb=None, qc=None, mb=None, mc=None):
     return F
 
 def bestGuess(k):
-    return np.array([k**2, .1])
+    return np.array([np.power(k,2), 1])
 
 def rightPropGuess(k):
     if k < 0:
-        return np.array([k*0.1, -1])
+        return np.array([k**0.1, -1])
     else: 
         return np.array([k**2, .1])
 
@@ -116,11 +118,10 @@ def solveDispRel(nb=None, vb=None, qb=None, qc=None, mb=None, mc=None, krange = 
         w[i] = np.abs(wr) + 1j*np.abs(wi)
     
     #Interpolate roots
-    k = np.arange(krange[0], krange[1], .01)
-    wr = interpolate.interp1d(kspace, np.real(w) ) (k)
-    wi = interpolate.interp1d(kspace, np.imag(w) ) (k)
+    wr = interpolate.interp1d(kspace, np.real(w) ) (kspace)
+    wi = interpolate.interp1d(kspace, np.imag(w) ) (kspace)
     
-    return k, wr, wi
+    return kspace, wr, wi
 
 
 def classify_peaks(k, wr, wi):
@@ -142,6 +143,7 @@ def classify_peaks(k, wr, wi):
     pos = [p for p in peaks if k[p]> 0]
     neg = [p for p in peaks if k[p]< 0]
     
+    
     if pos == []:
         pass
     elif len(pos) == 1:
@@ -150,8 +152,10 @@ def classify_peaks(k, wr, wi):
         output['F'] = {'k': k[pos[0]], 'w': wr[pos[0]], 'gr': wi[pos[0]]}
         output['E'] = {'k': k[pos[1]], 'w': wr[pos[1]], 'gr': wi[pos[1]]}
     else:
+        print("Alert: Weird number of peaks found?")
         print(len(pos))
-        raise ValueError("Invalid number of positive k peaks!")
+        output['F'] = {'k': k[pos[0]], 'w': wr[pos[0]], 'gr': wi[pos[0]]}
+        output['E'] = {'k': k[pos[-1]], 'w': wr[pos[-1]], 'gr': wi[pos[-1]]}
      
     if neg == []:
         pass
@@ -161,24 +165,26 @@ def classify_peaks(k, wr, wi):
         output['A'] = {'k': k[neg[1]], 'w': wr[neg[1]], 'gr': wi[neg[1]]}
         output['C'] = {'k': k[neg[0]], 'w': wr[neg[0]], 'gr': wi[neg[0]]}
     else:
+        print("Alert: Weird number of peaks found?")
         print(len(neg))
-        raise ValueError ("Invalid number of negative k peaks!")
+        output['A'] = {'k': k[neg[-1]], 'w': wr[neg[-1]], 'gr': wi[neg[-1]]}
+        output['C'] = {'k': k[neg[0]], 'w': wr[neg[0]], 'gr': wi[neg[0]]}
 
     return output
 
 
 
 def gen_gr():
-    qb = 6.0
-    mb = 3.0
+    qb = 1
+    mb = 1
     qc = 1
     mc = 1
     
     #NOTE: Avoid letting nb/n0 = 1/qb = 0.25! Jump's branches there...
     
-    krange = (-10,10)
-    vblab_range = np.arange(1, 20, 0.1)
-    nb_range = np.arange(0, 0.24, 0.01)
+    krange = (-50,50)
+    vblab_range = np.arange(1.1, 20, 0.5)
+    nb_range = np.arange(0.02, 0.5, 0.01)
     
     #vblab_range = np.arange(4, 8, 1)
     #nb_range = np.arange(.1, 0.2, .05 )
@@ -254,9 +260,9 @@ def make_gr(file):
 
 if __name__ == '__main__':
     
-    
-    vb = 4.98
-    k, wr, wi =  solveDispRel(nb=0.1, vb=vb, qb=5, mb=3, krange=(-10,10), guessFcn=bestGuess)
+    """
+    vb  = 12
+    k, wr, wi =  solveDispRel(nb=0.5, vb=vb, qb=1, mb=1, krange=(-10,10), guessFcn=bestGuess)
    
     fig, ax = plt.subplots( figsize = [4,4])
     
@@ -269,7 +275,7 @@ if __name__ == '__main__':
     
     
     
-    wifactor = 10
+    wifactor = 100
     ax.set_ylim((-5,100))
     ax.plot(k, wr, '-', k, wi*wifactor, '--')
     ax.plot(k, vbline, '--')
@@ -281,9 +287,9 @@ if __name__ == '__main__':
     print(peaks)
     
     """
-    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_C+6_He+1.hdf5")
+    file = os.path.join("C:", os.sep, "Users","Peter", "Desktop", "gr_save_H-H_bigrange.hdf5")
     #file = '/Users/peter/Desktop/new_gr_save.hdf5'
     print(file)
     make_gr(file)
-    """
+   
     

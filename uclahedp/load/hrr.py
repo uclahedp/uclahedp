@@ -217,7 +217,11 @@ def hrrToRaw( run, probe, hdf_dir, csv_dir, dest, verbose=False, debug=False):
                         channame = 'CHANNEL ' + str(int(pos_chan[a][1]))
                         
                         
-                        posdata = sf[resname][channame]['POSITION'][:]*unit_factor
+                        try:
+                            posdata = sf[resname][channame]['POSITION'][:]*unit_factor
+                        except KeyError:
+                            print("(!) POSITION Information not found for " + resname)
+                            print("If motion is not included in run, set resource to NA in csv")
                         
                         #Handle the case where the multiple data points were
                         #taken at a position so npos!=nshots

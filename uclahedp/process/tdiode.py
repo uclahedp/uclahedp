@@ -90,7 +90,12 @@ def calcT0ind(srcgrp, verbose=False):
         if verbose:
                 tr.updateTimeRemaining(i)
         maxind = np.argmax(srcgrp['data'][i,:,0])
-        t0ind_array[i] =  np.argmax( np.gradient( srcgrp['data'][i,0:maxind,0] ) ) 
+        try:
+            t0ind_array[i] =  np.argmax( np.gradient( srcgrp['data'][i,0:maxind,0] ) )
+        except ValueError:
+            #This error can be thrown on a bad shot: shot will eventually be
+            #ignored, so value written here doesn't ultimately matter.
+            t0ind_array[i] = 0
 
     del(nshots,nti,nchan)
     return t0ind_array.astype(int)

@@ -318,9 +318,15 @@ def bdotRawToFull(src, dest,
             
             if verbose:
                 print("Beginning processing data shot-by-shot.")
+
+
             
             #Chunking data processing loop limits memory usage
-            for i in shotlist:
+            for ind in range(nshots):
+                
+                #i == ind unless this is a bad shot
+                i = shotlist[ind]
+                
                 
                 #Update time remaining
                 if verbose:
@@ -330,7 +336,7 @@ def bdotRawToFull(src, dest,
                 #here
                 if tdiode_hdf is not None and remove_offset:
                     #Calculate the starting and ending arrays for the data
-                    ta = t0indarr[i] - min_t0ind
+                    ta = t0indarr[ind] - min_t0ind
                     tb = ta + nti
 
                     #Calculate the range over which to calculate the offset
@@ -456,10 +462,10 @@ def bdotRawToFull(src, dest,
                     
                 if grid:
                     #Get location to write this datapoint from the shotgridind
-                    xi = shotgridind[i, 0]
-                    yi = shotgridind[i, 1]
-                    zi = shotgridind[i, 2]
-                    repi = shotgridind[i, 3]
+                    xi = shotgridind[ind, 0]
+                    yi = shotgridind[ind, 1]
+                    zi = shotgridind[ind, 2]
+                    repi = shotgridind[ind, 3]
                     #Write data
                     try:
                         destgrp['data'][:, xi, yi, zi, repi, 0] = bx
@@ -473,9 +479,9 @@ def bdotRawToFull(src, dest,
                         raise(e)
                 else:
                     #Write data
-                    destgrp['data'][i,:, 0] = bx
-                    destgrp['data'][i,:, 1] = by 
-                    destgrp['data'][i,:, 2] = bz                      
+                    destgrp['data'][ind,:, 0] = bx
+                    destgrp['data'][ind,:, 1] = by 
+                    destgrp['data'][ind,:, 2] = bz                      
             
 
             if verbose:

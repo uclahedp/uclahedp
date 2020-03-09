@@ -71,10 +71,10 @@ def process(data_dir, run, probe,
             fullfile = bdot.bdotRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, grid=True, 
                                           calibrate=True, integrate=True, angle_correction = True,
                                           verbose=True, highfreq_calibrate=False,
-                                          strict_axes=True, strict_grid=True,
-                                          #grid_precision = 0.25,
+                                          strict_axes=False, strict_grid=False,
+                                          grid_precision = 0.25,
                                           replace_badshots = True,
-                                          remove_offset=True, offset_range=(0, -1), offset_rel_t0 = [False, True])
+                                          remove_offset=True, offset_range=(0, -50), offset_rel_t0 = [False, True])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 

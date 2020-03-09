@@ -31,6 +31,7 @@ def bdotRawToFull(src, dest,
                   tdiode_hdf=None, grid=False, integrate=True, 
                   calibrate =True, highfreq_calibrate=True,
                   angle_correction = True, remove_offset = True,
+                  replace_badshots = True,
                   verbose=False, debug = False,
                   offset_range=(0,100), offset_rel_t0 = (False, False), 
                   grid_precision=0.1, strict_grid=False, strict_axes = False):
@@ -78,6 +79,11 @@ def bdotRawToFull(src, dest,
        remove_offset: Boolean
             If True, remove an offset from the data based on the offset_range
             specified in those keywords. If False, data will remain as-is. 
+            Default is True.
+            
+        replace_badshots: Boolean
+            If True, semi-intelligently replace bad shots with neighboring
+            good shots. If False, data remains as-is.
             Default is True.
             
         offset_range: tuple
@@ -209,6 +215,7 @@ def bdotRawToFull(src, dest,
                     grp = sf[tdiode_hdf.group]
                     t0indarr = grp['t0indarr'][:]
                     goodshots = grp['goodshots'][:]
+                    badshots = grp['badshots'][:]
                     tdiode_attrs = hdftools.readAttrs(grp)
                     
                 #If tdiode was digitized with a different dt, this correction
@@ -258,6 +265,54 @@ def bdotRawToFull(src, dest,
                  else:
                       calBx, calBy, calBz = None,None,None
                       
+                      
+            #This segment of code checks for bad shots and replaces them with
+            #Neighboring good shots
+            shotlist = np.arange(nshots)
+            if replace_badshots and tdiode_hdf is not None:
+                for i in shotlist:
+                    if i in badshots:
+                        #If the shot is bad, determine the best neighbor shot
+                        #to replace it with
+                        
+                        before_shot = i
+                        after_shot = i
+                        #Identify nearest good shot before and after
+                        while before_shot in badshots:
+                            before_shot = before_shot - 1   
+                        while after_shot in badshots:
+                            after_shot = after_shot + 1
+                            
+
+                        #If position data is provided, use that to determine
+                        #the best match
+                        if  'pos' in srcgrp:
+                            before_dist = (np.power(pos[i,0] - pos[before_shot,0],2) + 
+                                           np.power(pos[i,1] - pos[before_shot,1],2) + 
+                                           np.power(pos[i,2] - pos[before_shot,2],2) )
+                            
+                            after_dist = (np.power(pos[i,0] - pos[after_shot,0],2) + 
+                                           np.power(pos[i,1] - pos[after_shot,1],2) + 
+                                           np.power(pos[i,2] - pos[after_shot,2],2) )
+                            
+                            if before_dist > after_dist:
+                                best_match = after_shot
+                                
+                            else:
+                                best_match = before_shot
+                        #Otherwise just chose the earlier shot as the default
+                        else:
+                             best_match = before_shot
+
+                             
+                        if verbose:
+                            print("Replaced bad shot " + str(i) + " with " + str(best_match))
+                        
+                        #Actually make the substitution
+                        shotlist[i] = best_match
+                        
+
+            
             #Initialize time-remaining printout
             tr = util.timeRemaining(nshots)
             
@@ -265,7 +320,7 @@ def bdotRawToFull(src, dest,
                 print("Beginning processing data shot-by-shot.")
             
             #Chunking data processing loop limits memory usage
-            for i in range(nshots):
+            for i in shotlist:
                 
                 #Update time remaining
                 if verbose:

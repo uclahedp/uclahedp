@@ -73,6 +73,7 @@ def process(data_dir, run, probe,
                                           verbose=True, highfreq_calibrate=False,
                                           strict_axes=True, strict_grid=True,
                                           #grid_precision = 0.25,
+                                          replace_badshots = True,
                                           remove_offset=True, offset_range=(0, -1), offset_rel_t0 = [False, True])
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
@@ -176,7 +177,7 @@ if __name__ == "__main__":
     #data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
     #OSX
-    data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
+    data_dir =  os.path.join("/Volumes", "PVH_DATA","2020BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
@@ -188,5 +189,5 @@ if __name__ == "__main__":
     
     
     #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[56],probes=['tdiode'], rawsource=rawsource, trange=[0,3000])
-    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[51],probes=['tdiode', 'PLL_B2'], use_tdiode='tdiode',  rawsource=rawsource)
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[65],probes=['tdiode', 'PLL_B2'], use_tdiode='tdiode',  rawsource=rawsource)
     

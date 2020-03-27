@@ -18,11 +18,17 @@ from uclahedp.tools import util
 from uclahedp.tools import pos as postools
 from uclahedp.tools import math
 
+#Lots of fitting warnings are thrown: this is used to catch and hide them
+import warnings
+
 def fixRange(array, bound):
+     """
+     
+     """
      if bound is None:
           ind = np.shape(array)[0] - 1
      else:
-          ind = np.argmin(np.abs(array- bound))
+          ind = np.argmin(np.abs(array - bound))
      return ind
 
 
@@ -95,130 +101,166 @@ def find_sweeps(time, voltage, plots=False):
      return peaktime, start, end
           
           
-          
-
-
-
 def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False, 
-               verbose=False, return_fits=False ):
+               verbose=False, return_fits=False, fail_val=1, area=1 ):
+     """
+     Fits several regions of the IV curve to determine plasma parameters, then
+     calculates several others and returns all of them. 
      
-     #This is a convention. I guess I'll follow it.
-     current = -current
+     The fitting process is often very messy and generates many errors if the 
+     data is not good. The algorithm deals with this by attempting to fit the
+     data assuming it is good, and handling any errors thrown by replacing the
+     data with a placeholder value fail_val.
      
-     if plots:
-          fig_input, ax_input = plt.subplots(ncols=2, figsize = [8,3])
-          fig_input.suptitle("Input Signal Summary")
-          fig_input.subplots_adjust( wspace=.4)
-          ax_input[0].set_title("Ramp")
-          ax_input[0].set_xlabel("Time indices")
-          ax_input[0].set_ylabel("Sweep Voltage (V)")
-          ax_input[0].plot(voltage, 'k')
+     area: float (cm^2)
+     Area of the probe tip
      
-          ax_input[1].set_title("Langmuir Curve")
-          ax_input[1].set_xlabel("Sweep Voltage (V)")
-          ax_input[1].set_ylabel("Electron Current (A)")
-          ax_input[1].plot(voltage, current, 'k')
-          
-          
-          
-     if esat_range is None or exp_range is None:
-          norm_i, i_offset, i_factor = normalize(current)
-
-          esat_ceil = 1.0
-          esat_floor = .9
-          
-          exp_ceil = 0.5
-          exp_floor = .05
-          
-          if esat_range is None:
-               esat_a = np.argmin(np.abs(esat_floor  - norm_i))
-               esat_b = np.argmin(np.abs(esat_ceil  - norm_i))
-               esat_range = [voltage[esat_a], voltage[esat_b]]
-          if exp_range is None:
-               exp_a = np.argmin(np.abs(exp_floor - norm_i))
-               exp_b = np.argmin(np.abs(exp_ceil  - norm_i))
-               exp_range = [voltage[exp_a], voltage[exp_b]]
-          
-          if plots:
-               fig_guess, ax_guess = plt.subplots(figsize = [8,3])
-               ax_guess.plot(voltage, norm_i, 'k')
-               ax_guess.axhspan(esat_floor, esat_ceil, alpha=0.25, color='green')
-               ax_guess.axhspan(exp_floor, exp_ceil, alpha=0.25, color='red')
-
-     #Calculate indices based on the esat range
-     esat_a = fixRange(voltage, esat_range[0])
-     esat_b = fixRange(voltage, esat_range[1])
+     """
      
-     #TODO This is a stupid hack that shouldn't be needed.
-     #Only an issue for ugly traces...figure out exactly what causes it and
-     #find a better fix
-     if esat_a > esat_b:
-          temp = esat_a
-          esat_a = esat_b
-          esat_b = temp
-     #Pull those parts of the curve
-     esat_v = voltage[esat_a:esat_b]
-     esat_i = current[esat_a:esat_b]
-     #Fit and store fit coefficents
-     esat_coeff = np.polyfit(esat_v, esat_i, 1)
-     esat_fit = esat_coeff[0]*voltage + esat_coeff[1]
+     with warnings.catch_warnings():
+         #Ignore fitting errors: there will be tons on bad data
+         warnings.filterwarnings('ignore')
      
-
-
-     #Calculate indices based on the esat range
-     exp_a = fixRange(voltage, exp_range[0])
-     exp_b = fixRange(voltage, exp_range[1])
-     #Pull those parts of the curve
-     exp_v = voltage[exp_a:exp_b]
-     exp_i = current[exp_a:exp_b]
-     #Do the actual fitting
-     popt, pcov = curve_fit(expFcn, exp_v, exp_i)
-     A = popt[0]
-     B = popt[1]
-     kTe = popt[2]
-     exp_fit = expFcn(voltage, A, B, kTe)
-     
-     
-     if plots:
-          fig_fit, ax_fit = plt.subplots(figsize = [8,4])
-          fig_fit.suptitle("Fitted Langmuir Curve")
-          ax_fit.set_xlabel("Sweep Voltage (V)")
-          ax_fit.set_ylabel("Electron Current (A)")
-          #Shade actual fitted regions
-          ax_fit.axvspan(voltage[exp_a], voltage[exp_b], alpha=0.15, color='red')
-          ax_fit.axvspan(voltage[esat_a], voltage[esat_b], alpha=0.25, color='green')
-          #Plot data, fix plot axes to match
-          ax_fit.plot(voltage, current, 'k', label='Data')
-          ax_fit.set_xlim(np.min(voltage), np.max(voltage))
-          ax_fit.set_ylim(np.min(current), np.max(current))
-          #Plot the fits
-          ax_fit.plot(voltage, esat_fit, 'g', linewidth=3, label='E. Sat. Fit')
-          ax_fit.plot(voltage, exp_fit, 'r', linewidth=3, label='Exp. Fit')
-          
-          ax_fit.legend()
-          
-     #Calculate the plasma potential as the intersection of the exp and esat
-     #fits 
-     vpp_ind = np.argmin(np.abs(exp_fit - esat_fit))
-     #Calculate outputs
-     vpp = voltage[vpp_ind]
-     esat = current[vpp_ind]
-     
-     #In case of a bad fit that returns a negative kTe, just take abs
-     #so the algorithm won't crash...
-     kTe = np.abs(kTe)
-     
-     if verbose:
-          print("Vpp = " + str(vpp) + " V")
-          print("Te =  " + str(kTe) + " eV")
-          print("I_esat =  " + str(esat) + " A")
-       
-          
-          
+         #The entire fitting program is wrapped in a try/catch statement
+         #If any error is thrown, all results will be reported as a dummy value "fail_val"
+         #Some checks are made manually and will throw a ValueError if they fail, resulting
+         #in the same dummy values being returned
+         try:
+    
+             #This is a convention. I guess I'll follow it.
+             current = -current
+             
+             if plots:
+                  fig_input, ax_input = plt.subplots(ncols=2, figsize = [8,3])
+                  fig_input.suptitle("Input Signal Summary")
+                  fig_input.subplots_adjust( wspace=.4)
+                  ax_input[0].set_title("Ramp")
+                  ax_input[0].set_xlabel("Time indices")
+                  ax_input[0].set_ylabel("Sweep Voltage (V)")
+                  ax_input[0].plot(voltage, 'k')
+             
+                  ax_input[1].set_title("Langmuir Curve")
+                  ax_input[1].set_xlabel("Sweep Voltage (V)")
+                  ax_input[1].set_ylabel("Electron Current (A)")
+                  ax_input[1].plot(voltage, current, 'k')
+                  
+             if esat_range is None or exp_range is None:
+                  norm_i, i_offset, i_factor = normalize(current)
+        
+                  esat_ceil = 1.0
+                  esat_floor = .9
+                  
+                  exp_ceil = 0.5
+                  exp_floor = .05
+                  
+                  if esat_range is None:
+                       esat_a = np.argmin(np.abs(esat_floor  - norm_i))
+                       esat_b = np.argmin(np.abs(esat_ceil  - norm_i))
+                       esat_range = [voltage[esat_a], voltage[esat_b]]
+                  if exp_range is None:
+                       exp_a = np.argmin(np.abs(exp_floor - norm_i))
+                       exp_b = np.argmin(np.abs(exp_ceil  - norm_i))
+                       exp_range = [voltage[exp_a], voltage[exp_b]]
+                  
+                  if plots:
+                       fig_guess, ax_guess = plt.subplots(figsize = [8,3])
+                       ax_guess.plot(voltage, norm_i, 'k')
+                       ax_guess.axhspan(esat_floor, esat_ceil, alpha=0.25, color='green')
+                       ax_guess.axhspan(exp_floor, exp_ceil, alpha=0.25, color='red')
+        
+             #Calculate indices based on the esat range
+             esat_a = fixRange(voltage, esat_range[0])
+             esat_b = fixRange(voltage, esat_range[1])
+             
+             #This indicates a bad curve that will not fit
+             if esat_a > esat_b:
+                 raise ValueError
+             
+             #Pull those parts of the curve
+             esat_v = voltage[esat_a:esat_b]
+             esat_i = current[esat_a:esat_b]
+             #Fit and store fit coefficents
+             esat_coeff = np.polyfit(esat_v, esat_i, 1)
+             esat_fit = esat_coeff[0]*voltage + esat_coeff[1]
+             
+        
+             #Calculate indices based on the esat range
+             exp_a = fixRange(voltage, exp_range[0])
+             exp_b = fixRange(voltage, exp_range[1])
+             
+             #This indicates a bad curve that will not fit
+             if exp_a > exp_b:
+                 raise ValueError
+             
+             
+             #Pull those parts of the curve
+             exp_v = voltage[exp_a:exp_b]
+             exp_i = current[exp_a:exp_b]
+             #Do the actual fitting
+             
+             popt, pcov = curve_fit(expFcn, exp_v, exp_i)
+             A = popt[0]
+             B = popt[1]
+             kTe = popt[2]
+             exp_fit = expFcn(voltage, A, B, kTe)
+             
+             
+             if plots:
+                  fig_fit, ax_fit = plt.subplots(figsize = [8,4])
+                  fig_fit.suptitle("Fitted Langmuir Curve")
+                  ax_fit.set_xlabel("Sweep Voltage (V)")
+                  ax_fit.set_ylabel("Electron Current (A)")
+                  #Shade actual fitted regions
+                  ax_fit.axvspan(voltage[exp_a], voltage[exp_b], alpha=0.15, color='red')
+                  ax_fit.axvspan(voltage[esat_a], voltage[esat_b], alpha=0.25, color='green')
+                  #Plot data, fix plot axes to match
+                  ax_fit.plot(voltage, current, 'k', label='Data')
+                  ax_fit.set_xlim(np.min(voltage), np.max(voltage))
+                  ax_fit.set_ylim(np.min(current), np.max(current))
+                  #Plot the fits
+                  ax_fit.plot(voltage, esat_fit, 'g', linewidth=3, label='E. Sat. Fit')
+                  ax_fit.plot(voltage, exp_fit, 'r', linewidth=3, label='Exp. Fit')
+                  
+                  ax_fit.legend()
+                  
+             #Calculate the plasma potential as the intersection of the exp and esat
+             #fits 
+             vpp_ind = np.argmin(np.abs(exp_fit - esat_fit))
+             #Calculate outputs
+             vpp = voltage[vpp_ind]
+             esat = current[vpp_ind]
+             
+             vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
+             density = esat/(area*1.6e-19*vthe)
+             
+             #Negative kTe indicates a bad fit
+             if kTe < 0:
+                 raise ValueError
+             
+             if verbose:
+                  print("Vpp = " + str(vpp) + " V")
+                  print("Te =  " + str(kTe) + " eV")
+                  print("I_esat =  " + str(esat) + " A")
+                  print("vthe =  " + str(vthe) + " cm/s")
+                  print("n_e =  " + str(density) + " cm^-3")
+                  
+                  
+         except(TypeError, RuntimeError, ValueError):
+             esat_fit = fail_val
+             exp_fit = fail_val
+             vpp = fail_val
+             kTe = fail_val  
+             esat = fail_val
+             vthe = fail_val
+             density=fail_val
+           
+     #Return
      if return_fits:
-          return esat_fit, exp_fit, vpp, kTe, esat
+          return esat_fit, exp_fit, vpp, kTe, esat, vthe, density
      else:
-          return vpp, kTe, esat
+          return vpp, kTe, esat, vthe, density
+          
+     
 
 
 
@@ -322,16 +364,20 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
         
 
         
-    
+       #Check if the output files exist already: if so, delete them
+        if os.path.exists(ndest.file):
+           os.remove(ndest.file)
+        if os.path.exists(tdest.file):
+           os.remove(tdest.file)
         
 
         with h5py.File(ndest.file, 'a') as ndf:
             with h5py.File(tdest.file, 'a') as tdf:
             
                 #Throw an error if this group already exists
-                if ndest.group is not '/' and ndest.group in ndf.keys():
+                if ndest.group != '/' and ndest.group in ndf.keys():
                      raise hdftools.hdfGroupExists(ndest)
-                if tdest.group is not '/' and tdest.group in tdf.keys():
+                if tdest.group != '/' and tdest.group in tdf.keys():
                      raise hdftools.hdfGroupExists(tdest)
             
                 ndestgrp = ndf.require_group(ndest.group)
@@ -353,7 +399,7 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                 peaktimes, start, end = find_sweeps(time, vramp, plots=plots)
                 nti = len(peaktimes)
                 time = peaktimes
-                   
+                    
                 #Create the dataset 'data' appropriate to whether or not output
                 #data will be gridded
                 if verbose:
@@ -378,17 +424,18 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                 probe_calib = np.power(10, probe_atten/20.0)/probe_gain
                 ramp_calib = np.power(10, ramp_atten/20.0)/ramp_gain
                 
-            
                 if grid:
                       #Initialize time-remaining printout
-                      tr = util.timeRemaining(nx*ny*nz)
+                      tr = util.timeRemaining(nx*ny*nz, reportevery=20)
                       for xi in range(nx):
                            for yi in range(ny):
                                 for zi in range(nz):
                                     i = zi + yi*nz + xi*nz*ny
+                                    
                                     if verbose:
                                          tr.updateTimeRemaining(i)
-                                         s = shotlist[xi,yi,zi, :]
+                                    
+                                    s = shotlist[xi,yi,zi, :]
                                          
                                     current = srcgrp['data'][s,:, 0]*probe_calib/resistor
                                     vramp = srcgrp['data'][s,:, 1]*ramp_calib
@@ -400,24 +447,9 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                                     for ti in range(nti):
                                          a = int(start[ti])
                                          b = int(end[ti])
-                                         
-                                         #Try to fit
-                                         try:
-                                             vpp, kTe, esat = vsweep_fit(vramp[a:b], current[a:b], 
-                                                          esat_range=None, exp_range=None, plots=False)
-                                             
-                                             vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
-                                             density = esat/(area*1.6e-19*vthe)
-                                         
-                                         #If the fit is bad...
-                                         except (TypeError, RuntimeError):
-                                             vthe = 1
-                                             density=1
-                                             kTe = 1
-                                        
-                                            
-                    
-                                                
+
+                                         vpp, kTe, esat, vthe, density = vsweep_fit(vramp[a:b], current[a:b], 
+                                                      esat_range=None, exp_range=None, plots=False, area=area)
                                          
                                          ndestgrp['data'][ti, xi, yi, zi] = density
                                          tdestgrp['data'][ti, xi, yi, zi] = kTe
@@ -431,10 +463,8 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                       for ti in range(nti):
                           a = start[ti]
                           b = end[ti]
-                          vpp, kTe, esat = vsweep_fit(vramp[a:b], current[a:b], 
-                                       esat=None, exp=None)
-                          vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
-                          density = esat/(area*1.6e-19*vthe)
+                          vpp, kTe, esat, vthe, density = vsweep_fit(vramp[a:b], current[a:b], 
+                                                      esat_range=None, exp_range=None, plots=False, area=area)
                           
                           ndestgrp['data'][ti] = density
                           tdestgrp['data'][ti] = kTe

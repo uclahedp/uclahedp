@@ -102,7 +102,7 @@ def find_sweeps(time, voltage, plots=False):
           
           
 def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False, 
-               verbose=False, return_fits=False, fail_val=1, area=1 ):
+               verbose=False, return_fits=False, fail_val=0, area=1 ):
      """
      Fits several regions of the IV curve to determine plasma parameters, then
      calculates several others and returns all of them. 
@@ -179,11 +179,15 @@ def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False,
              #Pull those parts of the curve
              esat_v = voltage[esat_a:esat_b]
              esat_i = current[esat_a:esat_b]
-             #Fit and store fit coefficents
-             esat_coeff = np.polyfit(esat_v, esat_i, 1)
+             #Fit and store fit coefficents and the fit covarience matrix
+             #Coefficents are the slope and offset of the esat region
+             esat_coeff, ccov = np.polyfit(esat_v, esat_i, 1, cov=True)
              esat_fit = esat_coeff[0]*voltage + esat_coeff[1]
              
-        
+             cerr = np.sqrt(np.diag(ccov))
+             
+             
+
              #Calculate indices based on the esat range
              exp_a = fixRange(voltage, exp_range[0])
              exp_b = fixRange(voltage, exp_range[1])
@@ -196,8 +200,10 @@ def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False,
              #Pull those parts of the curve
              exp_v = voltage[exp_a:exp_b]
              exp_i = current[exp_a:exp_b]
-             #Do the actual fitting
              
+             
+             #Fit the exponential region
+             #three coefficients correspond to the amplitude, offset, and temperature
              popt, pcov = curve_fit(expFcn, exp_v, exp_i)
              A = popt[0]
              B = popt[1]
@@ -205,6 +211,9 @@ def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False,
              exp_fit = expFcn(voltage, A, B, kTe)
              
              
+             perr = np.sqrt(np.diag(pcov))
+             
+
              if plots:
                   fig_fit, ax_fit = plt.subplots(figsize = [8,4])
                   fig_fit.suptitle("Fitted Langmuir Curve")
@@ -223,15 +232,29 @@ def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False,
                   
                   ax_fit.legend()
                   
-             #Calculate the plasma potential as the intersection of the exp and esat
-             #fits 
+             #Calculate the plasma potential as the intersection of the exp and esat fits
              vpp_ind = np.argmin(np.abs(exp_fit - esat_fit))
-             #Calculate outputs
              vpp = voltage[vpp_ind]
+             #The actual error estimate for this quantity involes error propagation
+             #through a difficult equation:
+             #A e^{-x/kTe} + B - (C*x + D) = 0, solved for x
+             
+             
+             #Calculate outputs
              esat = current[vpp_ind]
              
              vthe = 4.19e7*np.sqrt(kTe) #NRL formulay -> cm/s
              density = esat/(area*1.6e-19*vthe)
+             
+             #TODO This dummy error variable is a stand-in until someone 
+             #can incorperate proper error propagation into this routine
+             #There will be five error variables, corresponding to:
+             #1,2 : slope and offset of esat
+             #3,4: amplitude and offset of expoenntial region
+             #5: temperature
+             ebars = np.array([cerr[0], cerr[1], perr[0], perr[1], perr[2]])
+             
+             
              
              #Negative kTe indicates a bad fit
              if kTe < 0:
@@ -245,7 +268,7 @@ def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False,
                   print("n_e =  " + str(density) + " cm^-3")
                   
                   
-         except(TypeError, RuntimeError, ValueError):
+         except(TypeError, RuntimeError, ValueError, np.linalg.LinAlgError):
              esat_fit = fail_val
              exp_fit = fail_val
              vpp = fail_val
@@ -253,12 +276,14 @@ def vsweep_fit(voltage, current, esat_range=None, exp_range=None, plots=False,
              esat = fail_val
              vthe = fail_val
              density=fail_val
+             ebars = np.ones([5])*fail_val
+             
            
      #Return
      if return_fits:
-          return esat_fit, exp_fit, vpp, kTe, esat, vthe, density
+          return esat_fit, exp_fit, vpp, kTe, esat, vthe, density, ebars
      else:
-          return vpp, kTe, esat, vthe, density
+          return vpp, kTe, esat, vthe, density, ebars
           
      
 
@@ -406,10 +431,16 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                     print("Creating 'data' group in destination file")
                 if grid:
                     ndestgrp.require_dataset('data', (nti, nx, ny, nz), np.float32, chunks=True, compression='gzip')
+                    ndestgrp.require_dataset('error', (nti, nx, ny, nz, 5), np.float32, chunks=True, compression='gzip')
+                    
                     tdestgrp.require_dataset('data', (nti, nx, ny, nz), np.float32, chunks=True, compression='gzip')
+                    tdestgrp.require_dataset('error', (nti, nx, ny, nz, 5), np.float32, chunks=True, compression='gzip')
                 else:
                     ndestgrp.require_dataset('data', (nti,), np.float32, chunks=True, compression='gzip')
+                    ndestgrp.require_dataset('error', (nti,5), np.float32, chunks=True, compression='gzip')
+                    
                     tdestgrp.require_dataset('data', (nti,), np.float32, chunks=True, compression='gzip')
+                    tdestgrp.require_dataset('error', (nti,5), np.float32, chunks=True, compression='gzip')
 
 
                 
@@ -448,11 +479,14 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                                          a = int(start[ti])
                                          b = int(end[ti])
 
-                                         vpp, kTe, esat, vthe, density = vsweep_fit(vramp[a:b], current[a:b], 
+                                         vpp, kTe, esat, vthe, density, error = vsweep_fit(vramp[a:b], current[a:b], 
                                                       esat_range=None, exp_range=None, plots=False, area=area)
                                          
                                          ndestgrp['data'][ti, xi, yi, zi] = density
+                                         ndestgrp['error'][ti, xi, yi, zi, :] = error
+                                         
                                          tdestgrp['data'][ti, xi, yi, zi] = kTe
+                                         tdestgrp['error'][ti, xi, yi, zi, :] = error
         
                 else:  #Not gridded
                       current = srcgrp['data'][:,:, 0]
@@ -463,11 +497,14 @@ def vsweepLangmuirRawToFull(src, ndest, tdest,
                       for ti in range(nti):
                           a = start[ti]
                           b = end[ti]
-                          vpp, kTe, esat, vthe, density = vsweep_fit(vramp[a:b], current[a:b], 
+                          vpp, kTe, esat, vthe, density, error = vsweep_fit(vramp[a:b], current[a:b], 
                                                       esat_range=None, exp_range=None, plots=False, area=area)
                           
                           ndestgrp['data'][ti] = density
+                          ndestgrp['error'][ti, :] = error
+                          
                           tdestgrp['data'][ti] = kTe
+                          tdestgrp['error'][ti, :] = error
          
             
             

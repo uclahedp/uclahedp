@@ -135,7 +135,7 @@ def imgSeqRawToFull(src, dest):
                 
                 
                 if dxdp is not None:
-                    xaxis = np.arange(nxpx)*dxdp + x0px
+                    xaxis = (np.arange(nxpx)- x0px)*dxdp 
                     destgrp.require_dataset('xaxis', (nxpx,), np.float32, chunks=True)[:] = xaxis
                     destgrp['xaxis'].attrs['unit'] = 'cm'
                     dimlabels.append('xaxis')
@@ -146,7 +146,7 @@ def imgSeqRawToFull(src, dest):
         
         
                 if dydp is not None:
-                    yaxis = np.arange(nypx)*dydp + y0px
+                    yaxis = (np.arange(nypx)-y0px)*dydp
                     destgrp.require_dataset('yaxis', (nypx,), np.float32, chunks=True)[:] = yaxis
                     destgrp['yaxis'].attrs['unit'] = 'cm'
                     dimlabels.append('yaxis')

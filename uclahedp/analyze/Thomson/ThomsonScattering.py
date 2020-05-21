@@ -1,30 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 16 09:53:57 2019
+thomson_scattering.py 
 
-@author: Peter
+@author: Peter Heuer
+
+This module contains code for the analysis of Thomson scattering spectra
+from plasmas with multiple ion species.
+
+This function was adapted from a program provided in the book
+     "Plasma Scattering of Electromagnetic Radiation" by Froula et al.
+
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-#from plasmapy.mathematics import plasma_dispersion_func_deriv as ZprimeFcn
+from plasmapy.formulary.dispersionfunction import plasma_dispersion_func_deriv as ZPrime
 
 
 
 
-def formFactor(Te, fract, Ti, Z, Mu, ne,
-                   laser_wavelength, sa, dphi,
-                   vpar=0.0, vperp=0.0, eidrift=0.0, gamma=0,
-                   wvlgth_range=(400,600,1),
-                   blockw = None, inst_fcn=None):
-     """
-     This function was adapted from a program provided in the book
-    "Plasma Scattering of Electromagnetic Radiation" by Froula et al.
+def spectral_density(wavelength, Te=None, Ti=None, ion_fract=np.array([1.0]), ion_Z=None, 
+               ion_Mu=None, ne=None, probe_wavelength=None,
+               sa = None, vpar=0.0, vperp=0.0, eidrift=0.0, gamma=0,
+               vol=None, solid_angle = 4*np.pi) :
      
+     """
      Te (float): Electron temperature in KeV
      
-     fract (float ndarray): Relative fractions of each ion species
+     ion_fract (float ndarray): Relative fractions of each ion species
      present. Must sum to 1.0.
      
      Ti (float): Ion temperature in KeV (all species must have the same temp?)
@@ -54,9 +58,6 @@ def formFactor(Te, fract, Ti, Z, Mu, ne,
      
      gamma (float): Angle (in degrees) between k and the drift velocity eidrift
      
-     wvlgth_range (three float tuple): (start, stop, increment) wavelength
-     range in nanometers
-     
      
      blockw (None or float): If not none, block a range of width blockw
      around the laser wavelength to zero
@@ -65,107 +66,174 @@ def formFactor(Te, fract, Ti, Z, Mu, ne,
      function (as a python function that takes a wavelength argument and
      returns a normalized insturment function)
      
+     
      """
      
-     if np.sum(fract) != 1.0:
+     #TODO: Support multiple ion populations with different vpar and vperp
+     
+     if np.sum(ion_fract) != 1.0:
           print("WARNING: Sum(IonFractions) != 1.0. Normalizing array." )
-          fract = fract/np.sum(fract)
+          ion_fract = ion_fract/np.sum(ion_fract)
           
     
      #Define Constants
      C=2.99792458e10 #Speed of light, cm/s
      re=2.8179e-13 #Classical Electron radius in cm
-     Me=510.9896/C**2 #Electron mass, KeV/C^2
+     Me=5.6e-19 # Electron mass in keV / (cm/s)^2
      Mp=Me*1836.1 #Proton mass
-     Mi=Mu*Mp #Mass of each ion species
+     Mi=ion_Mu*Mp #Mass of each ion species
      
-     #Define some composite constants that will be used later
+
+     #Calculate some plasma values
      Esq = Me*C**2*re
      const = np.sqrt(4*np.pi*Esq/Me)
      
-     #Calculate some plasma values
-     Zbar = np.sum(Z*fract)
-     ni = fract*ne/Zbar
-     wpe = const*np.sqrt(ne) #Electron plasma frequency in Hz
-     wpi = const*Z*np.sqrt(ni*Me/Mi)
-     vTe = np.sqrt(Te/Me)
-     vTi = np.sqrt(Ti/Mi)
-     
-     
+     mean_Z = np.sum(ion_Z*ion_fract) #dimensionless
+     ni = ion_fract*ne/mean_Z #cm^-3
+     wpe = const*np.sqrt(ne) #Electron plasma frequency in rad/s
+     wpi = const*ion_Z*np.sqrt(ni*Me/Mi) # rad/s
+     vTe = np.sqrt(Te/Me) #cm/s
+     vTi = np.sqrt(Ti/Mi) #cm/s
+    
      #Convert all the angles to radians
-     sa = sa*2*np.pi/360.0
-     dphi = dphi*2*np.pi/360.0
-     gamma = gamma*2*np.pi/360.0
+     sa = sa*2*np.pi/360.0 #rad
+     #dphi = dphi*2*np.pi/360.0 #rad
+     gamma = gamma*2*np.pi/360.0 #rad
      
-     #Define the range of scattered frequencies over which we are calculating
-     #the spectrum
-     wavelength = np.arange(wvlgth_range[0],
-                                wvlgth_range[1], 
-                                wvlgth_range[2])
-     ws = 2*np.pi*C*1e7/wavelength
-     
-     wl = 2*np.pi*C*1e7/laser_wavelength
-     
-     #print("{:.2E}, {:.2E}".format(ws[0],ws[-1]))
-     
+     #Convert wavelengths to angular frequencies (electromagnetic waves, so 
+     #phase speed is c)
+     ws = 2*np.pi*C*1e7/wavelength #rad/s
+     wl = 2*np.pi*C*1e7/probe_wavelength #rad/s
 
-     #Calculate frequencies and wave numbers
-     w = ws - wl
-     #TODO Explain!
-     ks = np.sqrt(ws**2 - wpe**2)/C
-     kl = np.sqrt(wl**2 - wpe**2)/C
-     #TODO Explain!
-     k = np.sqrt(ks**2 + kl**2 - 2*ks*kl*np.cos(sa))
-     #TODO Explain!
-     kdotv = (kl - ks*np.cos(sa))*vpar - ks*np.sin(sa)*vperp
-     wdoppler = w - kdotv
+     #w is the frequency SHIFT
+     w = ws - wl #Eq. 1.7.8 in Sheffield
      
-     #TODO WHat are these? Wavenumber normalized to electron and ion inertial
-     #lengths?
-     klde = (vTe/wpe)*k
-     kldi = (np.outer(vTi/wpi, k)).astype(np.cdouble) #TODO is np.outer doing the right thing here?
+    
+     #Wavenumbers in the plasma (wpe emerges from plasma index of refraction?)
+     ks = np.sqrt(ws**2 - wpe**2)/C #Eq. 5.4.1 in Sheffield, units 1/cm
+     kl = np.sqrt(wl**2 - wpe**2)/C #Eq. 5.4.2 in Sheffield, units 1/cm
+     
+     #k is the frequency SHIFT (as illustrated in Fig.1.5 of Sheffield)
+     k = np.sqrt(ks**2 + kl**2 - 2*ks*kl*np.cos(sa)) #Eq. 1.7.10 in Sheffield, units 1/cm
      
      
+     #Compute the wave frequency Doppler shifted into the plasma rest frame
+     kdotv = (kl - ks*np.cos(sa))*vpar - ks*np.sin(sa)*vperp # Units rad/s
+     wdoppler = w - kdotv #Units rad/s
+     #TODO change this to compute a different wdoppler for each ion species, 
+     #to allow for each ion population to have its own velocity?
      
-     #TODO explain this
-     #Calculating normalized phase velocities for electrons
-     xd = eidrift/(np.sqrt(2)*vTe)*np.cos(gamma)
-     xie = wdoppler/(k*np.sqrt(2)*vTe) - xd
      
-     #TODO resolve issue with poles in the dispersion function...
-     #May need to implement the Cauchy method used in the original after all
-     Zpe = ZPrime(xie)
-     chiE = -0.5/(klde**2)*Zpe
+     #These dimensoonless constants correspond to alpha in Schaeffer's thesis, 
+     #expressed here using the fact that v_th/w_p = root(2) * Debye length
+     #Note that the np.sqrt(2)'s that pop up in relation to the thermal velocities
+     #are because some expressions require the RMS velocity
+     alpha_e = wpe/(np.sqrt(2)*k*vTe)
+     alpha_i = (np.outer(wpi/np.sqrt(2)/vTe, 1/k)).astype(np.cdouble)
      
+ 
+    
+     #***********************************
+     #Calculate the normalized phase velocities and succeptabilities
+     #***********************************
+     #See Schaeffer 5.22 for succeptibilities for a Maxwellian plasma
+     
+     #First for electrons 
+     #The second term corrects for drift between the electrons and ions
+     # as described in Section 5.3.3 in Sheffield
+     xe = wdoppler/(k*vTe) - eidrift/(np.sqrt(2)*vTe)*np.cos(gamma) #Schaeffer 5.21
+     
+     chiE = -0.5*np.power(alpha_e,2)*ZPrime(xe)#Eq. 5.22 in Schaeffer Thesis
+     
+     #Then for each species of ions
+     xi=1/np.sqrt(2)*np.outer(1/vTi, wdoppler/k) #Schaeffer 5.21
 
-     #Now do the same thing for the ions
-     xii=1/np.sqrt(2)*np.outer(1/vTi, wdoppler/k)
-
-     chiI = np.zeros([fract.size, ws.size], dtype=np.cdouble)
-     for m in range(fract.size):
-          Zpi = ZPrime(xii[m,:])
-          chiI[m,:] = -0.5*Zpi/np.power(kldi[m,:],2)
+    
+     chiI = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
+     for m in range(ion_fract.size):
+          #Eq. 5.22 in Schaeffer Thesis, note that Z Te/Ti is absorbed into alpha_i**2
+          chiI[m,:] = -0.5*np.power(alpha_i[m,:],2)*ZPrime(xi[m,:])
+          
+     #Add the individual ion succeptibilities together 
      chiItot = np.sum(chiI, axis=0)
+     epsilon = 1 + chiE + chiItot #Total dielectic function Sheffield Section 5.1
+    
+     
+     #Calculate the spectral density function or "form factor" 
+     #Schaeffer Eq. 5.23 and 5.24
+     
+    
+     #Start with just the electron term
+     econtr  = 2*np.sqrt(np.pi)/(k*vTe)*np.power(1 - chiE/epsilon,2)*np.exp(-xe**2)
      
      
-     #Formfactor
-     econtr = (np.sqrt(2*np.pi)/(vTe*k)*
-               np.exp(-np.power(xie,2))*
-               np.power(np.abs((1 + chiItot)/(1 + chiItot + chiE)),2))
      
-     icontr = (2*Ti/Te*np.power(klde,2)/wdoppler*
-               np.power(np.abs(chiE),2)/
-               np.power(np.abs(1 + chiItot + chiE),2)*np.imag(chiItot))
+     #Then add on each of the ion terms
+     icontr = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
+     for m in range(ion_fract.size):
+         icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/(k*vTi[m])*np.power(chiE/epsilon,2)*np.exp(-xi[m,:]**2)                                            
      
+        
+     icontr = np.sum(icontr, axis=0) 
+     
+     Skw = econtr + icontr
+     
+     return ks, Skw
 
-     FF = econtr + icontr
-     r = ne*(1 - np.sin(sa)**2*np.cos(dphi)**2)*FF*re**2
+
+
+def signal(k, spectral_dist, intensity=None, tlen=None, vol=None,  
+           probe_wavelength=None, ne=None, solid_angle=4*np.pi):
+    """
+    Estimate the actual signal as the number of photons detected at a detector
+    using experimental parameters.
+    
+    intensity (float):
+        Probe laser intensity in W/cm^2
+        
+    tlen (float):
+        The shorter of either the probe laser pulse length or the scattering timescale in ns
+        
+    vol (float):
+        Scattering volume in cm^3
+    
+    """
+    #Define some constants
+    C=2.99792458e10 #Speed of light, cm/s
+    thomson_crossection = 6.65e-25 # cm^2
+    
+    #Unit Conversions
+    tlen *= 1e-9 #Convert ns -> s
+    probe_wavelength *= 1e-7 #convert nm to cm
+    
+    #speed of light * plancks constant in J cm^2 * probe wavelength
+    hv = 1.98e-23/probe_wavelength
+
+    #Determine the frequency gradient 
+    dw = C*np.abs(np.gradient(k)) 
+    #Numerically integrate the spectral distrbution function
+    int_skw = np.real(np.sum(spectral_dist*dw))
+    
+    nphotons = tlen/(2*np.pi*hv)*intensity*ne*vol*thomson_crossection*solid_angle*int_skw
+    
+    return int(nphotons)
      
+ 
+    
+
+
+
+
+"""
+print('int S(w): {}'.format(np.sum(FF)))
      
-     #TODO figure out what the units are for the form factor??
+     #Scattered power per solid angle eg. 1.7.13? 
+     #Last term (angle correction) is for polarized radiation, Eq. 1.7.14
+     #Replace with Eq. 1.7.15 for unpolarized probe radiation
+     r = ne*(re**2)*FF*(1 - np.sin(sa)**2*np.cos(dphi)**2)
+     
      
      if inst_fcn is not None:
-         
          #Evaluate inst_fcn over a wavelength array chosen to make the output
          #the same length as r (notice that this one must be centered on zero...)
          wspan =  (np.max(wavelength) - np.min(wavelength))/2
@@ -183,144 +251,33 @@ def formFactor(Te, fract, Ti, Z, Mu, ne,
      if blockw is not None:
          r = np.where(np.abs(wavelength - laser_wavelength)< blockw, 0, r)
 
-     
-     return  r
+"""
 
 
-
-def genZPrimeTable(filepath):
-     """
-     This function was adapted from a program provided in the book
-     "Plasma Scattering of Electromagnetic Radiation" by Froula et al.
-
-     """
-
-     #These values should generally be sufficient
-     ximin = -10
-     ximax = 10
-     dxi = 0.01
-     xi = np.arange(ximin, ximax, dxi)
-     
-     
-     N= 4 #Numerical precision
-     
-     
-     #Output array contains three arrays
-     #0 -> xi
-     #1 -> Real part of Zprime
-     #2 -> Imaginary part of Zprime 
-     output = np.zeros([3, xi.size])
-     output[0,:] = xi
-     
-     IPV = np.zeros([xi.size])
-     RP = np.zeros([xi.size])
-
-     
-     for i in range(xi.size):
-          #phi is min distance from a singularity
-          phi = dxi*np.abs(xi[i]) + 1e-6
-          dz = phi/N
-          
-          #Make arrays of values to calculate on either side of xi
-          zm = np.arange(xi[i] - phi, ximin-1, -dz)
-          zp = np.arange(xi[i] + phi, ximax+1, dz)
-          
-          #Perform the Riemann sum integral over each of these ranges
-          sum_zp = dz*np.sum(zp*np.exp(-np.power(zp,2))/(zp-xi[i]))   
-          sum_zm = dz*np.sum(zm*np.exp(-np.power(zm,2))/(zm-xi[i]))
-          
-          IPV[i] = sum_zp + sum_zm
-          RP[i] = 2*phi*(1-2*np.power(xi[i],2))
-          
-     dW = 1/np.sqrt(np.pi)*(IPV + np.exp(-np.power(xi,2))*(RP-1j*np.pi*xi))
-     
-     output[1,:] = -2*np.real(dW)
-     output[2,:] = 2*np.imag(dW)
-     
-     np.savetxt(filepath, output)
-     
-   
-
-
-def ZPrime(xi):
-    
-     """
-     This function was adapted from a program provided in the book
-     "Plasma Scattering of Electromagnetic Radiation" by Froula et al.
-    
-     If the file zprime.txt does not exist in the current directory, generate it
-
-    
-     """
-     
-     #This call gets the directory of THIS script, not the cwd
-     #so that the zprime.txt file lives in UCLAHEDP's folder, not wherever
-     #the user is running their own code.
-     scriptdir = os.path.dirname( os.path.realpath(__file__) )
-
-     table_path = os.path.join(scriptdir, "zprime.txt")
-     if not os.path.exists(table_path):
-         print("Zprime.txt file not found: generating")
-         genZPrimeTable(table_path)
-          
-     table = np.loadtxt(table_path)
-     
-     xitable = table[0,:]
-     
-     rZptable = table[1,:]
-     iZptable = table[2,:]
-     
-     #plt.plot(xitable, rZptable)
-     #plt.show()
-     
-     
-     ai = np.argmin(np.abs(xi - np.min(xitable)))
-     bi = np.argmin(np.abs(xi - np.max(xitable)))
-
-     
-     rZp = np.zeros([xi.size])
-     iZp = np.zeros([xi.size])
-     
-     
-     #xi range below table range
-     rZp[0:ai] = np.power(xi[0:ai],-2)
-     iZp[0:ai] = 0.0
-     
-     #xi range above table range
-     rZp[bi:-1] = np.power(xi[bi:-1],-2)
-     iZp[bi:-1] = 0.0
-     
-     
-     #xi range within table range
-     rZp[ai:bi] = np.interp(xi[ai:bi], xitable, rZptable)
-     iZp[ai:bi] = np.interp(xi[ai:bi], xitable, iZptable)
-     
-     return rZp + 1j*iZp
-     
-
-
-
-     
 
 if __name__ == "__main__":
      
 
-     Te = 5e-3
-     fract= np.array([1.0])
-     Ti = 1e-3
-     Z = np.array([1])
-     Mu = np.array([4])
+  
+     ne = 1e15
      
-     laser_wavelength = 532 #3.5e15 rad/s 532 nm
+     wavelength = np.arange(520, 545, 0.001)
      
-     wvlgth_range=(500,600,.01)
      
-     wavelength, r = formFactor(Te, fract , Ti, Z, Mu, 1e13,
-                   laser_wavelength, 63, 90, wvlgth_range=wvlgth_range,
-                   vpar=0, vperp=0, eidrift=0, gamma=0)
+     k, spectral_dist = spectral_density(wavelength, Te=10e-3, Ti=1e-3, 
+               ion_fract=np.array([1.0]), ion_Z=np.array([1]), 
+               ion_Mu=np.array([4]), ne=ne, probe_wavelength=532,
+               sa = 63, vpar=0.0, vperp=0.0, eidrift=0.0, gamma=0)
      
-     r = np.where(np.abs(wavelength - laser_wavelength)< 0.2, 0, r)
+     
+     
+     fig, ax = plt.subplots()
 
-     plt.plot(wavelength, r)
-     plt.xlim(525,540)
-     #plt.ylim(0,1e-24)
+     ax.plot(wavelength, spectral_dist)
+     ax.set_xlabel("$\lambda$ (nm)")
+     ax.set_ylabel("S(k,w) (s)")
+ 
+
+
+     #signal = signal(k, spectral_dist, intensity =1e11, vol=5e-4, solid_angle=0.01, tlen=5, probe_wavelength=532, ne=ne)
+     #print("N Photons ~ {:e}".format(signal))

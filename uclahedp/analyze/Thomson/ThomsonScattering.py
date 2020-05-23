@@ -12,35 +12,49 @@ This function was adapted from a program provided in the book
 
 """
 
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from plasmapy.formulary.dispersionfunction import plasma_dispersion_func_deriv as ZPrime
+from plasmapy.formulary.dispersionfunction import plasma_dispersion_func as ZFcn
+
+from scipy.special import iv as BesselI
 
 
-
-
-def spectral_density(wavelength, Te=None, Ti=None, ion_fract=np.array([1.0]), ion_Z=None, 
-               ion_Mu=None, ne=None, probe_wavelength=None,
-               sa = None, vpar=0.0, vperp=0.0, eidrift=0.0, gamma=0,
-               vol=None, solid_angle = 4*np.pi) :
+def spectral_density(wavelength, mode='collective', Te=None, Ti=None, 
+                   ion_fract=np.array([1.0]), ion_Z=None, 
+                   ion_Mu=None, ne=None, probe_wavelength=None, B0 = np.array([0,0,0]),
+                   probe_n = np.array([1,0,0]), scatter_n = np.array([0,1,0]), 
+                   ion_v = np.array([0,0,0]), electron_v = np.array([0,0,0]),
+                   edrift = np.array([0,0,0]) ):
      
      """
-     Te (float): Electron temperature in KeV
+     model (str):
+         Select the model to be used for S(k,w). Choices are:
+             "non-collective"
+             "collective"
      
-     ion_fract (float ndarray): Relative fractions of each ion species
-     present. Must sum to 1.0.
      
-     Ti (float): Ion temperature in KeV (all species must have the same temp?)
+     Te (float): 
+         Electron temperature in KeV
      
-     Z (float ndarray): Ion charge states, normalized to the proton fundamental
-     charge
+     Ti (float): 
+         Ion temperature in KeV (all species must have the same temp?)
      
-     Mu (float ndarray): Ion atomic masses, normalized to the proton mass
+     ion_fract (float ndarray): 
+         Relative fractions of each ion species present. Must sum to 1.0.
      
-     ne (float): Plasma electron number density in cm^-3. 
+     ion_Z (float ndarray): 
+         Ion charge states, in units of the proton charge
      
-     laser_wavelength (float): Incident laser wavelength in nm
+     ion_Mu (float ndarray): 
+         Ion atomic masses in units of the proton mass
+     
+     ne (float): 
+         Plasma electron number density in cm^-3. 
+     
+     probe_wavelength (float): 
+         Incident probe laser wavelength in nm
+         
      
      sa (float): Scattering angle in degrees
      
@@ -58,23 +72,30 @@ def spectral_density(wavelength, Te=None, Ti=None, ion_fract=np.array([1.0]), io
      
      gamma (float): Angle (in degrees) between k and the drift velocity eidrift
      
-     
-     blockw (None or float): If not none, block a range of width blockw
-     around the laser wavelength to zero
-     
-     inst_fcn (None or function): If not none, represents an insturment
-     function (as a python function that takes a wavelength argument and
-     returns a normalized insturment function)
-     
+
      
      """
      
+     #TODO: throw an error if the lengths of any of the arrays are inconsistent
+     #with the number of ion species (i.e Z, mu, V, Ti)
+     
      #TODO: Support multiple ion populations with different vpar and vperp
+     
+
      
      if np.sum(ion_fract) != 1.0:
           print("WARNING: Sum(IonFractions) != 1.0. Normalizing array." )
           ion_fract = ion_fract/np.sum(ion_fract)
           
+          
+     #Make sure all the unit vectors are normalized
+     probe_n = probe_n/np.linalg.norm(probe_n)
+     scatter_n = scatter_n/np.linalg.norm(scatter_n)
+     
+     bmag = np.linalg.norm(B0)
+     if bmag > 0:
+         b_n = B0/bmag
+       
     
      #Define Constants
      C=2.99792458e10 #Speed of light, cm/s
@@ -83,22 +104,21 @@ def spectral_density(wavelength, Te=None, Ti=None, ion_fract=np.array([1.0]), io
      Mp=Me*1836.1 #Proton mass
      Mi=ion_Mu*Mp #Mass of each ion species
      
+     
 
      #Calculate some plasma values
      Esq = Me*C**2*re
      const = np.sqrt(4*np.pi*Esq/Me)
      
      mean_Z = np.sum(ion_Z*ion_fract) #dimensionless
+     mean_Mu = np.sum(ion_Mu*ion_fract)
      ni = ion_fract*ne/mean_Z #cm^-3
      wpe = const*np.sqrt(ne) #Electron plasma frequency in rad/s
      wpi = const*ion_Z*np.sqrt(ni*Me/Mi) # rad/s
+     wce = 1.7e7*bmag #rad/s
+     wci = 9.5e3*mean_Z/mean_Mu*bmag #rad/s
      vTe = np.sqrt(Te/Me) #cm/s
      vTi = np.sqrt(Ti/Mi) #cm/s
-    
-     #Convert all the angles to radians
-     sa = sa*2*np.pi/360.0 #rad
-     #dphi = dphi*2*np.pi/360.0 #rad
-     gamma = gamma*2*np.pi/360.0 #rad
      
      #Convert wavelengths to angular frequencies (electromagnetic waves, so 
      #phase speed is c)
@@ -107,82 +127,152 @@ def spectral_density(wavelength, Te=None, Ti=None, ion_fract=np.array([1.0]), io
 
      #w is the frequency SHIFT
      w = ws - wl #Eq. 1.7.8 in Sheffield
-     
     
      #Wavenumbers in the plasma (wpe emerges from plasma index of refraction?)
      ks = np.sqrt(ws**2 - wpe**2)/C #Eq. 5.4.1 in Sheffield, units 1/cm
      kl = np.sqrt(wl**2 - wpe**2)/C #Eq. 5.4.2 in Sheffield, units 1/cm
      
      #k is the frequency SHIFT (as illustrated in Fig.1.5 of Sheffield)
+     sa = np.arccos(np.dot(probe_n, scatter_n))
      k = np.sqrt(ks**2 + kl**2 - 2*ks*kl*np.cos(sa)) #Eq. 1.7.10 in Sheffield, units 1/cm
+     k_n = scatter_n - probe_n #Normal vector along k
      
-     
-     #Compute the wave frequency Doppler shifted into the plasma rest frame
-     kdotv = (kl - ks*np.cos(sa))*vpar - ks*np.sin(sa)*vperp # Units rad/s
-     wdoppler = w - kdotv #Units rad/s
-     #TODO change this to compute a different wdoppler for each ion species, 
-     #to allow for each ion population to have its own velocity?
-     
-     
-     #These dimensoonless constants correspond to alpha in Schaeffer's thesis, 
+     #Compute Doppler-shifted frequencies for both the ions and electrons
+     #TODO: Is specifying both population's velocities in the rest frame
+     #the best choice?
+     #TODO: In future support different fluid velocities for each ion species?
+     wdoppler_i = w - np.dot( np.outer(k, k_n), ion_v)
+     wdoppler_e = w - np.dot( np.outer(k, k_n), electron_v)
+         
+     #Compute the scattering parameter alpha
      #expressed here using the fact that v_th/w_p = root(2) * Debye length
      #Note that the np.sqrt(2)'s that pop up in relation to the thermal velocities
-     #are because some expressions require the RMS velocity
+     #are because only some expressions require the RMS velocity.
      alpha_e = wpe/(np.sqrt(2)*k*vTe)
      alpha_i = (np.outer(wpi/np.sqrt(2)/vTe, 1/k)).astype(np.cdouble)
      
+
+     #************************************************************************
+     #Non-Collective Scattering, Unmagnetized 
+     #************************************************************************
+     
+     #TODO: include a non-collective, magnetized case?
+     
+     if mode == 'non-collective':
+         #Schaeffer Eq. 5.26
+         Skw = 2*np.pi*np.exp(-np.power(wdoppler_e/k/vTe,2))/(np.sqrt(np.pi)*k*vTe)
+         return ks, Skw
+     
+     
+     #************************************************************************
+     #Collective Scattering, Unmagnetized 
+     #************************************************************************
+        
+     if bmag == 0:
+         #Calculate the normalized phase velocities and succeptabilities
+         #See Schaeffer 5.22 for succeptibilities for a Maxwellian plasma
+     
+         #First for electrons 
+         #The second term corrects for drift between the electrons and ions
+         # as described in Section 5.3.3 in Sheffield and #Schaeffer Eq. 5.21
+         xe = wdoppler_e/(k*vTe) 
+         chiE = -0.5*np.power(alpha_e,2)*ZPrime(xe)#Eq. 5.22 in Schaeffer Thesis
+         
+         
+         #Then for each species of ions
+         xi=1/np.sqrt(2)*np.outer(1/vTi, wdoppler_i/k) #Schaeffer 5.21
+    
+         chiI = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
+         for m in range(ion_fract.size):
+              #Eq. 5.22 in Schaeffer Thesis, note that Z Te/Ti is absorbed into alpha_i**2
+              chiI[m,:] = -0.5*np.power(alpha_i[m,:],2)*ZPrime(xi[m,:])
+              
+         #Add the individual ion succeptibilities together 
+         chiItot = np.sum(chiI, axis=0)
+         epsilon = 1 + chiE + chiItot #Total dielectic function Sheffield Section 5.1
+         
+    
+         #Schaeffer Eq. 5.23 and 5.24
+         #Start with just the electron term
+         econtr  = 2*np.sqrt(np.pi)/(k*vTe)*np.power(1 - chiE/epsilon,2)*np.exp(-xe**2)
+         #Then add on each of the ion terms
+         icontr = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
+         for m in range(ion_fract.size):
+             icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/(k*vTi[m])*np.power(chiE/epsilon,2)*np.exp(-xi[m,:]**2)                                            
+         icontr = np.sum(icontr, axis=0) 
+         Skw = econtr + icontr
+         
+         return ks, Skw
+     
+     #************************************************************************
+     #Collective Scattering, Magnetized
+     #************************************************************************
+        
+     elif bmag > 0: 
+        #Compute vperp/vpara and gyroradii
+        k_para = k*np.dot(k_n, b_n)
+        k_perp = np.sqrt(k**2 - k_para**2)
+        rho_e = vTe/wce/np.sqrt(2)
+        rho_i = vTi/wci/np.sqrt(2)
+        
+        larr = np.arange(-3, 3) #Array of resonance numbers to include in calculation
+    
+        earg = k_perp**2*rho_e**2
+        iarg = k_perp**2*rho_i**2
+        
  
     
-     #***********************************
-     #Calculate the normalized phase velocities and succeptabilities
-     #***********************************
-     #See Schaeffer 5.22 for succeptibilities for a Maxwellian plasma
-     
-     #First for electrons 
-     #The second term corrects for drift between the electrons and ions
-     # as described in Section 5.3.3 in Sheffield
-     xe = wdoppler/(k*vTe) - eidrift/(np.sqrt(2)*vTe)*np.cos(gamma) #Schaeffer 5.21
-     
-     chiE = -0.5*np.power(alpha_e,2)*ZPrime(xe)#Eq. 5.22 in Schaeffer Thesis
-     
-     #Then for each species of ions
-     xi=1/np.sqrt(2)*np.outer(1/vTi, wdoppler/k) #Schaeffer 5.21
-
-    
-     chiI = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
-     for m in range(ion_fract.size):
-          #Eq. 5.22 in Schaeffer Thesis, note that Z Te/Ti is absorbed into alpha_i**2
-          chiI[m,:] = -0.5*np.power(alpha_i[m,:],2)*ZPrime(xi[m,:])
-          
-     #Add the individual ion succeptibilities together 
-     chiItot = np.sum(chiI, axis=0)
-     epsilon = 1 + chiE + chiItot #Total dielectic function Sheffield Section 5.1
-    
-     
-     #Calculate the spectral density function or "form factor" 
-     #Schaeffer Eq. 5.23 and 5.24
-     
-    
-     #Start with just the electron term
-     econtr  = 2*np.sqrt(np.pi)/(k*vTe)*np.power(1 - chiE/epsilon,2)*np.exp(-xe**2)
-     
-     
-     
-     #Then add on each of the ion terms
-     icontr = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
-     for m in range(ion_fract.size):
-         icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/(k*vTi[m])*np.power(chiE/epsilon,2)*np.exp(-xi[m,:]**2)                                            
-     
+        #First compute He
+        const = alpha_e**2
+        He = const
+        for l in larr:     
+            term = const*np.exp(-earg)*BesselI(l,earg)*wdoppler_e/(wdoppler_e - l*wce)
+       
+            if any(k_para != 0):
+                xel = (wdoppler_e - l*wce)/(k_para*np.sqrt(2)*vTe)
+                #Term in brackets in Sheffield Eq. 10.3.6 is basically the plasma disp. fcn.
+                term *= -xel*ZFcn(xel)
+            He += -term
+            
+        #Next compute Hi
+        const = mean_Z*Te/Ti*np.mean(alpha_i,axis=0)**2
+        Hi = const
         
-     icontr = np.sum(icontr, axis=0) 
-     
-     Skw = econtr + icontr
-     
-     return ks, Skw
+        for l in larr:
+            term = const*np.exp(-iarg)*BesselI(l,iarg)*wdoppler_i/(wdoppler_i - l*wci)
+            if any(k_para != 0):
+                xil = (wdoppler_i - l*wci)/(k_para*np.sqrt(2)*vTi)
+                term *= -xil*ZFcn(xil)
+            Hi += -term
+                 
+        #Now the total epsilon
+        epsilon = 1 + He + Hi
+        
+        #Now compute the spectral dispersion function
+        esum, isum = 0,0
+        for l in larr:
+            earg2 = (wdoppler_e - l*wce)/(k_para*vTe)
+            iarg2 = (wdoppler_i - l*wci)/(k_para*vTi)
+            
+            esum += np.exp(earg)*BesselI(l,earg)*np.exp(-earg2**2)/(k_para*vTe)
+            isum += np.exp(iarg)*BesselI(l,iarg)*np.exp(-iarg2**2)/(k_para*vTi)
+           
+        
+        Skw = ( 2*np.sqrt(np.pi)*np.power(1 - He/epsilon,2)*esum + 
+                2*np.sqrt(np.pi)*mean_Z*np.power(He/epsilon,2)*isum )
+               
+        print(Skw)
+        
+        return ks, Skw
+                
+        
+        
+         
+    
 
 
 
-def signal(k, spectral_dist, intensity=None, tlen=None, vol=None,  
+def signal_estimate(k, spectral_dist, intensity=None, tlen=None, vol=None,  
            probe_wavelength=None, ne=None, solid_angle=4*np.pi):
     """
     Estimate the actual signal as the number of photons detected at a detector
@@ -225,6 +315,13 @@ def signal(k, spectral_dist, intensity=None, tlen=None, vol=None,
 
 
 """
+blockw (None or float): If not none, block a range of width blockw
+     around the laser wavelength to zero
+     
+     inst_fcn (None or function): If not none, represents an insturment
+     function (as a python function that takes a wavelength argument and
+     returns a normalized insturment function)
+
 print('int S(w): {}'.format(np.sum(FF)))
      
      #Scattered power per solid angle eg. 1.7.13? 
@@ -261,23 +358,35 @@ if __name__ == "__main__":
   
      ne = 1e15
      
-     wavelength = np.arange(520, 545, 0.001)
+     
+     w = 532
+     wavelength = np.arange(w-10, w+10, 0.001)
+     
+     sa = 63
+     probe_n = np.array([1,0,0])
+     scatter_n = np.array([np.cos(np.deg2rad(sa)), np.sin(np.deg2rad(sa)), 0])
+     
+     electron_v = np.array([0,0,0])
+     ion_v = np.array([0,0,0])
+     
+     B0 = np.array([0,0,0])
      
      
-     k, spectral_dist = spectral_density(wavelength, Te=10e-3, Ti=1e-3, 
+     k, spectral_dist = spectral_density(wavelength, mode='collective',
+               Te=5e-3, Ti=1e-3, electron_v=electron_v, ion_v = ion_v,
+               probe_n = probe_n, scatter_n=scatter_n, B0=B0,
                ion_fract=np.array([1.0]), ion_Z=np.array([1]), 
-               ion_Mu=np.array([4]), ne=ne, probe_wavelength=532,
-               sa = 63, vpar=0.0, vperp=0.0, eidrift=0.0, gamma=0)
+               ion_Mu=np.array([4]), ne=ne, probe_wavelength=w)
      
      
      
      fig, ax = plt.subplots()
 
-     ax.plot(wavelength, spectral_dist)
+     ax.plot(wavelength, np.real(spectral_dist))
      ax.set_xlabel("$\lambda$ (nm)")
      ax.set_ylabel("S(k,w) (s)")
  
 
 
-     #signal = signal(k, spectral_dist, intensity =1e11, vol=5e-4, solid_angle=0.01, tlen=5, probe_wavelength=532, ne=ne)
-     #print("N Photons ~ {:e}".format(signal))
+     signal = signal_estimate(k, spectral_dist, intensity =1e11, vol=5e-4, solid_angle=0.01, tlen=5, probe_wavelength=532, ne=ne)
+     print("N Photons ~ {:.1e}".format(signal))

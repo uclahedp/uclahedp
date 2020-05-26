@@ -15,24 +15,25 @@ This function was adapted from a program provided in the book
 import numpy as np
 import matplotlib.pyplot as plt
 from plasmapy.formulary.dispersionfunction import plasma_dispersion_func_deriv as ZPrime
-from plasmapy.formulary.dispersionfunction import plasma_dispersion_func as ZFcn
 
-from scipy.special import iv as BesselI
+#These will be needed for supporting magnetized scattering
+#from plasmapy.formulary.dispersionfunction import plasma_dispersion_func as ZFcn
+#from scipy.special import iv as BesselI
 
 
-def spectral_density(wavelength, mode='collective', Te=None, Ti=None, 
+def spectrum(wavelength, mode='collective', Te=None, Ti=None, 
                    ion_fract=np.array([1.0]), ion_Z=None, 
                    ion_Mu=None, ne=None, probe_wavelength=None, B0 = np.array([0,0,0]),
-                   probe_n = np.array([1,0,0]), scatter_n = np.array([0,1,0]), 
+                   probe_n = np.array([1,0,0]), scatter_n = np.array([0,1,0]), pol_n=None,
                    ion_v = np.array([0,0,0]), electron_v = np.array([0,0,0]),
-                   edrift = np.array([0,0,0]) ):
+                   scattering_length = None, scattered_power = False, inst_fcn=None,
+                   block_width=None):
      
      """
      model (str):
          Select the model to be used for S(k,w). Choices are:
              "non-collective"
              "collective"
-     
      
      Te (float): 
          Electron temperature in KeV
@@ -50,39 +51,61 @@ def spectral_density(wavelength, mode='collective', Te=None, Ti=None,
          Ion atomic masses in units of the proton mass
      
      ne (float): 
-         Plasma electron number density in cm^-3. 
+         Plasma mean  (0th order) electron number density in cm^-3. 
      
      probe_wavelength (float): 
          Incident probe laser wavelength in nm
          
+     B0 (float ndarray):
+         Vector magnetic field in Gauss. Default value is (0,0,0) which is interpreted
+         as unmagnetized scattering.
+         
+     probe_n (float ndarray):
+         Normalized unit vector representing the orientation of the probe laser beam
+         
+    
+     scatter_n (float ndarray):
+         Normalized unit vector representing the path of scattered light to the detector
+         
+     pol_n (float ndarray):
+         Normalized unit vector representing the polarization of the probe laser beam. Setting
+         this variable to None (the default) represents an unpolarized beam.
+         
      
-     sa (float): Scattering angle in degrees
-     
-     dphi (float): Angle between the polariazation-plane of the incident laser
-     and the scattering plane in degrees.
-     
-     vpar (float): Plasma fluid velocity perpendicular to the probe laser
-     in cm/s
-     
-     vperp (float): Plasma fluid velocity parallel to the probe laser in
-     cm/s 
-     
-     eidrift (float ndarray): Relative drift between the electrons and each ion
-     species in cm/s
-     
-     gamma (float): Angle (in degrees) between k and the drift velocity eidrift
-     
-
-     
+     ion_v (float ndarray):
+         Velocity vector  in cm/s for the ion population
+         #TODO: support multiple ion population velocities for different species
+         
+     electron_v (float ndarray):
+         Velocity vector in cm/s for the electron population
+         
+         
+     scattering_length (float):
+         Length of the scattering region in cm
+         
+         
+     scattered_power (boolean):
+         If set to True, the function returns the scattered power spectrum
+         normalized to the incident power : P_s/P_i. Note this calculation requires
+         the scattering_length variable to be set.
+         (Eq. 5.15 in Schaeffer or 5.1.1 in Sheffield)
+         
+         
+     inst_fcn (function):
+         An insturment function to apply to the spectral density function to simulate the spectrum
+         as it would be observed by a detector.
+         
+         
+     block_width (float):
+         Set a range of [-block_width, block_width] to zero in the spectral density function.
+         This is useful for blocking out the ion feature when fitting the electron feature.
+   
      """
      
      #TODO: throw an error if the lengths of any of the arrays are inconsistent
      #with the number of ion species (i.e Z, mu, V, Ti)
      
-     #TODO: Support multiple ion populations with different vpar and vperp
-     
 
-     
      if np.sum(ion_fract) != 1.0:
           print("WARNING: Sum(IonFractions) != 1.0. Normalizing array." )
           ion_fract = ion_fract/np.sum(ion_fract)
@@ -140,7 +163,6 @@ def spectral_density(wavelength, mode='collective', Te=None, Ti=None,
      #Compute Doppler-shifted frequencies for both the ions and electrons
      #TODO: Is specifying both population's velocities in the rest frame
      #the best choice?
-     #TODO: In future support different fluid velocities for each ion species?
      wdoppler_i = w - np.dot( np.outer(k, k_n), ion_v)
      wdoppler_e = w - np.dot( np.outer(k, k_n), electron_v)
          
@@ -161,14 +183,13 @@ def spectral_density(wavelength, mode='collective', Te=None, Ti=None,
      if mode == 'non-collective':
          #Schaeffer Eq. 5.26
          Skw = 2*np.pi*np.exp(-np.power(wdoppler_e/k/vTe,2))/(np.sqrt(np.pi)*k*vTe)
-         return ks, Skw
      
      
      #************************************************************************
      #Collective Scattering, Unmagnetized 
      #************************************************************************
         
-     if bmag == 0:
+     elif bmag == 0:
          #Calculate the normalized phase velocities and succeptabilities
          #See Schaeffer 5.22 for succeptibilities for a Maxwellian plasma
      
@@ -188,13 +209,18 @@ def spectral_density(wavelength, mode='collective', Te=None, Ti=None,
               chiI[m,:] = -0.5*np.power(alpha_i[m,:],2)*ZPrime(xi[m,:])
               
          #Add the individual ion succeptibilities together 
-         chiItot = np.sum(chiI, axis=0)
-         epsilon = 1 + chiE + chiItot #Total dielectic function Sheffield Section 5.1
+         chiI = np.sum(chiI, axis=0)
+         
+         print(chiE)
+         print(chiI)
+         
+         #Total dielectic function Sheffield Section 5.1 or Schaeffer Eq. 5.19
+         epsilon = 1 + chiE + chiI 
          
     
          #Schaeffer Eq. 5.23 and 5.24
          #Start with just the electron term
-         econtr  = 2*np.sqrt(np.pi)/(k*vTe)*np.power(1 - chiE/epsilon,2)*np.exp(-xe**2)
+         econtr  = 2*np.sqrt(np.pi)/(k*vTe)*np.power((1 + chiI)/epsilon,2)*np.exp(-xe**2)
          #Then add on each of the ion terms
          icontr = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
          for m in range(ion_fract.size):
@@ -202,76 +228,82 @@ def spectral_density(wavelength, mode='collective', Te=None, Ti=None,
          icontr = np.sum(icontr, axis=0) 
          Skw = econtr + icontr
          
-         return ks, Skw
+        
      
      #************************************************************************
      #Collective Scattering, Magnetized
      #************************************************************************
         
      elif bmag > 0: 
+        print("Magnetized Thomson Scattering is not yet supported")
+        
+        #TODO: add this section. This calculation is numerially more complicated than
+        #the unmagnetized case.
+         
         #Compute vperp/vpara and gyroradii
         k_para = k*np.dot(k_n, b_n)
         k_perp = np.sqrt(k**2 - k_para**2)
-        rho_e = vTe/wce/np.sqrt(2)
-        rho_i = vTi/wci/np.sqrt(2)
+        rho_e = vTe/wce
+        rho_i = np.mean(vTi/wci)
         
         larr = np.arange(-3, 3) #Array of resonance numbers to include in calculation
-    
+
         earg = k_perp**2*rho_e**2
         iarg = k_perp**2*rho_i**2
         
- 
-    
-        #First compute He
-        const = alpha_e**2
-        He = const
-        for l in larr:     
-            term = const*np.exp(-earg)*BesselI(l,earg)*wdoppler_e/(wdoppler_e - l*wce)
-       
-            if any(k_para != 0):
-                xel = (wdoppler_e - l*wce)/(k_para*np.sqrt(2)*vTe)
-                #Term in brackets in Sheffield Eq. 10.3.6 is basically the plasma disp. fcn.
-                term *= -xel*ZFcn(xel)
-            He += -term
-            
-        #Next compute Hi
-        const = mean_Z*Te/Ti*np.mean(alpha_i,axis=0)**2
-        Hi = const
-        
-        for l in larr:
-            term = const*np.exp(-iarg)*BesselI(l,iarg)*wdoppler_i/(wdoppler_i - l*wci)
-            if any(k_para != 0):
-                xil = (wdoppler_i - l*wci)/(k_para*np.sqrt(2)*vTi)
-                term *= -xil*ZFcn(xil)
-            Hi += -term
-                 
-        #Now the total epsilon
-        epsilon = 1 + He + Hi
-        
-        #Now compute the spectral dispersion function
-        esum, isum = 0,0
-        for l in larr:
-            earg2 = (wdoppler_e - l*wce)/(k_para*vTe)
-            iarg2 = (wdoppler_i - l*wci)/(k_para*vTi)
-            
-            esum += np.exp(earg)*BesselI(l,earg)*np.exp(-earg2**2)/(k_para*vTe)
-            isum += np.exp(iarg)*BesselI(l,iarg)*np.exp(-iarg2**2)/(k_para*vTi)
-           
-        
-        Skw = ( 2*np.sqrt(np.pi)*np.power(1 - He/epsilon,2)*esum + 
-                2*np.sqrt(np.pi)*mean_Z*np.power(He/epsilon,2)*isum )
-               
-        print(Skw)
-        
-        return ks, Skw
-                
         
         
+        
+     #************************************************************************
+     #Other final options based on keywords
+     #************************************************************************
+     if inst_fcn is not None:
+         #Evaluate inst_fcn over a wavelength array chosen to make the output
+         #the same length as r (notice that this one must be centered on zero...)
+         wspan =  (np.max(wavelength) - np.min(wavelength))/2
+         eval_w = np.linspace(-wspan, wspan, num=Skw.size)
          
+         inst_fcn_arr = inst_fcn(eval_w)
+         
+         #Convolve
+         #Note: linear not circular convolution here is important
+         Skw = np.convolve(Skw, inst_fcn_arr, mode='same')
+      
+        
+     if block_width is not None:
+         Skw = np.where(np.abs(wavelength - probe_wavelength)< block_width, 0, Skw) 
+        
+        
+        
+     if scattered_power:
+        
+        if pol_n is not None:
+            
+            #Create a vector perpendicular to the scattering plane
+            temp = np.cross(scatter_n, probe_n)
+            temp = temp/np.linalg.norm(temp) #normalize
+
+            #Compute dphi as defined in Fig. 1.6 of Sheffield
+            dphi = np.pi/2  - np.arccos( np.dot(pol_n, temp))  
+            
+            #Sheffield Eq. 1.7.14
+            pterm = 1 - np.sin(sa)**2*np.cos(dphi)**2
+        
+        else:
+            #Sheffield Eq. 1.7.15
+            pterm = 1 - 0.5*np.sin(sa)**2
+            
+        #Compute the scattered power
+        #(Eq. 5.15 in Schaeffer or 5.1.1 in Sheffield)
+        PS = re**2*scattering_length*ne/(2*np.pi)*pterm**2*Skw
+        return ks, PS
     
-
-
-
+    
+     else:
+         return ks, Skw
+        
+        
+        
 def signal_estimate(k, spectral_dist, intensity=None, tlen=None, vol=None,  
            probe_wavelength=None, ne=None, solid_angle=4*np.pi):
     """
@@ -310,45 +342,15 @@ def signal_estimate(k, spectral_dist, intensity=None, tlen=None, vol=None,
      
  
     
+def _gaussian_inst_fcn(wavelength):
+    #Create an instrument function that represents the spectral response
+    #of the spectrometer recording the Thomson spectrum
+    res= 1
+    fcn = np.exp(-0.5*np.power(wavelength/res,2))/(res*np.sqrt(2*np.pi))
+    return fcn    
 
 
 
-
-"""
-blockw (None or float): If not none, block a range of width blockw
-     around the laser wavelength to zero
-     
-     inst_fcn (None or function): If not none, represents an insturment
-     function (as a python function that takes a wavelength argument and
-     returns a normalized insturment function)
-
-print('int S(w): {}'.format(np.sum(FF)))
-     
-     #Scattered power per solid angle eg. 1.7.13? 
-     #Last term (angle correction) is for polarized radiation, Eq. 1.7.14
-     #Replace with Eq. 1.7.15 for unpolarized probe radiation
-     r = ne*(re**2)*FF*(1 - np.sin(sa)**2*np.cos(dphi)**2)
-     
-     
-     if inst_fcn is not None:
-         #Evaluate inst_fcn over a wavelength array chosen to make the output
-         #the same length as r (notice that this one must be centered on zero...)
-         wspan =  (np.max(wavelength) - np.min(wavelength))/2
-         eval_w = np.linspace(-wspan, wspan, num=r.size)
-         
-         inst_fcn_arr = inst_fcn(eval_w)
-         
-         #Convolve
-         #Note: linear not circular convolution here is important
-         r = np.convolve(r, inst_fcn_arr, mode='same')
-
-
-     #TODO: Roughly estimate the width of the ion feature somehow and block
-     #it in a way that doesn't require user input?
-     if blockw is not None:
-         r = np.where(np.abs(wavelength - laser_wavelength)< blockw, 0, r)
-
-"""
 
 
 
@@ -356,15 +358,18 @@ if __name__ == "__main__":
      
 
   
-     ne = 1e15
+     ne = 1e17
      
      
-     w = 532
-     wavelength = np.arange(w-10, w+10, 0.001)
+     w = 500
+     wavelength = np.arange(w-30, w+30, 0.001)
      
      sa = 63
      probe_n = np.array([1,0,0])
      scatter_n = np.array([np.cos(np.deg2rad(sa)), np.sin(np.deg2rad(sa)), 0])
+     
+     
+     pol_n = np.array([0,0,1])
      
      electron_v = np.array([0,0,0])
      ion_v = np.array([0,0,0])
@@ -372,11 +377,14 @@ if __name__ == "__main__":
      B0 = np.array([0,0,0])
      
      
-     k, spectral_dist = spectral_density(wavelength, mode='collective',
-               Te=5e-3, Ti=1e-3, electron_v=electron_v, ion_v = ion_v,
+     k, spectral_dist = spectrum(wavelength, mode='collective',
+               Te=1e-1, Ti=1e-2, electron_v=electron_v, ion_v = ion_v,
                probe_n = probe_n, scatter_n=scatter_n, B0=B0,
+               pol_n = pol_n,
                ion_fract=np.array([1.0]), ion_Z=np.array([1]), 
-               ion_Mu=np.array([4]), ne=ne, probe_wavelength=w)
+               ion_Mu=np.array([4]), ne=ne, probe_wavelength=w,
+               scattered_power=False, scattering_length=0.5, 
+               block_width  = None, inst_fcn = None)
      
      
      

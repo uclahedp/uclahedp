@@ -15,9 +15,10 @@ This function was adapted from a program provided in the book
 import numpy as np
 import matplotlib.pyplot as plt
 from plasmapy.formulary.dispersionfunction import plasma_dispersion_func_deriv as ZPrime
+from plasmapy.formulary.dispersionfunction import plasma_dispersion_func as ZFcn
 
 #These will be needed for supporting magnetized scattering
-#from plasmapy.formulary.dispersionfunction import plasma_dispersion_func as ZFcn
+
 #from scipy.special import iv as BesselI
 
 
@@ -27,7 +28,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
                    probe_n = np.array([1,0,0]), scatter_n = np.array([0,1,0]), pol_n=None,
                    ion_v = np.array([0,0,0]), electron_v = np.array([0,0,0]),
                    scattering_length = None, scattered_power = False, inst_fcn=None,
-                   block_width=None):
+                   block_width=None, verbose=False):
      
      """
      model (str):
@@ -165,13 +166,17 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      #the best choice?
      wdoppler_i = w - np.dot( np.outer(k, k_n), ion_v)
      wdoppler_e = w - np.dot( np.outer(k, k_n), electron_v)
+     
          
      #Compute the scattering parameter alpha
      #expressed here using the fact that v_th/w_p = root(2) * Debye length
      #Note that the np.sqrt(2)'s that pop up in relation to the thermal velocities
      #are because only some expressions require the RMS velocity.
-     alpha_e = wpe/(np.sqrt(2)*k*vTe)
-     alpha_i = (np.outer(wpi/np.sqrt(2)/vTe, 1/k)).astype(np.cdouble)
+     alpha = wpe/(np.sqrt(2)*k*vTe)
+     
+     if verbose:
+         print("min/max alpha: {:.3f}, {:.3f}".format(np.min(alpha),np.max(alpha)))
+
      
 
      #************************************************************************
@@ -197,22 +202,24 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
          #The second term corrects for drift between the electrons and ions
          # as described in Section 5.3.3 in Sheffield and #Schaeffer Eq. 5.21
          xe = wdoppler_e/(k*vTe) 
-         chiE = -0.5*np.power(alpha_e,2)*ZPrime(xe)#Eq. 5.22 in Schaeffer Thesis
-         
-         
-         #Then for each species of ions
          xi=1/np.sqrt(2)*np.outer(1/vTi, wdoppler_i/k) #Schaeffer 5.21
-    
+         
+         #TODO: Determine range in which ion term is dominant as when |xi|<~4?
+         
+         if verbose:
+             print("min/max x_e: {:.3f}, {:.3f}".format(np.min(xe),np.max(xe)))
+             print("min/max x_i: {:.3f}, {:.3f}".format(np.min(xi),np.max(xi)))
+         
+         
+         #Succeptibilities from Sheffield Eq. 3.4.4 and 3.4.5 (PDF pg 62)
+         #or Schaeffer 5.22
+         chiE = np.power(alpha,2)*(np.real(ZFcn(xe)) - 1j*np.imag(ZFcn(xe)))
+         
          chiI = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
          for m in range(ion_fract.size):
-              #Eq. 5.22 in Schaeffer Thesis, note that Z Te/Ti is absorbed into alpha_i**2
-              chiI[m,:] = -0.5*np.power(alpha_i[m,:],2)*ZPrime(xi[m,:])
-              
-         #Add the individual ion succeptibilities together 
-         chiI = np.sum(chiI, axis=0)
-         
-         print(chiE)
-         print(chiI)
+             chiI[m,:] = np.power(alpha,2)*ion_Z[m]*Te/Ti*(np.real(ZFcn(xi[m,:])) - 1j*np.imag(ZFcn(xi[m,:])))
+        
+         chiI = np.sum(chiI, axis=0)  
          
          #Total dielectic function Sheffield Section 5.1 or Schaeffer Eq. 5.19
          epsilon = 1 + chiE + chiI 
@@ -224,7 +231,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
          #Then add on each of the ion terms
          icontr = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
          for m in range(ion_fract.size):
-             icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/(k*vTi[m])*np.power(chiE/epsilon,2)*np.exp(-xi[m,:]**2)                                            
+             icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/(k*vTi[m])*np.power(chiE/epsilon,2)*np.exp(-xi**2)                                            
          icontr = np.sum(icontr, axis=0) 
          Skw = econtr + icontr
          
@@ -361,8 +368,9 @@ if __name__ == "__main__":
      ne = 1e17
      
      
-     w = 500
-     wavelength = np.arange(w-30, w+30, 0.001)
+     w = 532
+     pmw = .1
+     wavelength = np.arange(w-pmw, w+pmw, 0.001)
      
      sa = 63
      probe_n = np.array([1,0,0])
@@ -378,13 +386,13 @@ if __name__ == "__main__":
      
      
      k, spectral_dist = spectrum(wavelength, mode='collective',
-               Te=1e-1, Ti=1e-2, electron_v=electron_v, ion_v = ion_v,
+               Te=1e-5, Ti=1e-6, electron_v=electron_v, ion_v = ion_v,
                probe_n = probe_n, scatter_n=scatter_n, B0=B0,
                pol_n = pol_n,
                ion_fract=np.array([1.0]), ion_Z=np.array([1]), 
                ion_Mu=np.array([4]), ne=ne, probe_wavelength=w,
                scattered_power=False, scattering_length=0.5, 
-               block_width  = None, inst_fcn = None)
+               block_width  = None, inst_fcn = None, verbose=True)
      
      
      

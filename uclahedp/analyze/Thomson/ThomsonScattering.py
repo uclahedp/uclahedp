@@ -16,10 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from plasmapy.formulary.dispersionfunction import plasma_dispersion_func_deriv as ZPrime
 from plasmapy.formulary.dispersionfunction import plasma_dispersion_func as ZFcn
-
-#These will be needed for supporting magnetized scattering
-
-#from scipy.special import iv as BesselI
+from scipy.special import iv as BesselIV
 
 
 def spectrum(wavelength, mode='collective', Te=None, Ti=None, 
@@ -156,8 +153,8 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      ks = np.sqrt(ws**2 - wpe**2)/C #Eq. 5.4.1 in Sheffield, units 1/cm
      kl = np.sqrt(wl**2 - wpe**2)/C #Eq. 5.4.2 in Sheffield, units 1/cm
      
-     #k is the frequency SHIFT (as illustrated in Fig.1.5 of Sheffield)
-     sa = np.arccos(np.dot(probe_n, scatter_n))
+     #k is the wavenumber difference (as illustrated in Fig.1.5 of Sheffield)
+     sa = np.arccos(np.dot(probe_n, scatter_n)) #rad
      k = np.sqrt(ks**2 + kl**2 - 2*ks*kl*np.cos(sa)) #Eq. 1.7.10 in Sheffield, units 1/cm
      k_n = scatter_n - probe_n #Normal vector along k
      
@@ -183,7 +180,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      #Non-Collective Scattering, Unmagnetized 
      #************************************************************************
      
-     #TODO: include a non-collective, magnetized case?
+     #TODO: include a non-collective magnetized case?
      
      if mode == 'non-collective':
          #Schaeffer Eq. 5.26
@@ -197,54 +194,44 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      elif bmag == 0:
          #Calculate the normalized phase velocities and succeptabilities
          #See Schaeffer 5.22 for succeptibilities for a Maxwellian plasma
-     
-         #First for electrons 
-         #The second term corrects for drift between the electrons and ions
-         # as described in Section 5.3.3 in Sheffield and #Schaeffer Eq. 5.21
-         xe = wdoppler_e/(k*vTe) 
+         #Section 5.3.3 in Sheffield and #Schaeffer Eq. 5.21
+         xe = wdoppler_e/(k*vTe)
          xi=1/np.sqrt(2)*np.outer(1/vTi, wdoppler_i/k) #Schaeffer 5.21
-         
-         #TODO: Determine range in which ion term is dominant as when |xi|<~4?
+
          
          if verbose:
              print("min/max x_e: {:.3f}, {:.3f}".format(np.min(xe),np.max(xe)))
              print("min/max x_i: {:.3f}, {:.3f}".format(np.min(xi),np.max(xi)))
          
+         chiE = -0.5*np.power(alpha,2)*ZPrime(xe)#Eq. 5.22 in Schaeffer Thesis
          
-         #Succeptibilities from Sheffield Eq. 3.4.4 and 3.4.5 (PDF pg 62)
-         #or Schaeffer 5.22
-         chiE = np.power(alpha,2)*(np.real(ZFcn(xe)) - 1j*np.imag(ZFcn(xe)))
          
-         chiI = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
+         #Treatment of multiple ion species as described in Sheffield Sec. 5.1
+         chiI= np.zeros([ion_fract.size, w.size], dtype=np.cdouble)
          for m in range(ion_fract.size):
-             chiI[m,:] = np.power(alpha,2)*ion_Z[m]*Te/Ti*(np.real(ZFcn(xi[m,:])) - 1j*np.imag(ZFcn(xi[m,:])))
+              #Eq. 5.22 in Schaeffer Thesis
+              chiI[m,:] = -0.5*np.power(alpha,2)*ion_Z[m]*Te/Ti*ZPrime(xi[m,:])
+         
+         epsilon = 1 + chiE + np.sum(chiI, axis=0)
         
-         chiI = np.sum(chiI, axis=0)  
-         
-         #Total dielectic function Sheffield Section 5.1 or Schaeffer Eq. 5.19
-         epsilon = 1 + chiE + chiI 
-         
-    
-         #Schaeffer Eq. 5.23 and 5.24
-         #Start with just the electron term
-         econtr  = 2*np.sqrt(np.pi)/(k*vTe)*np.power((1 + chiI)/epsilon,2)*np.exp(-xe**2)
-         #Then add on each of the ion terms
-         icontr = np.zeros([ion_fract.size, ws.size], dtype=np.cdouble)
-         for m in range(ion_fract.size):
-             icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/(k*vTi[m])*np.power(chiE/epsilon,2)*np.exp(-xi**2)                                            
-         icontr = np.sum(icontr, axis=0) 
-         Skw = econtr + icontr
-         
+         econtr = 2*np.sqrt(np.pi)/k/vTe*np.power(np.abs(1 - chiE/epsilon),2)*np.exp(-xe**2)
         
-     
+         icontr = np.zeros([ion_fract.size, w.size], dtype=np.cdouble) 
+         for m in range(ion_fract.size):  
+            icontr[m,:] = 2*np.sqrt(np.pi)*ion_Z[m]/k/vTi*np.power(np.abs(chiE/epsilon),2)*np.exp(-xi[m,:]**2)
+         
+         #Re-cast as real as a formality: imaginary part is zero
+         Skw = np.real(econtr + np.sum(icontr, axis=0))
+         
+
      #************************************************************************
-     #Collective Scattering, Magnetized
+     #Collective Scattering, Magnetized Electrons and Ions
      #************************************************************************
         
      elif bmag > 0: 
         print("Magnetized Thomson Scattering is not yet supported")
         
-        #TODO: add this section. This calculation is numerially more complicated than
+        #TODO: finish this section. This calculation is numerically more complicated than
         #the unmagnetized case.
          
         #Compute vperp/vpara and gyroradii
@@ -253,10 +240,67 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
         rho_e = vTe/wce
         rho_i = np.mean(vTi/wci)
         
-        larr = np.arange(-3, 3) #Array of resonance numbers to include in calculation
+        
+        
+        larr = np.arange(-10, 10) #Array of resonance numbers to include in calculation
 
         earg = k_perp**2*rho_e**2
         iarg = k_perp**2*rho_i**2
+        
+        #TEMP
+        iarg= 200
+        
+        #TODO: When iarg is too big (corresponding to unmagnetized ions)
+        #switch models to avoid numerical problems with large args in Bessell fcns.
+        
+        if verbose:
+             print("min/max earg: {:.3f}, {:.3f}".format(np.min(earg),np.max(earg)))
+             print("min/max iarg: {:.3f}, {:.3f}".format(np.min(iarg),np.max(iarg)))
+        
+    
+        #He, Sheffield 10.3.5
+        He = np.complex128(alpha**2)
+        for l in larr:
+            t1 = alpha**2*np.exp(-earg)*BesselIV(l,earg)
+            t2 = wdoppler_e / (wdoppler_e - l*wce)
+            xel = (wdoppler_e - l*wce)/(k_para*np.sqrt(2)*vTe)
+            t3 = -ZFcn(xel)*xel
+            He += -t1*t2*t3
+            
+        
+        #Hi, Sheffield 10.3.7
+        Hi = np.complex128(alpha**2*mean_Z*Te/Ti)
+        for l in larr:
+            t1 = alpha**2*mean_Z*Te/Ti*np.exp(-iarg)*BesselIV(l,iarg)
+            t2 = wdoppler_i / (wdoppler_i - l*wci)
+            xil = (wdoppler_i - l*wci)/(k_para*np.sqrt(2)*vTi)
+            t3 = -ZFcn(xil)*xil
+            Hi += -t1*t2*t3
+            
+        epsilon = 1 + He + Hi
+            
+        
+        #Compute Skw, Sheffield 10.3.9
+        sum_e = np.complex128(0)    
+        sum_i = np.complex128(0)
+        for l in larr:
+            xel = (wdoppler_e - l*wce)/(k_para*np.sqrt(2)*vTe)
+            t1 = np.exp(-earg)*BesselIV(l,earg)
+            t2 = np.exp(-xel**2)/k_para/(np.sqrt(2)*vTe)
+            sum_e += t1*t2
+            
+            xil = (wdoppler_i - l*wci)/(k_para*np.sqrt(2)*vTi)
+            t1 = np.exp(-iarg)*BesselIV(l,iarg)
+            t2 = np.exp(-xil**2)/k_para/(np.sqrt(2)*vTi)
+            sum_i += t1*t2
+            
+            
+        econtr = 2*np.sqrt(np.pi)*np.power(np.abs(1 - He/epsilon),2)*sum_e
+        
+        icontr = 2*np.sqrt(np.pi)*mean_Z*np.power(np.abs(He/epsilon),2)*sum_i
+        
+        Skw = np.real(econtr + icontr)
+        
         
         
         
@@ -291,7 +335,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
             temp = temp/np.linalg.norm(temp) #normalize
 
             #Compute dphi as defined in Fig. 1.6 of Sheffield
-            dphi = np.pi/2  - np.arccos( np.dot(pol_n, temp))  
+            dphi = np.pi/2  - np.arccos( np.dot(pol_n, temp) )  
             
             #Sheffield Eq. 1.7.14
             pterm = 1 - np.sin(sa)**2*np.cos(dphi)**2
@@ -362,17 +406,15 @@ def _gaussian_inst_fcn(wavelength):
 
 
 if __name__ == "__main__":
-     
 
-  
-     ne = 1e17
+     ne = 1e18
      
      
      w = 532
-     pmw = .1
-     wavelength = np.arange(w-pmw, w+pmw, 0.001)
+     pmw = 20
+     wavelength = np.arange(w-pmw, w+pmw, 0.01)
      
-     sa = 63
+     sa = 90
      probe_n = np.array([1,0,0])
      scatter_n = np.array([np.cos(np.deg2rad(sa)), np.sin(np.deg2rad(sa)), 0])
      
@@ -382,25 +424,28 @@ if __name__ == "__main__":
      electron_v = np.array([0,0,0])
      ion_v = np.array([0,0,0])
      
-     B0 = np.array([0,0,0])
+     B0 = np.array([0,1e5,3e6])
      
      
      k, spectral_dist = spectrum(wavelength, mode='collective',
-               Te=1e-5, Ti=1e-6, electron_v=electron_v, ion_v = ion_v,
+               Te=0.27, Ti=0.27, electron_v=electron_v, ion_v = ion_v,
                probe_n = probe_n, scatter_n=scatter_n, B0=B0,
-               pol_n = pol_n,
+               pol_n = None,
                ion_fract=np.array([1.0]), ion_Z=np.array([1]), 
                ion_Mu=np.array([4]), ne=ne, probe_wavelength=w,
                scattered_power=False, scattering_length=0.5, 
-               block_width  = None, inst_fcn = None, verbose=True)
+               block_width  = 1, inst_fcn = None, verbose=True)
      
      
      
      fig, ax = plt.subplots()
-
-     ax.plot(wavelength, np.real(spectral_dist))
      ax.set_xlabel("$\lambda$ (nm)")
      ax.set_ylabel("S(k,w) (s)")
+     ax.axvline(x=w, color='k')
+
+     ax.plot(wavelength, spectral_dist)
+     
+     
  
 
 

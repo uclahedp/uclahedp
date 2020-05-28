@@ -236,7 +236,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      #************************************************************************
         
      elif bmag > 0: 
-        print("Magnetized Thomson Scattering is not yet supported")
+        print("Magnetized Thomson Scattering is only roughly implemented: use at own risk")
         
         #TODO: finish this section. This calculation is numerically more complicated than
         #the unmagnetized case.
@@ -254,8 +254,6 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
         earg = k_perp**2*rho_e**2
         iarg = k_perp**2*rho_i**2
         
-        #TEMP
-        iarg= 200
         
         #TODO: When iarg is too big (corresponding to unmagnetized ions)
         #switch models to avoid numerical problems with large args in Bessell fcns.

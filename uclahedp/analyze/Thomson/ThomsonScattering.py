@@ -171,31 +171,34 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      #are because only some expressions require the RMS velocity.
      alpha = wpe/(np.sqrt(2)*k*vTe)
      
+     
      if verbose:
          print("min/max alpha: {:.3f}, {:.3f}".format(np.min(alpha),np.max(alpha)))
 
-     
 
      #************************************************************************
      #Non-Collective Scattering, Unmagnetized 
      #************************************************************************
      
-     #TODO: include a non-collective magnetized case?
+     #TODO: include a non-collective magnetized case based on Sheffield Sec. 4.6
      
      if mode == 'non-collective':
-         #Schaeffer Eq. 5.26
-         Skw = 2*np.pi*np.exp(-np.power(wdoppler_e/k/vTe,2))/(np.sqrt(np.pi)*k*vTe)
+         xe = wdoppler_e/(k*np.sqrt(2)*vTe)
+         #Schaeffer Eq. 5.26, Sheffield Eq. 4.5.1 (PDF pg. 84)
+         Skw = 2*np.pi*np.exp(-xe**2)/(np.sqrt(np.pi)*k*np.sqrt(2)*vTe)
      
      
+        
+        
      #************************************************************************
      #Collective Scattering, Unmagnetized 
      #************************************************************************
         
      elif bmag == 0:
          #Calculate the normalized phase velocities and succeptabilities
-         #See Schaeffer 5.22 for succeptibilities for a Maxwellian plasma
-         #Section 5.3.3 in Sheffield and #Schaeffer Eq. 5.21
-         xe = wdoppler_e/(k*vTe)
+         #Following section Sec. 5.1.4 in Schaeffer's thesis
+         #and Sec. 3.4.2 in Sheffield
+         xe = wdoppler_e/(k*np.sqrt(2)*vTe)
          xi=1/np.sqrt(2)*np.outer(1/vTi, wdoppler_i/k) #Schaeffer 5.21
 
          
@@ -214,6 +217,10 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
          
          epsilon = 1 + chiE + np.sum(chiI, axis=0)
         
+        
+         #Calculation of the spectral dispersion function
+         #Schaeffer 
+         #or Sheffield Sec. 5.1
          econtr = 2*np.sqrt(np.pi)/k/vTe*np.power(np.abs(1 - chiE/epsilon),2)*np.exp(-xe**2)
         
          icontr = np.zeros([ion_fract.size, w.size], dtype=np.cdouble) 
@@ -344,9 +351,12 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
             #Sheffield Eq. 1.7.15
             pterm = 1 - 0.5*np.sin(sa)**2
             
+        #Compute the "geometric factor"
+        gf = 1 + 2*wdoppler_e/wl
+            
         #Compute the scattered power
         #(Eq. 5.15 in Schaeffer or 5.1.1 in Sheffield)
-        PS = re**2*scattering_length*ne/(2*np.pi)*pterm**2*Skw
+        PS = re**2*gf*scattering_length*ne/(2*np.pi)*pterm**2*Skw
         return ks, PS
     
     
@@ -407,12 +417,13 @@ def _gaussian_inst_fcn(wavelength):
 
 if __name__ == "__main__":
 
-     ne = 1e19
+     ne = 1e13
      
      
      w = 532
      pmw = 100
-     wavelength = np.arange(w-pmw, w+pmw, 0.01)
+     #wavelength = np.arange(w-pmw, w+pmw, 0.01)
+     wavelength = np.arange(520,545, 0.01)
      
      sa = 90
      probe_n = np.array([1,0,0])
@@ -425,27 +436,32 @@ if __name__ == "__main__":
      ion_v = np.array([0,0,0])
      
      ba = 70
-     bmag = 7e6
+     bmag = 0#7e6
      B0 = np.array([0,bmag*np.cos(np.deg2rad(ba)),bmag*np.sin(np.deg2rad(ba))])
      
      
      k, spectral_dist = spectrum(wavelength, mode='collective',
-               Te=0.27, Ti=0.27, electron_v=electron_v, ion_v = ion_v,
+               Te=10e-3, Ti=1e-3, electron_v=electron_v, ion_v = ion_v,
                probe_n = probe_n, scatter_n=scatter_n, B0=B0,
                pol_n = None,
                ion_fract=np.array([1.0]), ion_Z=np.array([1]), 
-               ion_Mu=np.array([4]), ne=ne, probe_wavelength=w,
+               ion_Mu=np.array([1]), ne=ne, probe_wavelength=w,
                scattered_power=False, scattering_length=0.5, 
-               block_width  = 1, inst_fcn = None, verbose=True)
+               block_width  = None, inst_fcn = None, verbose=True)
      
      
      
      fig, ax = plt.subplots()
      ax.set_xlabel("$\lambda$ (nm)")
-     ax.set_ylabel("S(k,w) (s)")
-     ax.axvline(x=w, color='k')
+     ax.set_ylabel("S(k,w)")
+     ax.axvline(x=w, color='red')
+     
+     
+     ax.set_ylim(0, 1.2*np.max(spectral_dist))
+     #ax.set_ylim(0, .5e-13)
+     ax.set_xlim(np.min(wavelength), np.max(wavelength))
 
-     ax.plot(wavelength, spectral_dist)
+     ax.plot(wavelength, spectral_dist, lw=1)
      
      
  

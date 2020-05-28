@@ -61,6 +61,12 @@ These conventions are chosen to allow easy plotting of subsets of an array. For 
 Large datasets are not stored on consecutive sections of computer memory but are rather broken into "chunks" that are stored separately. Accessing data spread across multiple chunks is much more computationally costly than accessing the same amount of data from a single chunk. The HDF format and the \loc{h5py} package allow control over how a dataset is broken into chunks in order to maximize efficiency. Where possible, the UCLA HEDP package attempts to chunk datasets in a way that minimizes read times for common operations. For example, a dataset containing time arrays at a variety of spatial locations may chose to chunk the time axis together, anticipating that time traces may be accessed more often than large spatial volumes.
 
 
+\section{The CSV Metadata Format\label{csv_format}}
+
+Metadata is recorded in CSV files in a standard format, and many column header names may be required by different routines in the analysis pipeline. This format and the definition of each required key are provided in the file \loc{MetadataKeyFormat.md} in the root directory of the package.
+
+
+
 \section{Structure of the Package}
 
 The UCLA HEDP package is separated into several sub-packages (folders within the package) that group similar routines. The logic of these groupings, and a brief explanation of the contents of each sub-package, is provided in the following sections.
@@ -211,16 +217,22 @@ This file contains several frequency filtering tools that can be used for either
 This file contains functions for analyzing the polarization of a signal based on a vector time trace either using a polarization decomposition algorithm or by creating a hodograph.
 
 \subsubsection{\loc{spectral.spectrogram.py}}
+
+This function implements a moving-window Fourier transform algorithm to generate a spectrogram. 
+
 \subsubsection{\loc{thomson.thomson\_scattering.py}}
+
+This file contains a number of routines for the prediction of Thomson scattering spectra. \loc{thomson\_ scattering.spectrum} calculates the spectral density function in a variety of regimes given a description of the ion and electron distributions (assuming Maxwellians). \loc{thomson\_ scattering.signal\_ estimate} estimates the total number of scattered photons for use in estimating the signal-to-noise ration for a given configuration.
 
 
 \subsection{\loc{user}}
 
+Any user of the package is invited to add a folder to this section which holds code they have written that either uses the package or complements it.
+
+
 \subsection{\loc{dataview}\label{dataview}}
 
-
-
-\section{The CSV Metadata Format\label{csv_format}}
+The \loc{dataview} program is technically a separate program from UCLA HEDP (housed in a different repository) so that it can be installed without as many requirements. \loc{dataview} can visualize any CDF object. One of the benefits of using a consistent data format is that \loc{dataview} can therefore be used to look at data saved at any point during the analysis pipeline.
 
 
 

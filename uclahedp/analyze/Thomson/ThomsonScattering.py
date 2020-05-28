@@ -407,11 +407,11 @@ def _gaussian_inst_fcn(wavelength):
 
 if __name__ == "__main__":
 
-     ne = 1e18
+     ne = 1e19
      
      
      w = 532
-     pmw = 20
+     pmw = 100
      wavelength = np.arange(w-pmw, w+pmw, 0.01)
      
      sa = 90
@@ -424,7 +424,9 @@ if __name__ == "__main__":
      electron_v = np.array([0,0,0])
      ion_v = np.array([0,0,0])
      
-     B0 = np.array([0,1e5,3e6])
+     ba = 70
+     bmag = 7e6
+     B0 = np.array([0,bmag*np.cos(np.deg2rad(ba)),bmag*np.sin(np.deg2rad(ba))])
      
      
      k, spectral_dist = spectrum(wavelength, mode='collective',

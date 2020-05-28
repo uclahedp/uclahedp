@@ -1,0 +1,101 @@
+\documentclass[12pt]{article}
+
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+
+\newcommand{\loc}[1]{{\bf \fontfamily{pcr}\selectfont #1}}
+
+\newcommand{\todo}[1]{ \begin{tcolorbox} \centering  #1 \end{tcolorbox}}
+
+
+\title{UCLA HEDP Experimental Plasma Physics Analysis Package Documentation}
+\date{\today}
+
+
+\begin{document}
+\maketitle
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+\section{Overview}
+
+\section{The Common Data Format (CDF)}
+
+\subsection{Requirements}
+
+The UCLA HEDP package is designed around a standardized structured data format, hereafter referred to as common data format or CDF. A CDF object is an HDF file that conforms to a standard structure as defined in the function \loc{tools.dataset.validDataset}. In particular, each CDF file must contain
+
+\begin{itemize}
+
+\item A dataset called "data" with $n$ dimensions. This array must have an attribute "dimensions" which holds a string array of list $n$ which provides a name for each dimension in the dataset (by convention, all lowercase). A second attribute "unit" defines the units of the data in this array as a string that can by interpreted by the \loc{astropy.units} string-to-unit parser. 
+
+\todo{In the future this could be generalized so that the CDF object could contain multiple data arrays with different names (but all with the same shape and the same axes). This would be conducive to datasets such as density and electron temperature planes from Langmuir measurements which share a set of axes and belong conceptually together. In this case, a new attribute array should be added to the parent group listing the names of all of the data arrays. }
+
+\item For each entry in the "dimensions" attribute there must exit a dataset with the same name which contains the axis values for that dimension. This dataset must also include a mandatory "unit" attribute as defined above.
+
+\end{itemize}
+
+This format was designed to contain all of the information necessary to make plots of the dataset.
+
+\subsection{Conventions}
+
+
+\subsection{Considerations for Large Datasets}
+
+Large datasets are not stored on consecutive sections of computer memory but are rather broken into "chunks" that are stored separately. Accessing data spread across multiple chunks is much more computationally costly than accessing the same amount of data from a single chunk. The HDF format and the \loc{h5py} package allow control over how a dataset is broken into chunks in order to maximize efficiency. Where possible, the UCLA HEDP package attempts to chunk datasets in a way that minimizes read times for common operations. For example, a dataset containing time arrays at a variety of spatial locations may chose to chunk the time axis together, anticipating 
+
+
+
+Defined in 
+
+\section{Structure of the Package}
+
+\subsection{\loc{tools}}
+
+\subsubsection{\loc{csv.py}}
+\subsubsection{\loc{dataset.py}}
+\subsubsection{\loc{hdf.py}}
+\subsubsection{\loc{math.py}}
+\subsubsection{\loc{pos.py}}
+\subsubsection{\loc{util.py}}
+
+\subsection{\loc{load}}
+
+\subsubsection{\loc{lapd.py}}
+\subsubsection{\loc{hrr.py}}
+
+\subsubsection{\loc{imgdir.py}}
+\subsubsection{\loc{ascii.py}}
+
+
+\subsection{\loc{process}}
+
+\subsubsection{\loc{bdot.py}}
+\subsubsection{\loc{langmuir.py}}
+\subsubsection{\loc{tdiode.py}}
+\subsubsection{\loc{interferometer.py}}
+\subsubsection{\loc{imgseq.py}}
+\subsubsection{\loc{scope.py}}
+\subsubsection{\loc{process.py}}
+
+\subsection{\loc{analyze}}
+
+\subsubsection{\loc{filter.py}}
+\subsubsection{\loc{polarization.py}}
+\subsubsection{\loc{spectral.spectrogram.py}}
+\subsubsection{\loc{thomson.thomson\_scattering.py}}
+
+
+\subsection{\loc{user}}
+
+\subsection{\loc{dataview}\label{dataview}}
+
+
+
+
+
+\end{document}

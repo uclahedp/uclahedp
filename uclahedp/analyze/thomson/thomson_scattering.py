@@ -38,6 +38,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      
      Ti (float): 
          Ion temperature in KeV (all species must have the same temp?)
+         #DS: yes, unless you are constructing a distribution based on adding together multiple Maxwellians.
      
      ion_fract (float ndarray): 
          Relative fractions of each ion species present. Must sum to 1.0.
@@ -60,7 +61,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
          
      probe_n (float ndarray):
          Normalized unit vector representing the orientation of the probe laser beam
-         
+         #DS: is this relative to k?  same for other vector inputs?
     
      scatter_n (float ndarray):
          Normalized unit vector representing the path of scattered light to the detector
@@ -80,6 +81,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
          
      scattering_length (float):
          Length of the scattering region in cm
+         #DS: what does this mean?
          
          
      scattered_power (boolean):
@@ -87,6 +89,7 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
          normalized to the incident power : P_s/P_i. Note this calculation requires
          the scattering_length variable to be set.
          (Eq. 5.15 in Schaeffer or 5.1.1 in Sheffield)
+         DS: what does it return if this is not set?
          
          
      inst_fcn (function):
@@ -147,13 +150,17 @@ def spectrum(wavelength, mode='collective', Te=None, Ti=None,
      wl = 2*np.pi*C*1e7/probe_wavelength #rad/s
 
      #w is the frequency SHIFT
+     #DS: Alternatively, can be thought of as conservation of energy
      w = ws - wl #Eq. 1.7.8 in Sheffield
     
      #Wavenumbers in the plasma (wpe emerges from plasma index of refraction?)
+     #DS: yes, these are just staements about how the EM waves interact with plasma and follow from Maxwell's Eqs. 
+     #See Sheffield Sec. 1.8.1
      ks = np.sqrt(ws**2 - wpe**2)/C #Eq. 5.4.1 in Sheffield, units 1/cm
      kl = np.sqrt(wl**2 - wpe**2)/C #Eq. 5.4.2 in Sheffield, units 1/cm
      
      #k is the wavenumber difference (as illustrated in Fig.1.5 of Sheffield)
+     #DS: Alternatively, can be thought of as conservation of momentum
      sa = np.arccos(np.dot(probe_n, scatter_n)) #rad
      k = np.sqrt(ks**2 + kl**2 - 2*ks*kl*np.cos(sa)) #Eq. 1.7.10 in Sheffield, units 1/cm
      k_n = scatter_n - probe_n #Normal vector along k

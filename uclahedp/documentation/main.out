@@ -32,3 +32,17 @@
 \BOOKMARK [3][-]{subsubsection.4.4.4}{thomson.thomson\137scattering.py}{subsection.4.4}% 32
 \BOOKMARK [2][-]{subsection.4.5}{user}{section.4}% 33
 \BOOKMARK [2][-]{subsection.4.6}{dataview}{section.4}% 34
+\BOOKMARK [1][-]{appendix.A}{Metadata CSV Key Dictionary}{}% 35
+\BOOKMARK [2][-]{subsection.A.1}{Experiment Data}{appendix.A}% 36
+\BOOKMARK [2][-]{subsection.A.2}{Run-Type}{appendix.A}% 37
+\BOOKMARK [2][-]{subsection.A.3}{Probe-Type}{appendix.A}% 38
+\BOOKMARK [3][-]{subsubsection.A.3.1}{Probe-Type: Bdots Probes}{subsection.A.3}% 39
+\BOOKMARK [3][-]{subsubsection.A.3.2}{Probe-Type: Langmuir Probes}{subsection.A.3}% 40
+\BOOKMARK [2][-]{subsection.A.4}{Run-Probe Type}{appendix.A}% 41
+\BOOKMARK [3][-]{subsubsection.A.4.1}{Run-Probe Type: LAPD Digitizer}{subsection.A.4}% 42
+\BOOKMARK [3][-]{subsubsection.A.4.2}{Run-Probe Type: HRR Digitizer}{subsection.A.4}% 43
+\BOOKMARK [3][-]{subsubsection.A.4.3}{Run-Probe Type: Probes with Position Information}{subsection.A.4}% 44
+\BOOKMARK [3][-]{subsubsection.A.4.4}{Run-Probe Type: Probes Using LAPD Motor Drives}{subsection.A.4}% 45
+\BOOKMARK [3][-]{subsubsection.A.4.5}{Run-Probe Type: Probes Using HRR-Controlled Motor Drives}{subsection.A.4}% 46
+\BOOKMARK [3][-]{subsubsection.A.4.6}{Run-Probe Type: Bdot Probes}{subsection.A.4}% 47
+\BOOKMARK [3][-]{subsubsection.A.4.7}{Run-Probe Type: Langmuir Probes}{subsection.A.4}% 48

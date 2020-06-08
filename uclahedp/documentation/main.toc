@@ -4,31 +4,45 @@
 \contentsline {subsection}{\numberline {2.2}Conventions}{5}{subsection.2.2}% 
 \contentsline {subsection}{\numberline {2.3}Considerations for Large Datasets}{5}{subsection.2.3}% 
 \contentsline {section}{\numberline {3}The CSV Metadata Format}{6}{section.3}% 
-\contentsline {section}{\numberline {4}Structure of the Package}{6}{section.4}% 
-\contentsline {subsection}{\numberline {4.1}{\bf \fontfamily {pcr}\selectfont tools}}{6}{subsection.4.1}% 
-\contentsline {subsubsection}{\numberline {4.1.1}{\bf \fontfamily {pcr}\selectfont csv.py}}{6}{subsubsection.4.1.1}% 
-\contentsline {subsubsection}{\numberline {4.1.2}{\bf \fontfamily {pcr}\selectfont dataset.py}}{6}{subsubsection.4.1.2}% 
-\contentsline {subsubsection}{\numberline {4.1.3}{\bf \fontfamily {pcr}\selectfont hdf.py}}{7}{subsubsection.4.1.3}% 
-\contentsline {subsubsection}{\numberline {4.1.4}{\bf \fontfamily {pcr}\selectfont math.py}}{7}{subsubsection.4.1.4}% 
-\contentsline {subsubsection}{\numberline {4.1.5}{\bf \fontfamily {pcr}\selectfont pos.py}}{7}{subsubsection.4.1.5}% 
-\contentsline {subsubsection}{\numberline {4.1.6}{\bf \fontfamily {pcr}\selectfont util.py}}{8}{subsubsection.4.1.6}% 
-\contentsline {subsection}{\numberline {4.2}{\bf \fontfamily {pcr}\selectfont load}}{8}{subsection.4.2}% 
+\contentsline {section}{\numberline {4}Structure of the Package}{7}{section.4}% 
+\contentsline {subsection}{\numberline {4.1}{\bf \fontfamily {pcr}\selectfont tools}}{7}{subsection.4.1}% 
+\contentsline {subsubsection}{\numberline {4.1.1}{\bf \fontfamily {pcr}\selectfont csv.py}}{7}{subsubsection.4.1.1}% 
+\contentsline {subsubsection}{\numberline {4.1.2}{\bf \fontfamily {pcr}\selectfont dataset.py}}{7}{subsubsection.4.1.2}% 
+\contentsline {subsubsection}{\numberline {4.1.3}{\bf \fontfamily {pcr}\selectfont hdf.py}}{8}{subsubsection.4.1.3}% 
+\contentsline {subsubsection}{\numberline {4.1.4}{\bf \fontfamily {pcr}\selectfont math.py}}{8}{subsubsection.4.1.4}% 
+\contentsline {subsubsection}{\numberline {4.1.5}{\bf \fontfamily {pcr}\selectfont pos.py}}{8}{subsubsection.4.1.5}% 
+\contentsline {subsubsection}{\numberline {4.1.6}{\bf \fontfamily {pcr}\selectfont util.py}}{9}{subsubsection.4.1.6}% 
+\contentsline {subsection}{\numberline {4.2}{\bf \fontfamily {pcr}\selectfont load}}{9}{subsection.4.2}% 
 \contentsline {subsubsection}{\numberline {4.2.1}{\bf \fontfamily {pcr}\selectfont lapd.py}}{9}{subsubsection.4.2.1}% 
-\contentsline {subsubsection}{\numberline {4.2.2}{\bf \fontfamily {pcr}\selectfont hrr.py}}{9}{subsubsection.4.2.2}% 
-\contentsline {subsubsection}{\numberline {4.2.3}{\bf \fontfamily {pcr}\selectfont imgdir.py}}{9}{subsubsection.4.2.3}% 
-\contentsline {subsubsection}{\numberline {4.2.4}{\bf \fontfamily {pcr}\selectfont ascii.py}}{9}{subsubsection.4.2.4}% 
-\contentsline {subsection}{\numberline {4.3}{\bf \fontfamily {pcr}\selectfont process}}{9}{subsection.4.3}% 
+\contentsline {subsubsection}{\numberline {4.2.2}{\bf \fontfamily {pcr}\selectfont hrr.py}}{10}{subsubsection.4.2.2}% 
+\contentsline {subsubsection}{\numberline {4.2.3}{\bf \fontfamily {pcr}\selectfont imgdir.py}}{10}{subsubsection.4.2.3}% 
+\contentsline {subsubsection}{\numberline {4.2.4}{\bf \fontfamily {pcr}\selectfont ascii.py}}{10}{subsubsection.4.2.4}% 
+\contentsline {subsection}{\numberline {4.3}{\bf \fontfamily {pcr}\selectfont process}}{10}{subsection.4.3}% 
 \contentsline {subsubsection}{\numberline {4.3.1}{\bf \fontfamily {pcr}\selectfont bdot.py}}{10}{subsubsection.4.3.1}% 
 \contentsline {subsubsection}{\numberline {4.3.2}{\bf \fontfamily {pcr}\selectfont tdiode.py}}{11}{subsubsection.4.3.2}% 
 \contentsline {subsubsection}{\numberline {4.3.3}{\bf \fontfamily {pcr}\selectfont langmuir.py}}{11}{subsubsection.4.3.3}% 
 \contentsline {subsubsection}{\numberline {4.3.4}{\bf \fontfamily {pcr}\selectfont interferometer.py}}{12}{subsubsection.4.3.4}% 
 \contentsline {subsubsection}{\numberline {4.3.5}{\bf \fontfamily {pcr}\selectfont imgseq.py}}{12}{subsubsection.4.3.5}% 
-\contentsline {subsubsection}{\numberline {4.3.6}{\bf \fontfamily {pcr}\selectfont scope.py}}{12}{subsubsection.4.3.6}% 
-\contentsline {subsubsection}{\numberline {4.3.7}{\bf \fontfamily {pcr}\selectfont process.py}}{12}{subsubsection.4.3.7}% 
+\contentsline {subsubsection}{\numberline {4.3.6}{\bf \fontfamily {pcr}\selectfont scope.py}}{13}{subsubsection.4.3.6}% 
+\contentsline {subsubsection}{\numberline {4.3.7}{\bf \fontfamily {pcr}\selectfont process.py}}{13}{subsubsection.4.3.7}% 
 \contentsline {subsection}{\numberline {4.4}{\bf \fontfamily {pcr}\selectfont analyze}}{13}{subsection.4.4}% 
 \contentsline {subsubsection}{\numberline {4.4.1}{\bf \fontfamily {pcr}\selectfont filter.py}}{13}{subsubsection.4.4.1}% 
-\contentsline {subsubsection}{\numberline {4.4.2}{\bf \fontfamily {pcr}\selectfont polarization.py}}{13}{subsubsection.4.4.2}% 
-\contentsline {subsubsection}{\numberline {4.4.3}{\bf \fontfamily {pcr}\selectfont spectral.spectrogram.py}}{13}{subsubsection.4.4.3}% 
-\contentsline {subsubsection}{\numberline {4.4.4}{\bf \fontfamily {pcr}\selectfont thomson.thomson\_scattering.py}}{13}{subsubsection.4.4.4}% 
-\contentsline {subsection}{\numberline {4.5}{\bf \fontfamily {pcr}\selectfont user}}{13}{subsection.4.5}% 
+\contentsline {subsubsection}{\numberline {4.4.2}{\bf \fontfamily {pcr}\selectfont polarization.py}}{14}{subsubsection.4.4.2}% 
+\contentsline {subsubsection}{\numberline {4.4.3}{\bf \fontfamily {pcr}\selectfont spectral.spectrogram.py}}{14}{subsubsection.4.4.3}% 
+\contentsline {subsubsection}{\numberline {4.4.4}{\bf \fontfamily {pcr}\selectfont thomson.thomson\_scattering.py}}{14}{subsubsection.4.4.4}% 
+\contentsline {subsection}{\numberline {4.5}{\bf \fontfamily {pcr}\selectfont user}}{14}{subsection.4.5}% 
 \contentsline {subsection}{\numberline {4.6}{\bf \fontfamily {pcr}\selectfont dataview}}{14}{subsection.4.6}% 
+\contentsline {section}{\numberline {A}Metadata CSV Key Dictionary}{15}{appendix.A}% 
+\contentsline {subsection}{\numberline {A.1}Experiment Data}{15}{subsection.A.1}% 
+\contentsline {subsection}{\numberline {A.2}Run-Type}{15}{subsection.A.2}% 
+\contentsline {subsection}{\numberline {A.3}Probe-Type}{15}{subsection.A.3}% 
+\contentsline {subsubsection}{\numberline {A.3.1}Probe-Type: Bdots Probes}{15}{subsubsection.A.3.1}% 
+\contentsline {subsubsection}{\numberline {A.3.2}Probe-Type: Langmuir Probes}{15}{subsubsection.A.3.2}% 
+\contentsline {subsection}{\numberline {A.4}Run-Probe Type}{15}{subsection.A.4}% 
+\contentsline {subsubsection}{\numberline {A.4.1}Run-Probe Type: LAPD Digitizer}{16}{subsubsection.A.4.1}% 
+\contentsline {subsubsection}{\numberline {A.4.2}Run-Probe Type: HRR Digitizer}{16}{subsubsection.A.4.2}% 
+\contentsline {subsubsection}{\numberline {A.4.3}Run-Probe Type: Probes with Position Information}{16}{subsubsection.A.4.3}% 
+\contentsline {subsubsection}{\numberline {A.4.4}Run-Probe Type: Probes Using LAPD Motor Drives}{17}{subsubsection.A.4.4}% 
+\contentsline {subsubsection}{\numberline {A.4.5}Run-Probe Type: Probes Using HRR-Controlled Motor Drives}{17}{subsubsection.A.4.5}% 
+\contentsline {subsubsection}{\numberline {A.4.6}Run-Probe Type: Bdot Probes}{17}{subsubsection.A.4.6}% 
+\contentsline {subsubsection}{\numberline {A.4.7}Run-Probe Type: Langmuir Probes}{17}{subsubsection.A.4.7}% 

@@ -1,0 +1,107 @@
+\subsection{Experiment Data}
+
+No standard keys exist for this type of file yet
+
+\subsection{Run-Type} 
+
+\begin{itemize}
+\item \key{datafile}{str}{Datafile name. "datafile".hdf5 should be the datafile for each "datafile" in this column.}
+\end{itemize}
+
+\subsection{Probe-Type}
+
+\begin{itemize}
+\item \key{probe\_type}{str}{Specifies the probe type, used to decide which analysis routines to run. Example: "bdot", "tdiode".}
+\end{itemize}
+
+\subsubsection{Probe-Type: Bdots Probes}
+
+\begin{itemize}
+\item \key{area}{float}{Area of the probe tip (used when calculating isat density)}
+
+\end{itemize}
+
+\subsubsection{Probe-Type: Langmuir Probes}
+
+\begin{itemize}
+\item \key{nturns}{int}{Number of bdot turns (assume to be the same for all axes).}
+\item \key{\{xyz\}area}{float}{Area of the probe tip from calibration.}
+\item \key{\{xyz\}tau}{float}{High-frequency calibration constant for each axis.}
+\end{itemize}
+
+\subsection{Run-Probe Type}
+
+\begin{itemize}
+\item \key{\{xyz\}pol}{1 or -1}{This factor is multiplied by the data that is read in to potentially reverse it if a probe was in upside down.}
+\item \key{gain}{float}{Amplifier gain prior to the digitizer.}
+\end{itemize}
+
+\subsubsection{Run-Probe Type: LAPD Digitizer}
+
+\begin{itemize}
+\item \key{digitizer}{str}{Name of the digitizer used. Example "SIS crate".}
+\item \key{adc}{str}{Name of the analog-to-digital converter used. Example "SIS 3305", "SIS 3302".}
+\item \key{brd\{i\}}{int}{Digitizer board used, where \{i\} is the number of the channel. There should be one of these columns for each channel.}
+\item \key{chan\{i\}}{int}{Channel on the digitizer used, where \{i\} is the number of the channel. There should be a corresponding "brd\{i\}" for each one.}
+\end{itemize}
+
+\subsubsection{Run-Probe Type: HRR Digitizer}
+\begin{itemize}
+\item \key{resource\{i\}}{int}{Resource number for each channel \{i\}.}
+\item \key{chan\{i\}}{int}{Channel number. The number of these columns should match the number of resource columns.}
+\end{itemize}
+
+\subsubsection{Run-Probe Type: Probes with Position Information}
+
+\begin{itemize}
+\item \key{probe\_origin\_\{xyz\}}{float}{Position of the probe origin relative to the experiment coordinate system. These will be added to all the probe positions.}
+
+\item \key{\{xyz\}pos}{float}{Position of the probe. Overridden by motor drive information if a probe is being scanned. These positions are relative to the probe origin.}
+
+\item \key{roll}{float}{Angle, in degrees, that the probe was rotate about its central (x) axis. This is included during the rotation correction phase, and can be used to correct a probe that was misaligned.}
+
+\item \key{rot\_center\_\{xyz\}}{float}{Required only for probes that rotate on a ball valve (like the LAPD probe drives). This specifies the center position of the ball valve, for use in angle corrections.}
+
+\item \key{ax\_pol\_\{xyz\}}{1 or -1}{Direction of the motion axis relative to the experiment coordinate system. Set to -1 if they are anti-parallel. If this keyword is not included, a value of 1 is assumed by default. Currently motion axes at an angle to the experiment coordinate system are not supported (but theoretically could be added...)}
+
+\end{itemize}
+
+\subsubsection{Run-Probe Type: Probes Using LAPD Motor Drives}
+
+\begin{itemize}
+\item \key{motion\_controller}{str}{Which LAPD drive was associated with the probe. Example "6K Compumotor", "NI\_XYZ".}
+
+\item \key{motion\_receptacle}{int}{Which instance of that motor drive was used? Starts at 1. For example, 6K Compumotor can control four XY drives, labeled 1,2,3,4".}
+
+\end{itemize}
+
+
+\subsubsection{Run-Probe Type: Probes Using HRR-Controlled Motor Drives}
+
+\begin{itemize}
+\item \key{\{xyz\}pos\_resource}{int}{Resource number for each channel of the probe drive.}
+\item \key{\{xyz\}pos\_chan}{int}{Channel number for each channel of the probe drive.}
+\end{itemize}
+
+\subsubsection{Run-Probe Type: Bdot Probes}
+
+\begin{itemize}
+\item \key{\{xyz\}atten}{float}{Attenuation on each axis of the probe. Required to be in dB currently}
+\end{itemize}
+
+\subsubsection{Run-Probe Type: Langmuir Probes}
+
+\begin{itemize}
+\item \key{atten}{float}{Attenuation on the digitizer. Required to be in dB currently}
+
+\item \key{ramp\_atten}{float}{Attenuation for ramp, only required for vsweep.}
+
+\item \key{ramp\_gain}{float}{Gain on ramp signal: only required for vsweep. Regular "gain" keyword is used for the other signal channel.}
+
+\item \key{sweep\_type}{str}{Currently "langmuir\_isat" or "langmuir\_vsweep" are used. This keyword is just useful for deciding which type of analysis routine to call on this dataset.}
+
+\item \key{resistor}{float}{Measurement resistor for vsweep runs.}
+
+\item \key{bias}{float}{Probe bias for isat runs.}
+
+\end{itemize}

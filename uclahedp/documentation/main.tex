@@ -1,9 +1,16 @@
 \documentclass[12pt]{article}
 
+\usepackage[letterpaper,margin=1in]{geometry}
+
 \usepackage{hyperref}
 \usepackage{tcolorbox}
 
-\newcommand{\loc}[1]{{\bf \fontfamily{pcr}\selectfont #1}}
+\usepackage{graphics}
+\graphicspath{ {images/} }
+
+\newcommand{\loc}[1]{
+{\bf \fontfamily{pcr}\selectfont #1}
+}
 
 \newcommand{\todo}[1]{ \begin{tcolorbox} \centering  #1 \end{tcolorbox}}
 
@@ -12,9 +19,12 @@
 
 \title{UCLA HEDP Experimental Plasma Physics Analysis Package Documentation}
 \date{\today}
+\author{Peter Heuer}
 
 
 \begin{document}
+\emergencystretch 3em
+
 \maketitle
 
 \newpage
@@ -25,10 +35,79 @@
 
 \section{Overview}
 
-The UCLA HEDP package first loads 
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{process_flow}
+\caption[Processing Workflow]
+{\label{process_flow} A visualization of the processing pipeline.}
+\end{figure}
+
+The UCLA HEDP package provides a pipeline for turning  raw datafiles from a number of sources into fully-processed data ready for analysis. The package also includes a toolkit of analysis routines intended to reduce code duplication for common tasks like filtering data. Throughout the pipeline all data is stored in a common format (the CDF format) which enables all data at any point to be plotted using a common plotting routine, provided by the \loc{dataview} program.
+
+The processing pipeline takes datafiles from several sources as inputs, as well as metadata CSV files that adhere to a standard format. In the first stage of processing, these various data sources are merged with metadata and saved in a standardized format. No physics is accounted for in this stage. In the second stage, these "raw" files are transformed into "full" files. In this stage, raw voltage values are transformed into physically meaningful outputs ready for higher level analysis. The abstraction of the "raw" processing step from the "full" step allows data from a Langmuir probe (for example) hooked up to any data source to be processed by the same Langmuir probe processing routines.
+
+
+\subsection{Concepts}
+
+Throughout the pipeline (and the associated metadata CSV format), data is labeled using two important concepts:
+
+\begin{itemize}
+\item \textbf{probes}: A probe is a a string that labels a particular measurement source. A probe could have an associated position (like a bdot) or not (like a timing photodiode). A probe can correspond to any number of digitizer channels. A probe can have metadata associated with it either permanently or only for a single experimental run. 
+
+\item \textbf{runs}: A run is a repetition of the experiment (or multiple repetitions) that belong conceptually together and are therefore stored and processed together. A run can involve multiple probes. A run can have metadata associated with it (independent of any probes). A run is represented by a run number.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{file_struct}
+\caption[File Structure]
+{\label{file_struct} A recommended file structure for storing data.}
+\end{figure}
+
+When storing datafiles for an experiment, it is recommended (but not strictly required) for the following system of sub-directories to be used:
+
+\begin{itemize}
+
+\item \textbf{METADATA}: This directory is where the package will search for any metadata CSV files. All files in this directory (and in sub-directories recursively) will be searched. 
+
+\item \textbf{HDF}: This is where the original HDF files are stored.
+
+\item \textbf{RAW}: This is where output of the raw or "load" processing step is stored.
+
+\item \textbf{FULL}: This is where the the fully processed datafiles are output.
+
+\end{itemize}
+
+All of the routines within the package take a full filepath to specify the data to load in and write out, so the data need not be stored together (except for metadata, which must be collected in a directory so it can be searched). 
+
+
+
+\subsection{Philosophy}
+
+A few guiding principles that guided the design choices behind the structure of the UCLA HEDP package include:
+
+\begin{itemize}
+
+\item \textbf{Only original datafiles and metadata should need to be stored}.\\ Processed datafiles should be easy enough to create that they can be re-created when needed from the original datafiles and metadata. This principle saves disk space and also ensures that the data being used was processed using up-to-date metadata (as opposed to a saved processed datafile whose origins may be unclear). 
+
+\item \textbf{When possible, data should be stored in a common format that can be easily plotted.}\\ Storing data in a common format (in this case the CDF format) enables standardized plotting routines which make it easy to check data at different stages of analysis. 
+
+\item \textbf{Minimize the amount of data in RAM at any time}. Any computer should be able to process any dataset, given sufficient time. Programs should take advantage of the HDF file format to only load parts of the data in memory during processing so that even laptop computers can process 100 GB datafiles.
+
+\item \textbf{Reduce code duplication through standardization}. A bdot is the same probe whether it is used in LAPD or in the Phoenix lab, and it should therefore be processed using the same bdot routines.
+
+\end{itemize}
 
 
 \section{The Common Data Format (CDF)\label{cdf}}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{hdf5_struct}
+\caption[Example of CDF HDF5 Files]
+{\label{hdf5_struct} Example structures of a raw and a full HDF5 file that conform to the CDF.}
+\end{figure}
+
 
 \subsection{Requirements}
 
@@ -50,6 +129,10 @@ The UCLA HEDP package is designed around a standardized structured data format, 
 
 This format was designed to contain all of the information necessary to make plots of the dataset.
 
+\todo{
+One notable exception to the CDF format is probe position information which is saved in an additional array called "pos" with dimensions [shot num, 3] and has no attributes. Other similar non-standard arrays include t0ind and badshots in timing diode files. These "special" files that contain these additional required array should be considered subclasses of the CDF format - they inherit all of the normal requirements but also require these additional arrays.
+}
+
 \subsection{Conventions}
 \begin{itemize}
 \item The convention [shots, time, channels] is commonly used for raw shot-ordered datasets.
@@ -65,7 +148,9 @@ Large datasets are not stored on consecutive sections of computer memory but are
 
 \section{The CSV Metadata Format\label{csv_format}}
 
-Metadata is recorded in CSV files in a standard format, and many column header names may be required by different routines in the analysis pipeline. This section describes a number of standard keywords and their usage. 
+\subsection{CSV File Header Format}
+
+Metadata is recorded in CSV files in a standard format, and many column header names may be required by different routines in the analysis pipeline:
 
 Across all metadata files the following header format is followed for the top three rows
 \begin{enumerate}
@@ -74,19 +159,34 @@ Across all metadata files the following header format is followed for the top th
 \item Human-readable title or note, eg. "Bdot Area". This row is not used by the program but improves readability of the CSV file.
 \end{enumerate}
 
-Metadata files are sorted into four types automatically based on whether the csv file includes the "run" or "probe" keywords (Table~\ref{csv_types}). 
+\subsection{The Four Types of Metadata Files}
+Metadata files are sorted into four types automatically based on whether the csv file includes the "run" or "probe" keywords (Table~\ref{csv_types}). This system allows information that does not change throughout the experiment for either one or all probes to not be repeated unnecessarily, which keeps the metadata files managable and reduces errors.
 
 \begin{table}[]
 \begin{tabular}{p{1cm}p{2cm}p{2cm}p{6cm}}
 Type                                 & Has "run" key? & Has "probe" key? & Explanation                                                                          \\ \hline
-\multicolumn{1}{c|}{Experiment Data} & No             & No               & Data that pertains to the whole experiment, eg. experiment name, vacuum chamber used \\
-\multicolumn{1}{c|}{Run Data}        & Yes            & No               & Data that pertains to a given run number, eg. background field, fill pressure        \\
-\multicolumn{1}{c|}{Probe Data}      & No             & Yes              & Data about a particular probe for the whole experiment, eg. calibration constants    \\
-\multicolumn{1}{c|}{Run-Probe Data}  & Yes            & Yes              & Data about a probe on a particular run, eg. positon or attenuation                  
+\multicolumn{1}{c|}{Experiment Type} & No             & No               & Data that pertains to the whole experiment, eg. experiment name, vacuum chamber used \\
+\multicolumn{1}{c|}{Run Type}        & Yes            & No               & Data that pertains to a given run number, eg. background field, fill pressure        \\
+\multicolumn{1}{c|}{Probe Type}      & No             & Yes              & Data about a particular probe for the whole experiment, eg. calibration constants    \\
+\multicolumn{1}{c|}{Run-Probe Type}  & Yes            & Yes              & Data about a probe on a particular run, eg. positon or attenuation                  
 \end{tabular}
-\caption{Types of CSV spreadsheet as defined by the presence of the "run" and/or "probe" keywords.\label{csv_types}}
+\caption{Types of CSV spreadsheets as defined by the presence of the "run" and/or "probe" keywords.\label{csv_types}}
 \end{table}
 
+A raw file for a particular probe and run will have the following metadata attached from these files:
+
+\begin{itemize}
+\item All metadata from all experiment type metadata files.
+
+\item All metadata from all run type metadata files that match the run number.
+
+\item All metadata from all probe type metadata files that match the probe name.
+
+\item All metadata from all run-probe type metadata files that match BOTH the run and the probe.
+\end{itemize}
+
+
+\todo{Tip: Non-integer run numbers can be used to label multiple sub-runs with metadata from the main run. For example, if multiple movies are captured using a camera during run 32, which is a long probe plane, the camera runs could be labeled 32.1, 32.2 etc. and will automatically inherit the run-type metadata from run 32.}
 
 
 

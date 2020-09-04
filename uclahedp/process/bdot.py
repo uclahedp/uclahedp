@@ -37,7 +37,6 @@ def bdotRawToFull(src, dest,
                   grid_precision=0.1, strict_grid=False, strict_axes = False):
     """ Integrates bdot data, calibrates output using information about the probe.
         Corrects for probe angle based on which drive is being used.
-
     Parameters
     ----------
         src: hdfPath object
@@ -45,7 +44,6 @@ def bdotRawToFull(src, dest,
             
         dest: hdfPath object
             Path string to location processed bdot data should be written out
-
         tdiode_hdf:  hdfPath object
             Path to a raw hdf5 file containing tdiode data. If no HDF file is
             provided, no timing correction will be applied.
@@ -117,8 +115,6 @@ def bdotRawToFull(src, dest,
             points where the probe was not at the requested position. Default
             is false, which applys "fuzzy gridding", which tries to find the
             best grid position for each shot individually.
-
-
     Returns
     -------
        True (if executes to the end)
@@ -197,11 +193,12 @@ def bdotRawToFull(src, dest,
                 raise hdftools.hdfGroupExists(dest)
             
             destgrp = df.require_group(dest.group)
+            
+            
 
             
             #Copy over attributes
             hdftools.copyAttrs(srcgrp, destgrp)
-
         
             #Load the time vector
             t = srcgrp['time']
@@ -252,6 +249,7 @@ def bdotRawToFull(src, dest,
             # dt -> s
             dt = ( attrs['dt'][0]*u.Unit(attrs['dt'][1])).to(u.s).value
           
+            
             if calibrate:
                  
                  #First calculate the low frequency calibration factors
@@ -320,7 +318,7 @@ def bdotRawToFull(src, dest,
                 print("Beginning processing data shot-by-shot.")
 
 
-            
+       
             #Chunking data processing loop limits memory usage
             for ind in range(nshots):
                 
@@ -351,6 +349,14 @@ def bdotRawToFull(src, dest,
                         offset_b = offset_range[1] + t0indarr[i] - ta
                     else:
                         offset_b = offset_range[1]
+                        
+                #added this to deal with cases where you have a timing diode but don't want to remove voltage offset  
+                elif tdiode_hdf is not None and remove_offset == False:
+                    #Calculate the starting and ending arrays for the data
+                    ta = t0indarr[ind] - min_t0ind
+                    tb = ta + nti
+                    offset_a = offset_range[0]
+                    offset_b = offset_range[1]
                     
                 else:
                     #By default, read in the entire dataset
@@ -378,7 +384,7 @@ def bdotRawToFull(src, dest,
                      dby = dby - np.mean(dby[offset_a:offset_b])
                      dbz = dbz - np.mean(dbz[offset_a:offset_b])
                      
-                                #Integration comes after calibration?
+                                
                 if integrate:
                      #Intgrate
                      bx = np.cumsum(dbx)*dt
@@ -468,6 +474,7 @@ def bdotRawToFull(src, dest,
                     repi = shotgridind[ind, 3]
                     #Write data
                     try:
+                        #print(f"length destgrp selected {len(destgrp['data'][:, xi, yi, zi, repi, 0])}")
                         destgrp['data'][:, xi, yi, zi, repi, 0] = bx
                         destgrp['data'][:, xi, yi, zi, repi, 1] = by
                         destgrp['data'][:, xi, yi, zi, repi, 2] = bz
@@ -1025,7 +1032,6 @@ if __name__ == "__main__":
     tdiode_hdf = hdftools.hdfPath('/Volumes/PVH_DATA/' + exp + '/FULL/' + 'run' + str(run) + '_' + 'tdiode' + '_full.hdf5')
     dest = hdftools.hdfPath('/Volumes/PVH_DATA/'+ exp + '/FULL/' + 'run' + str(run) + '_' + probe + '_full.hdf5')
     
-
     #Delete the output file if it already exists
     try:
         os.remove(dest.file)

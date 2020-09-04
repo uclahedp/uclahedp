@@ -72,9 +72,7 @@ def process(data_dir, run, probe,
                                           calibrate=True, integrate=True, angle_correction = True,
                                           verbose=True, highfreq_calibrate=False,
                                           strict_axes=False, strict_grid=False,
-                                          grid_precision = 0.25,
-                                          replace_badshots = True,
-                                          remove_offset=True, offset_range=(0, -50), offset_rel_t0 = [False, True])
+                                          remove_offset=True, offset_range=(0, -50), offset_rel_t0 = [False, True]) #grid_precision = 0.25,
         elif probe[1] == 'isat':
              print("Running isatRawToFull")
              fullfile = langmuir.isatRawToFull(rawfile, fullfile, tdiode_hdf=tdiode_hdf, 
@@ -168,33 +166,27 @@ def processMany(data_dir, runs=None, probes=None,
 
 if __name__ == "__main__":
     #Windows
-    #data_dir =  os.path.join("F:", "2020BIERMANN")
     #data_dir =  os.path.join("G:", "2019BIERMANN")
     #data_dir =  os.path.join("G:", "LAPD_Apr2017")
     #data_dir =  os.path.join("G:", "LAPD_Aug2016")
     #data_dir =  os.path.join("G:", "LAPD_Jan2019")
-    #data_dir =   os.path.join("F:", "LAPD_Mar2018")
+    #ata_dir =   os.path.join("G:", "LAPD_Mar2018")
     #data_dir =  os.path.join("G:", "LAPD_Jul2019")
-    data_dir =  os.path.join("F:", "LAPD_Sept2019")
+    #data_dir =  os.path.join("G:", "LAPD_Sept2019")
     
     #OSX
-    #data_dir =  os.path.join("/Volumes", "PVH_DATA","2020BIERMANN")
+    #data_dir =  os.path.join("/Volumes", "PVH_DATA","2019BIERMANN")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Aug2015")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jan2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Mar2018")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Jul2019")
     #data_dir =  os.path.join("/Volumes", "PVH_DATA","LAPD_Sept2019")
+    data_dir  = os.path.join("C:", os.sep, "Users", "jessi", "Documents", "2020BIERMANN")
     
-    rawsource='LAPD'
-    #rawsource='HRR'
-    
-    
-
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[65],probes=['tdiode', 'PLL_B2'], use_tdiode='tdiode',  rawsource=rawsource)
+    #rawsource='LAPD'
+    rawsource='HRR'
     
     
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[13,14, 26, 30],probes=['tdiode'],  rawsource=rawsource)
-    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[13,14, 26, 30],probes=[ 'LAPD6'], use_tdiode='tdiode',  rawsource=rawsource)
+    #processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[56],probes=['tdiode'], rawsource=rawsource, trange=[0,3000])
+    processMany(data_dir, overwrite_raw=True, overwrite_full=True, runs=[94,96,97,108,110,111,112],probes=['tdiode', 'PLL_B2'], use_tdiode='tdiode',  rawsource=rawsource)
     
-    
-    processMany(data_dir, overwrite_raw=False, overwrite_full=True, runs=[10],probes=['PRO083_vsweep'],  rawsource=rawsource)

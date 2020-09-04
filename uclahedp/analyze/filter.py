@@ -15,14 +15,12 @@ import scipy.signal as signal
 
 
 
-def fftFilter(f, dt, band=(None,None), mode='pass', plots=False, plotband=None):
+def fftFilter(f, dt, band=(None,None), mode='pass', plots=False):
     """
     band -> (start, end)
     mode -> 
         'pass' -> Allow through only frequencies in band
         'block' -> Block filters in band
-    
-    plotband => (start,end) in frequencies for plots
     
     """
     nf = f.size
@@ -51,25 +49,17 @@ def fftFilter(f, dt, band=(None,None), mode='pass', plots=False, plotband=None):
     mask = np.zeros(3*nf) 
     mask[a:b] =  np.hanning(b-a)
     mask[3*nf-b:3*nf-a] =  np.hanning(b-a)
-    
-    
-    if mode == 'block':
-        mask = np.ones(mask.size) - mask
 
          
         
     if plots:
         fig, ax = plt.subplots()
-        ax.plot(freq, mask/np.max(mask))
-        ax.plot(freq, np.abs(fft)/np.max(np.abs(fft)))
+        ax.plot(freq)
+        ax.plot(mask)
+        ax.axvline(x=a, color='green')
+        ax.axvline(x=b, color='red')
         
-        ax.axvline(x=freq[a], color='green')
-        ax.axvline(x=freq[b], color='red')
-        
-        if plotband is not None:
-            ax.set_xlim(plotband )
-        
-        
+        ax.plot(fft)
         plt.show()
         
     fout = np.real(np.fft.ifft(fft*mask))

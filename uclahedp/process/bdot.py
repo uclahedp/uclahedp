@@ -372,21 +372,29 @@ def bdotRawToFull(src, dest,
                     
                     
 
-                #Read in the data from the source file
+                #Read in data from the source file and cut it to have correct t0
                 dbx = srcgrp['data'][i,ta:tb, 0]
                 dby = srcgrp['data'][i,ta:tb, 1]
                 dbz = srcgrp['data'][i,ta:tb, 2]
                 
                 
                 if remove_offset:
-                     #Remove offset from each channel
-                     dbx = dbx - np.mean(dbx[offset_a:offset_b])
-                     dby = dby - np.mean(dby[offset_a:offset_b])
-                     dbz = dbz - np.mean(dbz[offset_a:offset_b])
+                     #Remove offset from each channel. 
+                     #The offset is calculated from the data set that has not been cut for the timing offset
+                     #The offset is subtracted from the data that reflects the correct t0
+                     dbx = dbx - np.mean(srcgrp['data'][i,offset_a:offset_b, 0])
+                     dby = dby - np.mean(srcgrp['data'][i,offset_a:offset_b, 1])
+                     dbz = dbz - np.mean(srcgrp['data'][i,offset_a:offset_b, 2])
+
+
+                     #this is the original code for offset_remvoal (written by Peter)
+                     #dbx = dbx - np.mean(dbx[offset_a:offset_b])
+                     #dby = dby - np.mean(dby[offset_a:offset_b]) 
+                     #dbz = dbz - np.mean(dbz[offset_a:offset_b])
                      
                                 
                 if integrate:
-                     #Intgrate
+                     #Intgrates the data for each channel
                      bx = np.cumsum(dbx)*dt
                      by = np.cumsum(dby)*dt
                      bz = np.cumsum(dbz)*dt
